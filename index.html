@@ -6,6 +6,7 @@
 <title>Koperasi Keluarga</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg: #f5f4f0;
@@ -554,11 +555,17 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-title">Laporan</div>
         <div class="page-sub">Ringkasan dan detail transaksi koperasi</div>
       </div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchLaporanTab('simpanan', this)">Simpanan</button>
-        <button class="tab-btn" onclick="switchLaporanTab('pinjaman', this)">Pinjaman</button>
-        <button class="tab-btn" onclick="switchLaporanTab('cicilan', this)">Cicilan</button>
-        <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('adjustment', this)">Adjustment</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+        <div class="tabs" style="margin-bottom:0">
+          <button class="tab-btn active" onclick="switchLaporanTab('simpanan', this)">Simpanan</button>
+          <button class="tab-btn" onclick="switchLaporanTab('pinjaman', this)">Pinjaman</button>
+          <button class="tab-btn" onclick="switchLaporanTab('cicilan', this)">Cicilan</button>
+          <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('adjustment', this)">Adjustment</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="exportLaporan()" style="gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Excel
+        </button>
       </div>
       <div class="card">
         <div id="laporan-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
@@ -843,6 +850,8 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
+const APP_VERSION = 'v2.0-final';
+console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
 const { createClient } = supabase;
@@ -860,6 +869,14 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // Auth token storage
 let authToken = null;
+
+function jwtDecode(token) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(json);
+  } catch(e) { return null; }
+}
 
 async function supabaseLogin(email, password) {
   const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
@@ -1002,17 +1019,14 @@ async function doLogin() {
     }
     if (result.access_token) {
       authToken = result.access_token;
-      // Set session then verify it worked
-      await db.auth.setSession({ access_token: result.access_token, refresh_token: result.refresh_token });
-      // Small delay to ensure session is set
-      await new Promise(resolve => setTimeout(resolve, 300));
-      // Verify session is active
-      const { data: { session } } = await db.auth.getSession();
-      const user = session?.user || result.user;
-      if (user) {
+      // Decode JWT to get user info directly - no need for db.auth
+      const user = result.user || jwtDecode(result.access_token);
+      if (user && user.id) {
+        localStorage.setItem('kk_auth_token', authToken);
+        localStorage.setItem('kk_auth_user', JSON.stringify(user));
         await initApp(user);
       } else {
-        alertEl.textContent = 'Sesi tidak dapat dibuat, coba lagi.'; alertEl.style.display = 'block';
+        alertEl.textContent = 'Login gagal, tidak dapat membaca data user.'; alertEl.style.display = 'block';
       }
     } else {
       alertEl.textContent = 'Login gagal: ' + (result.msg || result.error_description || JSON.stringify(result));
@@ -1025,8 +1039,12 @@ async function doLogin() {
 }
 
 async function doLogout() {
-  await db.auth.signOut();
+  // Clear local auth state
+  authToken = null;
   currentUser = null; currentProfile = null;
+  localStorage.removeItem('kk_auth_token');
+  localStorage.removeItem('kk_auth_user');
+  try { await db.auth.signOut(); } catch(e) {}
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
 }
@@ -1043,16 +1061,7 @@ async function initApp(user) {
   loadDashboard();
 }
 
-db.auth.onAuthStateChange(async (event, session) => {
-  if (event === 'SIGNED_IN' && session && !currentUser) {
-    await initApp(session.user);
-  }
-  if (event === 'SIGNED_OUT') {
-    currentUser = null; currentProfile = null;
-    document.getElementById('app-screen').style.display = 'none';
-    document.getElementById('auth-screen').style.display = 'flex';
-  }
-});
+// Auth state handled manually via supabaseLogin/doLogout
 
 // MEMBERS
 async function loadAllMembers() {
@@ -1502,6 +1511,127 @@ async function loadCicilanHistory() {
 }
 
 // LAPORAN
+async function exportLaporan() {
+  showToast('Menyiapkan Excel...');
+  try {
+    const wb = XLSX.utils.book_new();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g,'-');
+
+    // ── Sheet 1: Simpanan ──
+    const [savings, members] = await Promise.all([
+      dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles(full_name)&order=created_at.desc'),
+      dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
+    ]);
+    const balances = {};
+    (members||[]).forEach(m => balances[m.id] = { name: m.full_name, deposit: 0, withdraw: 0, last: null });
+    (savings||[]).forEach(s => {
+      if (!balances[s.member_id]) balances[s.member_id] = { name: s.profiles?.full_name || s.member_id, deposit: 0, withdraw: 0, last: null };
+      if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
+      else balances[s.member_id].withdraw += Number(s.amount);
+      if (!balances[s.member_id].last) balances[s.member_id].last = s.created_at;
+    });
+    const simpRows = [['No', 'Nama Anggota', 'Total Setor (Rp)', 'Total Tarik (Rp)', 'Saldo (Rp)', 'Transaksi Terakhir']];
+    Object.values(balances).forEach((r, i) => {
+      simpRows.push([i+1, r.name, r.deposit, r.withdraw, r.deposit - r.withdraw, r.last ? new Date(r.last).toLocaleDateString('id-ID') : '-']);
+    });
+    const wsSimpanan = XLSX.utils.aoa_to_sheet(simpRows);
+    wsSimpanan['!cols'] = [{wch:5},{wch:25},{wch:18},{wch:18},{wch:18},{wch:20}];
+    XLSX.utils.book_append_sheet(wb, wsSimpanan, 'Simpanan');
+
+    // ── Sheet 2: Riwayat Simpanan ──
+    const savingsDetail = await dbQuery('savings', 'select=*,profiles(full_name)&order=created_at.desc');
+    const simpDetailRows = [['Tanggal', 'Nama Anggota', 'Jenis', 'Jumlah (Rp)', 'Saldo Setelah (Rp)', 'Keterangan']];
+    (savingsDetail||[]).forEach(s => {
+      simpDetailRows.push([
+        new Date(s.created_at).toLocaleDateString('id-ID'),
+        s.profiles?.full_name || '-',
+        s.type === 'deposit' ? 'Setor' : 'Tarik',
+        Number(s.amount),
+        Number(s.balance_after),
+        s.note || '-'
+      ]);
+    });
+    const wsSimpDetail = XLSX.utils.aoa_to_sheet(simpDetailRows);
+    wsSimpDetail['!cols'] = [{wch:15},{wch:25},{wch:10},{wch:18},{wch:18},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, wsSimpDetail, 'Riwayat Simpanan');
+
+    // ── Sheet 3: Pinjaman ──
+    const loans = await dbQuery('loans', 'select=*,profiles(full_name)&order=created_at.desc');
+    const typeLabel = { weekly:'Mingguan', biweekly:'2 Mingguan', monthly:'Bulanan' };
+    const statusLabel = { active:'Aktif', pending:'Menunggu', completed:'Lunas', rejected:'Ditolak' };
+    const pinjamanRows = [['No. Pinjaman','Anggota','Tgl Cair','Pokok (Rp)','Bunga %','Total Bunga (Rp)','Total Tagihan (Rp)','Jenis Cicilan','Cicilan/Periode (Rp)','Dibayar (Rp)','Sisa (Rp)','Jatuh Tempo','Status']];
+    (loans||[]).forEach(l => {
+      pinjamanRows.push([
+        l.id.substring(0,8),
+        l.profiles?.full_name || '-',
+        l.disbursed_at ? new Date(l.disbursed_at).toLocaleDateString('id-ID') : '-',
+        Number(l.principal),
+        Number(l.interest_rate),
+        Number(l.total_interest),
+        Number(l.total_amount),
+        typeLabel[l.installment_type] || l.installment_type,
+        Number(l.installment_amount),
+        Number(l.amount_paid),
+        Number(l.remaining_amount),
+        l.next_due_date ? new Date(l.next_due_date).toLocaleDateString('id-ID') : '-',
+        statusLabel[l.status] || l.status
+      ]);
+    });
+    const wsPinjaman = XLSX.utils.aoa_to_sheet(pinjamanRows);
+    wsPinjaman['!cols'] = [{wch:12},{wch:20},{wch:12},{wch:14},{wch:8},{wch:16},{wch:16},{wch:14},{wch:18},{wch:14},{wch:14},{wch:14},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, wsPinjaman, 'Pinjaman');
+
+    // ── Sheet 4: Cicilan ──
+    const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc');
+    const cicilanRows = [['Tanggal','Anggota','Cicilan Ke-','Dibayar (Rp)','Komponen Pokok (Rp)','Komponen Bunga (Rp)','Sisa Tagihan (Rp)','Keterangan']];
+    (payments||[]).forEach(p => {
+      cicilanRows.push([
+        new Date(p.created_at).toLocaleDateString('id-ID'),
+        p.profiles?.full_name || '-',
+        p.payment_number,
+        Number(p.amount_paid),
+        Number(p.principal_component),
+        Number(p.interest_component),
+        Number(p.remaining_after),
+        p.note || '-'
+      ]);
+    });
+    const wsCicilan = XLSX.utils.aoa_to_sheet(cicilanRows);
+    wsCicilan['!cols'] = [{wch:15},{wch:25},{wch:12},{wch:16},{wch:20},{wch:20},{wch:18},{wch:30}];
+    XLSX.utils.book_append_sheet(wb, wsCicilan, 'Cicilan');
+
+    // ── Sheet 5: Adjustment (admin only) ──
+    if (isAdmin()) {
+      const adjustments = await dbQuery('adjustments', 'select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc');
+      const adjTypeLabel = { savings:'Simpanan', loan:'Pinjaman', installment:'Cicilan' };
+      const adjRows = [['Tanggal','Anggota','Jenis Koreksi','Nilai Sebelum (Rp)','Nilai Sesudah (Rp)','Selisih (Rp)','Alasan','Admin']];
+      (adjustments||[]).forEach(a => {
+        adjRows.push([
+          new Date(a.created_at).toLocaleDateString('id-ID'),
+          a.profiles?.full_name || '-',
+          adjTypeLabel[a.type] || a.type,
+          Number(a.value_before),
+          Number(a.value_after),
+          Number(a.difference),
+          a.reason,
+          a.admin?.full_name || '-'
+        ]);
+      });
+      const wsAdj = XLSX.utils.aoa_to_sheet(adjRows);
+      wsAdj['!cols'] = [{wch:15},{wch:20},{wch:14},{wch:18},{wch:18},{wch:14},{wch:35},{wch:20}];
+      XLSX.utils.book_append_sheet(wb, wsAdj, 'Adjustment');
+    }
+
+    // ── Download ──
+    XLSX.writeFile(wb, `Laporan_Koperasi_Keluarga_${dateStr}.xlsx`);
+    showToast('Excel berhasil didownload ✓');
+  } catch(e) {
+    showToast('Gagal export: ' + e.message);
+    console.error(e);
+  }
+}
+
 async function loadLaporan() {
   switchLaporanTab(currentLaporanTab, document.querySelector('#page-laporan .tab-btn.active'));
 }
@@ -1531,8 +1661,8 @@ async function renderLaporanSimpanan() {
   });
   (savings || []).forEach(s => {
     if (balances[s.member_id]) {
-      if (s.type === 'deposit') balances[s.member_id].deposit += s.amount;
-      else balances[s.member_id].withdraw += s.amount;
+      if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
+      else balances[s.member_id].withdraw += Number(s.amount);
       if (!balances[s.member_id].last) balances[s.member_id].last = s.created_at;
     }
   });
@@ -1555,7 +1685,7 @@ async function renderLaporanSimpanan() {
 async function renderLaporanPinjaman() {
   const loans = await dbQuery('loans', 'select=*,profiles(full_name)&order=created_at.desc');
   const active = (loans || []).filter(l => l.status === 'active');
-  const totalPinjaman = active.reduce((a, l) => a + l.remaining_amount, 0);
+  const totalPinjaman = active.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
   const statusBadge = { active: '<span class="badge badge-blue">Aktif</span>', pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
   document.getElementById('laporan-content').innerHTML = `
@@ -1585,7 +1715,7 @@ async function renderLaporanPinjaman() {
 
 async function renderLaporanCicilan() {
   const data = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc');
-  const totalDibayar = (data || []).reduce((a, p) => a + p.amount_paid, 0);
+  const totalDibayar = (data || []).reduce((a, p) => a + Number(p.amount_paid), 0);
   document.getElementById('laporan-content').innerHTML = `
     <div class="stats-grid" style="margin-bottom:20px">
       <div><div class="card-title">Total Cicilan Diterima</div><div class="card-value green">${fmt(totalDibayar)}</div></div>
@@ -1672,12 +1802,18 @@ async function doTambahAnggota() {
   alertEl.style.display = 'none';
   if (!nama || !email || !password) { alertEl.textContent = 'Nama, email, dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
   if (password.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
-  const { data, error } = await db.auth.admin ? db.auth.admin.createUser({ email, password, user_metadata: { full_name: nama, phone, role }, email_confirm: true }) : { error: null };
-  if (error) { alertEl.textContent = 'Gagal: ' + error.message; alertEl.style.display = 'block'; return; }
-
-  // fallback: use signUp
-  const { data: signUpData, error: signUpErr } = await db.auth.signUp({ email, password, options: { data: { full_name: nama, phone, role } } });
-  if (signUpErr) { alertEl.textContent = 'Gagal: ' + signUpErr.message; alertEl.style.display = 'block'; return; }
+  // Use REST API to sign up
+  const signupRes = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ email, password, data: { full_name: nama, phone, role } })
+  });
+  const signupData = await signupRes.json();
+  if (!signupRes.ok || signupData.error) { alertEl.textContent = 'Gagal: ' + (signupData.error?.message || signupData.msg || JSON.stringify(signupData)); alertEl.style.display = 'block'; return; }
+  // Update profile role if admin
+  if (role === 'admin' && signupData.id) {
+    await dbUpdate('profiles', `id=eq.${signupData.id}`, { role: 'admin' });
+  }
   showToast('Anggota berhasil ditambahkan ✓');
   closeModal('modal-tambah-anggota');
   document.getElementById('anggota-nama').value = '';
@@ -1757,8 +1893,12 @@ async function changePassword() {
   const confirmPw = document.getElementById('confirm-password').value;
   if (!newPw || newPw.length < 6) { showToast('Password minimal 6 karakter'); return; }
   if (newPw !== confirmPw) { showToast('Password tidak cocok'); return; }
-  const { error } = await db.auth.updateUser({ password: newPw });
-  if (error) { showToast('Gagal: ' + error.message); return; }
+  const res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
+    body: JSON.stringify({ password: newPw })
+  });
+  if (!res.ok) { const e = await res.json(); showToast('Gagal: ' + (e.message || JSON.stringify(e))); return; }
   showToast('Password berhasil diubah ✓');
   document.getElementById('new-password').value = '';
   document.getElementById('confirm-password').value = '';
@@ -1771,10 +1911,20 @@ window.addEventListener('click', e => {
   }
 });
 
-// Check existing session
+// Check existing session from localStorage
 (async () => {
-  const { data: { session } } = await db.auth.getSession();
-  if (session) await initApp(session.user);
+  const savedToken = localStorage.getItem('kk_auth_token');
+  const savedUser = localStorage.getItem('kk_auth_user');
+  if (savedToken && savedUser) {
+    try {
+      authToken = savedToken;
+      const user = JSON.parse(savedUser);
+      await initApp(user);
+    } catch(e) {
+      localStorage.removeItem('kk_auth_token');
+      localStorage.removeItem('kk_auth_user');
+    }
+  }
 })();
 </script>
 </body>

@@ -41,7 +41,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
-
+ 
 /* AUTH */
 #auth-screen {
   min-height: 100vh;
@@ -116,7 +116,7 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn-full { width: 100%; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-
+ 
 /* APP LAYOUT */
 #app-screen { display: flex; height: 100vh; }
 .sidebar {
@@ -177,7 +177,7 @@ nav { flex: 1; padding: 8px; }
   padding: 12px;
   border-top: 1px solid var(--border);
 }
-
+ 
 /* MAIN CONTENT */
 .main { flex: 1; overflow-y: auto; background: var(--bg); }
 .page { display: none; padding: 28px 32px; max-width: 1100px; }
@@ -186,7 +186,7 @@ nav { flex: 1; padding: 8px; }
 .page-title { font-size: 22px; font-weight: 700; }
 .page-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
 .page-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-
+ 
 /* CARDS */
 .card {
   background: var(--surface);
@@ -202,7 +202,7 @@ nav { flex: 1; padding: 8px; }
 .card-value.amber { color: var(--amber); }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
-
+ 
 /* TABLE */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -217,7 +217,7 @@ tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: va
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--surface2); }
 .td-mono { font-family: var(--mono); font-size: 13px; }
-
+ 
 /* BADGES */
 .badge {
   display: inline-flex; align-items: center;
@@ -231,7 +231,7 @@ tbody tr:hover { background: var(--surface2); }
 .badge-blue { background: var(--accent-bg); color: var(--accent-text); }
 .badge-purple { background: var(--purple-bg); color: var(--purple-text); }
 .badge-gray { background: var(--surface2); color: var(--text2); }
-
+ 
 /* MODAL */
 .modal-overlay {
   display: none; position: fixed; inset: 0;
@@ -251,7 +251,7 @@ tbody tr:hover { background: var(--surface2); }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-hint { font-size: 12px; color: var(--text3); margin-top: 4px; }
-
+ 
 /* ALERT */
 .alert {
   padding: 12px 16px; border-radius: var(--radius-sm);
@@ -261,7 +261,7 @@ tbody tr:hover { background: var(--surface2); }
 .alert.show { display: block; }
 .alert-error { background: var(--red-bg); color: var(--red-text); border: 1px solid #fecaca; }
 .alert-success { background: var(--green-bg); color: var(--green-text); border: 1px solid #bbf7d0; }
-
+ 
 /* EMPTY STATE */
 .empty-state {
   text-align: center; padding: 48px 24px;
@@ -270,27 +270,27 @@ tbody tr:hover { background: var(--surface2); }
 .empty-state-icon { font-size: 36px; margin-bottom: 12px; }
 .empty-state-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 .empty-state-sub { font-size: 13px; }
-
+ 
 /* FILTERS */
 .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
 .filter-input { padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); background: var(--surface); color: var(--text); outline: none; }
 .filter-input:focus { border-color: var(--accent); }
-
+ 
 /* LOADING */
 .loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px; color: var(--text2); font-size: 13px; }
 .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
+ 
 /* DIVIDER */
 .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
-
+ 
 /* PROGRESS BAR */
 .progress-bar-wrap { width: 100%; background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; min-width: 80px; }
 .progress-bar { height: 100%; border-radius: 4px; background: var(--accent); transition: width .3s; }
 .progress-bar.green { background: var(--green); }
 .progress-bar.amber { background: var(--amber); }
 .progress-bar.red { background: var(--red); }
-
+ 
 /* TOAST */
 #toast {
   position: fixed; bottom: 24px; right: 24px;
@@ -304,13 +304,13 @@ tbody tr:hover { background: var(--surface2); }
   pointer-events: none;
 }
 #toast.show { opacity: 1; transform: translateY(0); }
-
+ 
 /* DETAIL SECTION */
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .detail-item label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text3); display: block; margin-bottom: 3px; }
 .detail-item span { font-size: 14px; color: var(--text); }
 .section-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-
+ 
 /* TABS */
 .tabs { display: flex; gap: 2px; background: var(--surface2); padding: 3px; border-radius: var(--radius-sm); margin-bottom: 20px; width: fit-content; }
 .tab-btn {
@@ -320,7 +320,7 @@ tbody tr:hover { background: var(--surface2); }
   font-family: var(--font);
 }
 .tab-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
-
+ 
 /* MOBILE */
 .mobile-header {
   display: none;
@@ -332,7 +332,7 @@ tbody tr:hover { background: var(--surface2); }
 }
 .hamburger { cursor: pointer; background: none; border: none; color: var(--text); padding: 4px; }
 .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 50; }
-
+ 
 @media (max-width: 768px) {
   :root { --sidebar-w: 240px; }
   .sidebar { position: fixed; left: -var(--sidebar-w); top: 0; bottom: 0; z-index: 60; transform: translateX(-100%); transition: transform .25s; }
@@ -348,7 +348,7 @@ tbody tr:hover { background: var(--surface2); }
 </style>
 </head>
 <body>
-
+ 
 <!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-card">
@@ -373,11 +373,11 @@ tbody tr:hover { background: var(--surface2); }
     <button class="btn btn-primary btn-full" id="btn-login" style="margin-top:8px">Masuk</button>
   </div>
 </div>
-
+ 
 <!-- APP -->
 <div id="app-screen" style="display:none">
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
-
+ 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">
@@ -389,7 +389,7 @@ tbody tr:hover { background: var(--surface2); }
         <span class="role-pill" id="sidebar-role">member</span>
       </div>
     </div>
-
+ 
     <nav>
       <div class="nav-section">
         <div class="nav-section-label">Utama</div>
@@ -436,7 +436,7 @@ tbody tr:hover { background: var(--surface2); }
         </button>
       </div>
     </nav>
-
+ 
     <div class="sidebar-footer">
       <button class="btn btn-ghost btn-full btn-sm" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -444,7 +444,7 @@ tbody tr:hover { background: var(--surface2); }
       </button>
     </div>
   </aside>
-
+ 
   <div class="main">
     <div class="mobile-header">
       <button class="hamburger" onclick="openSidebar()">
@@ -453,7 +453,7 @@ tbody tr:hover { background: var(--surface2); }
       <div style="font-size:14px;font-weight:700">Koperasi Keluarga</div>
       <div style="width:30px"></div>
     </div>
-
+ 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
       <div class="page-header">
@@ -478,7 +478,7 @@ tbody tr:hover { background: var(--surface2); }
         <div id="recent-transactions"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
     </div>
-
+ 
     <!-- SIMPANAN -->
     <div class="page" id="page-simpanan">
       <div class="page-header">
@@ -504,7 +504,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="table-wrap"><div id="simpanan-history"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
-
+ 
     <!-- PINJAMAN -->
     <div class="page" id="page-pinjaman">
       <div class="page-header">
@@ -525,7 +525,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="table-wrap"><div id="pinjaman-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
-
+ 
     <!-- CICILAN -->
     <div class="page" id="page-cicilan">
       <div class="page-header">
@@ -547,7 +547,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="table-wrap"><div id="cicilan-history"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
-
+ 
     <!-- LAPORAN -->
     <div class="page" id="page-laporan">
       <div class="page-header">
@@ -564,7 +564,7 @@ tbody tr:hover { background: var(--surface2); }
         <div id="laporan-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
     </div>
-
+ 
     <!-- ANGGOTA (admin) -->
     <div class="page" id="page-anggota">
       <div class="page-header">
@@ -586,7 +586,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="table-wrap"><div id="anggota-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
-
+ 
     <!-- ADJUSTMENT (admin) -->
     <div class="page" id="page-adjustment">
       <div class="page-header">
@@ -601,7 +601,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="table-wrap"><div id="adjustment-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
-
+ 
     <!-- PENGATURAN (admin) -->
     <div class="page" id="page-pengaturan">
       <div class="page-header">
@@ -633,7 +633,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- MODALS -->
 <!-- Setor Simpanan -->
 <div class="modal-overlay" id="modal-setor">
@@ -658,7 +658,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- Tarik Simpanan -->
 <div class="modal-overlay" id="modal-tarik">
   <div class="modal">
@@ -683,7 +683,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- Ajukan / Buat Pinjaman -->
 <div class="modal-overlay" id="modal-ajukan">
   <div class="modal">
@@ -728,7 +728,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- Catat Cicilan -->
 <div class="modal-overlay" id="modal-cicilan">
   <div class="modal">
@@ -748,7 +748,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- Tambah Anggota -->
 <div class="modal-overlay" id="modal-tambah-anggota">
   <div class="modal">
@@ -788,7 +788,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- Adjustment -->
 <div class="modal-overlay" id="modal-adjustment">
   <div class="modal">
@@ -826,7 +826,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <!-- Detail Pinjaman -->
 <div class="modal-overlay" id="modal-detail-pinjaman">
   <div class="modal" style="max-width:560px">
@@ -839,15 +839,15 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <div id="toast"></div>
-
+ 
 <script>
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_54h8s39LfoncA-W0T5wmvg_fgtIHvwj';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
-
+ 
 let currentUser = null;
 let currentProfile = null;
 let allMembers = [];
@@ -855,20 +855,20 @@ let currentLoanId = null;
 let currentPinjamanTab = 'aktif';
 let currentLaporanTab = 'simpanan';
 let anggotaData = [];
-
+ 
 // UTILS
 const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 const fmtDateTime = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 const isAdmin = () => currentProfile?.role === 'admin';
-
+ 
 function showToast(msg, duration = 3000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
 }
-
+ 
 function openModal(id) {
   document.getElementById(id).classList.add('open');
 }
@@ -883,7 +883,7 @@ function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
-
+ 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -901,7 +901,7 @@ function showPage(name) {
   if (name === 'adjustment') loadAdjustment();
   if (name === 'pengaturan') loadPengaturan();
 }
-
+ 
 function setRoleUI() {
   const admin = isAdmin();
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = admin ? '' : 'none');
@@ -910,11 +910,11 @@ function setRoleUI() {
   document.getElementById('sidebar-role').textContent = admin ? 'Admin' : 'Anggota';
   document.getElementById('sidebar-role').className = 'role-pill' + (admin ? ' admin' : '');
 }
-
+ 
 // AUTH
 document.getElementById('btn-login').addEventListener('click', doLogin);
 document.getElementById('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
-
+ 
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pw = document.getElementById('login-password').value;
@@ -929,14 +929,14 @@ async function doLogin() {
   if (error) { alert.textContent = 'Email atau password salah.'; alert.style.display = 'block'; return; }
   await initApp(data.user);
 }
-
+ 
 async function doLogout() {
   await db.auth.signOut();
   currentUser = null; currentProfile = null;
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
 }
-
+ 
 async function initApp(user) {
   currentUser = user;
   const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
@@ -948,20 +948,20 @@ async function initApp(user) {
   await loadAllMembers();
   loadDashboard();
 }
-
+ 
 db.auth.onAuthStateChange(async (event, session) => {
   if (event === 'SIGNED_IN' && session) {
     if (!currentUser) await initApp(session.user);
   }
 });
-
+ 
 // MEMBERS
 async function loadAllMembers() {
   const { data } = await db.from('profiles').select('*').eq('status', 'active').order('full_name');
   allMembers = data || [];
   populateMemberSelects();
 }
-
+ 
 function populateMemberSelects() {
   const selects = ['setor-member', 'tarik-member', 'ajukan-member', 'adj-member', 'filter-simpanan-member', 'filter-cicilan-member'];
   selects.forEach(id => {
@@ -972,17 +972,17 @@ function populateMemberSelects() {
     el.innerHTML = opts + allMembers.map(m => `<option value="${m.id}">${m.full_name}</option>`).join('');
   });
 }
-
+ 
 // DASHBOARD
 async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
+ 
   const [{ data: savings }, { data: loans }, { data: members }] = await Promise.all([
     db.from('savings').select('type, amount, balance_after, member_id, created_at, profiles(full_name)').order('created_at', { ascending: false }),
     db.from('loans').select('*, profiles(full_name)').neq('status', 'rejected'),
     db.from('profiles').select('id').eq('status', 'active')
   ]);
-
+ 
   // Calculate balances per member
   const memberBalances = {};
   (savings || []).forEach(s => {
@@ -994,19 +994,19 @@ async function loadDashboard() {
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
   const now = new Date();
   const tunggak = activeLoans.filter(l => l.next_due_date && new Date(l.next_due_date) < now);
-
+ 
   document.getElementById('stat-simpanan').textContent = fmt(totalSimpanan);
   document.getElementById('stat-pinjaman').textContent = fmt(totalPinjaman);
   document.getElementById('stat-tunggak').textContent = tunggak.length + ' pinjaman';
   document.getElementById('stat-anggota').textContent = (members || []).length + ' orang';
-
+ 
   if (!isAdmin()) {
     const mySavings = memberBalances[currentUser.id] || 0;
     const myLoan = activeLoans.find(l => l.member_id === currentUser.id);
     document.getElementById('my-simpanan').textContent = fmt(mySavings);
     document.getElementById('my-pinjaman').textContent = myLoan ? fmt(myLoan.remaining_amount) : 'Tidak ada';
   }
-
+ 
   // Recent transactions
   const recent = (savings || []).slice(0, 8);
   const recentPayments = await db.from('loan_payments').select('*, profiles(full_name)').order('created_at', { ascending: false }).limit(5);
@@ -1014,7 +1014,7 @@ async function loadDashboard() {
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
     ...((recentPayments.data || []).map(p => ({ ...p, kind: 'payment' })))
   ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
-
+ 
   const el = document.getElementById('recent-transactions');
   if (!combined.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada transaksi</div></div>'; return; }
   el.innerHTML = `<div class="table-wrap"><table>
@@ -1027,7 +1027,7 @@ async function loadDashboard() {
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
-
+ 
 // SIMPANAN
 async function loadSimpanan() {
   // Saldo per anggota
@@ -1054,7 +1054,7 @@ async function loadSimpanan() {
   }
   await loadSimpananHistory();
 }
-
+ 
 async function loadSimpananHistory() {
   const memberId = document.getElementById('filter-simpanan-member').value;
   const month = document.getElementById('filter-simpanan-month').value;
@@ -1080,14 +1080,14 @@ async function loadSimpananHistory() {
     </tr>`).join('')}</tbody>
   </table>`;
 }
-
+ 
 async function getMemberBalance(memberId) {
   const { data } = await db.from('savings').select('type, amount').eq('member_id', memberId);
   let bal = 0;
   (data || []).forEach(s => bal += s.type === 'deposit' ? s.amount : -s.amount);
   return bal;
 }
-
+ 
 async function doSetor() {
   const memberId = document.getElementById('setor-member').value;
   const amount = parseInt(document.getElementById('setor-amount').value);
@@ -1102,14 +1102,14 @@ async function doSetor() {
   document.getElementById('setor-note').value = '';
   loadSimpanan(); loadDashboard();
 }
-
+ 
 async function updateTarikSaldo() {
   const memberId = document.getElementById('tarik-member').value;
   if (!memberId) return;
   const bal = await getMemberBalance(memberId);
   document.getElementById('tarik-saldo-info').innerHTML = `Saldo saat ini: <strong style="color:var(--green)">${fmt(bal)}</strong>`;
 }
-
+ 
 async function doTarik() {
   const memberId = document.getElementById('tarik-member').value;
   const amount = parseInt(document.getElementById('tarik-amount').value);
@@ -1124,7 +1124,7 @@ async function doTarik() {
   document.getElementById('tarik-amount').value = '';
   loadSimpanan(); loadDashboard();
 }
-
+ 
 // PINJAMAN
 async function loadPinjaman() {
   let q = db.from('loans').select('*, profiles(full_name)').order('created_at', { ascending: false });
@@ -1156,21 +1156,21 @@ async function loadPinjaman() {
     }).join('')}</tbody>
   </table>`;
 }
-
+ 
 function switchPinjamanTab(tab, btn) {
   currentPinjamanTab = tab;
   document.querySelectorAll('#page-pinjaman .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   loadPinjaman();
 }
-
+ 
 let currentBunga = 2;
 async function getBunga() {
   const { data } = await db.from('interest_settings').select('rate').order('updated_at', { ascending: false }).limit(1);
   currentBunga = data?.[0]?.rate || 2;
   return currentBunga;
 }
-
+ 
 async function updateSimulasiCicilan() {
   const pokok = parseInt(document.getElementById('ajukan-pokok').value) || 0;
   const tenor = parseInt(document.getElementById('ajukan-tenor').value) || 0;
@@ -1190,7 +1190,7 @@ async function updateSimulasiCicilan() {
   document.getElementById('sim-cicilan').textContent = fmt(cicilanPerPeriod);
   document.getElementById('simulasi-cicilan').style.display = 'block';
 }
-
+ 
 async function doAjukanPinjaman() {
   const memberId = isAdmin() ? document.getElementById('ajukan-member').value : currentUser.id;
   const pokok = parseInt(document.getElementById('ajukan-pokok').value);
@@ -1222,7 +1222,7 @@ async function doAjukanPinjaman() {
   document.getElementById('simulasi-cicilan').style.display = 'none';
   loadPinjaman(); loadDashboard();
 }
-
+ 
 function getNextDueDate(type) {
   const d = new Date();
   if (type === 'weekly') d.setDate(d.getDate() + 7);
@@ -1230,7 +1230,7 @@ function getNextDueDate(type) {
   else d.setMonth(d.getMonth() + 1);
   return d.toISOString().split('T')[0];
 }
-
+ 
 async function showDetailPinjaman(loanId) {
   currentLoanId = loanId;
   const { data: loan } = await db.from('loans').select('*, profiles(full_name)').eq('id', loanId).single();
@@ -1278,7 +1278,7 @@ async function showDetailPinjaman(loanId) {
   }
   openModal('modal-detail-pinjaman');
 }
-
+ 
 async function doApprovePinjaman() {
   const { error } = await db.from('loans').update({ status: 'active', approved_by: currentUser.id, disbursed_at: new Date().toISOString(), next_due_date: null }).eq('id', currentLoanId);
   const { data: loan } = await db.from('loans').select('installment_type').eq('id', currentLoanId).single();
@@ -1288,7 +1288,7 @@ async function doApprovePinjaman() {
   closeModal('modal-detail-pinjaman');
   loadPinjaman(); loadDashboard();
 }
-
+ 
 async function doRejectPinjaman() {
   const { error } = await db.from('loans').update({ status: 'rejected' }).eq('id', currentLoanId);
   if (error) { showToast('Gagal: ' + error.message); return; }
@@ -1296,7 +1296,7 @@ async function doRejectPinjaman() {
   closeModal('modal-detail-pinjaman');
   loadPinjaman();
 }
-
+ 
 // CICILAN
 async function loadCicilan() {
   let q = db.from('loans').select('*, profiles(full_name)').eq('status', 'active').order('next_due_date');
@@ -1315,7 +1315,7 @@ async function loadCicilan() {
           <td style="font-weight:500">${l.profiles?.full_name}</td>
           <td class="td-mono">${fmt(l.installment_amount)}</td>
           <td class="td-mono">${fmt(l.remaining_amount)}</td>
-          <td style="color:${overdue ? 'var(--red)' : 'var(--amber)';font-weight:${overdue?'600':'400'}}">${fmtDate(l.next_due_date)}</td>
+          <td style="color:${overdue ? 'var(--red)' : 'var(--amber)'};font-weight:${overdue ? '600' : '400'}">${fmtDate(l.next_due_date)}</td>
           <td>${overdue ? '<span class="badge badge-red">Menunggak</span>' : '<span class="badge badge-amber">Jatuh Tempo</span>'}</td>
           <td>${isAdmin() ? `<button class="btn btn-success btn-sm" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>` : ''}</td>
         </tr>`;
@@ -1324,7 +1324,7 @@ async function loadCicilan() {
   }
   await loadCicilanHistory();
 }
-
+ 
 let currentCicilanLoan = null;
 async function openCatatCicilan(loanId) {
   const { data: loan } = await db.from('loans').select('*, profiles(full_name)').eq('id', loanId).single();
@@ -1340,7 +1340,7 @@ async function openCatatCicilan(loanId) {
   document.getElementById('cicilan-amount').value = loan.installment_amount;
   openModal('modal-cicilan');
 }
-
+ 
 async function doCatatCicilan() {
   if (!currentCicilanLoan) return;
   const amount = parseInt(document.getElementById('cicilan-amount').value);
@@ -1370,7 +1370,7 @@ async function doCatatCicilan() {
   document.getElementById('cicilan-note').value = '';
   loadCicilan(); loadDashboard();
 }
-
+ 
 async function loadCicilanHistory() {
   const memberId = document.getElementById('filter-cicilan-member').value;
   const month = document.getElementById('filter-cicilan-month').value;
@@ -1395,12 +1395,12 @@ async function loadCicilanHistory() {
     </tr>`).join('')}</tbody>
   </table>`;
 }
-
+ 
 // LAPORAN
 async function loadLaporan() {
   switchLaporanTab(currentLaporanTab, document.querySelector('#page-laporan .tab-btn.active'));
 }
-
+ 
 async function switchLaporanTab(tab, btn) {
   currentLaporanTab = tab;
   document.querySelectorAll('#page-laporan .tab-btn').forEach(b => b.classList.remove('active'));
@@ -1412,7 +1412,7 @@ async function switchLaporanTab(tab, btn) {
   else if (tab === 'cicilan') await renderLaporanCicilan();
   else if (tab === 'adjustment') await renderLaporanAdjustment();
 }
-
+ 
 async function renderLaporanSimpanan() {
   const [{ data: savings }, { data: members }] = await Promise.all([
     db.from('savings').select('member_id, type, amount, balance_after, created_at, note, profiles(full_name)').order('created_at', { ascending: false }),
@@ -1442,7 +1442,7 @@ async function renderLaporanSimpanan() {
       }).join('')}</tbody>
     </table></div>`;
 }
-
+ 
 async function renderLaporanPinjaman() {
   const { data: loans } = await db.from('loans').select('*, profiles(full_name)').order('created_at', { ascending: false });
   const active = (loans || []).filter(l => l.status === 'active');
@@ -1473,7 +1473,7 @@ async function renderLaporanPinjaman() {
       </tr>`).join('')}</tbody>
     </table></div>`;
 }
-
+ 
 async function renderLaporanCicilan() {
   const { data } = await db.from('loan_payments').select('*, profiles!loan_payments_member_id_fkey(full_name)').order('created_at', { ascending: false });
   const totalDibayar = (data || []).reduce((a, p) => a + p.amount_paid, 0);
@@ -1496,7 +1496,7 @@ async function renderLaporanCicilan() {
       </tr>`).join('')}</tbody>
     </table></div>`;
 }
-
+ 
 async function renderLaporanAdjustment() {
   const { data } = await db.from('adjustments').select('*, profiles!adjustments_member_id_fkey(full_name), admin:profiles!adjustments_admin_id_fkey(full_name)').order('created_at', { ascending: false });
   const typeLabel = { savings: 'Simpanan', loan: 'Pinjaman', installment: 'Cicilan' };
@@ -1509,20 +1509,20 @@ async function renderLaporanAdjustment() {
         <td><span class="badge badge-purple">${typeLabel[a.type]}</span></td>
         <td class="td-mono">${fmt(a.value_before)}</td>
         <td class="td-mono">${fmt(a.value_after)}</td>
-        <td class="td-mono" style="color:${a.difference >= 0 ? 'var(--green)' : 'var(--red)';font-weight:600}">${a.difference >= 0 ? '+' : ''}${fmt(a.difference)}</td>
+        <td class="td-mono" style="color:${a.difference >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">${a.difference >= 0 ? '+' : ''}${fmt(a.difference)}</td>
         <td style="color:var(--text2)">${a.reason}</td>
         <td style="color:var(--text2)">${a.admin?.full_name || '-'}</td>
       </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:32px">Belum ada log adjustment</td></tr>'}</tbody>
     </table></div>`;
 }
-
+ 
 // ANGGOTA
 async function loadAnggota() {
   const { data } = await db.from('profiles').select('*').order('full_name');
   anggotaData = data || [];
   renderAnggotaTable(anggotaData);
 }
-
+ 
 function filterAnggota() {
   const keyword = document.getElementById('filter-anggota').value.toLowerCase();
   const status = document.getElementById('filter-anggota-status').value;
@@ -1533,7 +1533,7 @@ function filterAnggota() {
   });
   renderAnggotaTable(filtered);
 }
-
+ 
 function renderAnggotaTable(data) {
   const el = document.getElementById('anggota-list');
   if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada anggota ditemukan</div></div>'; return; }
@@ -1552,7 +1552,7 @@ function renderAnggotaTable(data) {
     </tr>`).join('')}</tbody>
   </table>`;
 }
-
+ 
 async function doTambahAnggota() {
   const nama = document.getElementById('anggota-nama').value.trim();
   const email = document.getElementById('anggota-email').value.trim();
@@ -1565,7 +1565,7 @@ async function doTambahAnggota() {
   if (password.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
   const { data, error } = await db.auth.admin ? db.auth.admin.createUser({ email, password, user_metadata: { full_name: nama, phone, role }, email_confirm: true }) : { error: null };
   if (error) { alertEl.textContent = 'Gagal: ' + error.message; alertEl.style.display = 'block'; return; }
-
+ 
   // fallback: use signUp
   const { data: signUpData, error: signUpErr } = await db.auth.signUp({ email, password, options: { data: { full_name: nama, phone, role } } });
   if (signUpErr) { alertEl.textContent = 'Gagal: ' + signUpErr.message; alertEl.style.display = 'block'; return; }
@@ -1578,7 +1578,7 @@ async function doTambahAnggota() {
   await loadAllMembers();
   loadAnggota();
 }
-
+ 
 async function toggleMemberStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
   const { error } = await db.from('profiles').update({ status: newStatus }).eq('id', id);
@@ -1586,7 +1586,7 @@ async function toggleMemberStatus(id, currentStatus) {
   showToast('Status anggota diperbarui ✓');
   loadAnggota();
 }
-
+ 
 // ADJUSTMENT
 async function loadAdjustment() {
   const { data } = await db.from('adjustments').select('*, profiles!adjustments_member_id_fkey(full_name), admin:profiles!adjustments_admin_id_fkey(full_name)').order('created_at', { ascending: false });
@@ -1607,7 +1607,7 @@ async function loadAdjustment() {
     </tr>`).join('')}</tbody>
   </table>`;
 }
-
+ 
 async function doAdjustment() {
   const memberId = document.getElementById('adj-member').value;
   const type = document.getElementById('adj-type').value;
@@ -1625,14 +1625,14 @@ async function doAdjustment() {
   document.getElementById('adj-reason').value = '';
   loadAdjustment();
 }
-
+ 
 // PENGATURAN
 async function loadPengaturan() {
   const bunga = await getBunga();
   document.getElementById('current-bunga').textContent = bunga;
   document.getElementById('setting-bunga').value = bunga;
 }
-
+ 
 async function saveBunga() {
   const rate = parseFloat(document.getElementById('setting-bunga').value);
   if (!rate || rate < 0) { showToast('Masukkan persentase bunga yang valid'); return; }
@@ -1642,7 +1642,7 @@ async function saveBunga() {
   document.getElementById('current-bunga').textContent = rate;
   showToast('Pengaturan bunga disimpan ✓');
 }
-
+ 
 async function changePassword() {
   const newPw = document.getElementById('new-password').value;
   const confirmPw = document.getElementById('confirm-password').value;
@@ -1654,14 +1654,14 @@ async function changePassword() {
   document.getElementById('new-password').value = '';
   document.getElementById('confirm-password').value = '';
 }
-
+ 
 // INIT
 window.addEventListener('click', e => {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('open');
   }
 });
-
+ 
 // Check existing session
 (async () => {
   const { data: { session } } = await db.auth.getSession();
@@ -1670,3 +1670,4 @@ window.addEventListener('click', e => {
 </script>
 </body>
 </html>
+ 

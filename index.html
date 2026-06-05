@@ -1086,7 +1086,7 @@ async function loadDashboard() {
   const memberBalances = {};
   (savings || []).forEach(s => {
     if (!memberBalances[s.member_id]) memberBalances[s.member_id] = 0;
-    memberBalances[s.member_id] += s.type === 'deposit' ? s.amount : -s.amount;
+    memberBalances[s.member_id] += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
   });
   const totalSimpanan = Object.values(memberBalances).reduce((a, b) => a + b, 0);
   const activeLoans = (loans || []).filter(l => l.status === 'active');
@@ -1129,15 +1129,18 @@ async function loadDashboard() {
 
 // SIMPANAN
 async function loadSimpanan() {
-  // Saldo per anggota
-  const savings = await dbQuery('savings', 'select=member_id,type,amount');
-  const members = await dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc');
+  const [savings, members] = await Promise.all([
+    dbQuery('savings', 'select=member_id,type,amount'),
+    dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
+  ]);
+  const memberMap = {};
+  (members || []).forEach(m => memberMap[m.id] = m.full_name);
   const balances = {};
   (members || []).forEach(m => balances[m.id] = { name: m.full_name, deposit: 0, withdraw: 0 });
   (savings || []).forEach(s => {
-    if (!balances[s.member_id]) balances[s.member_id] = { name: s.member_id, deposit: 0, withdraw: 0 };
-    if (s.type === 'deposit') balances[s.member_id].deposit += s.amount;
-    else balances[s.member_id].withdraw += s.amount;
+    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id] || 'Unknown', deposit: 0, withdraw: 0 };
+    if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
+    else balances[s.member_id].withdraw += Number(s.amount);
   });
   const rows = Object.values(balances);
   const el = document.getElementById('simpanan-saldo');

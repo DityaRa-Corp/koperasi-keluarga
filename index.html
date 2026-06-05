@@ -1034,8 +1034,8 @@ async function doLogout() {
 async function initApp(user) {
   currentUser = user;
   const profileArr = await dbQuery('profiles', `id=eq.${user.id}&limit=1`);
-  currentProfile = profileArr ? profileArr[0] : null;
-  document.getElementById('sidebar-name').textContent = profile?.full_name || user.email;
+  currentProfile = (profileArr && profileArr.length > 0) ? profileArr[0] : null;
+  document.getElementById('sidebar-name').textContent = currentProfile?.full_name || user.email;
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
   setRoleUI();

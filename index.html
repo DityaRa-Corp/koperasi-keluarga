@@ -2,6 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iMTAiIGZpbGw9IiMyZDMyNTAiLz48cmVjdCB4PSI2IiB5PSIxOCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjI0IiByeD0iMyIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTE3IDE4VjE1YTIgMiAwIDAgMSAyLTJoMTBhMiAyIDAgMCAxIDIgMnYzIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz48bGluZSB4MT0iNiIgeTE9IjI2IiB4Mj0iNDIiIHkyPSIyNiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48cGF0aCBkPSJNMjkgMjJsNCA0LTYgMiAyLTZ6IiBmaWxsPSJ3aGl0ZSIvPjxsaW5lIHgxPSIzMCIgeTE9IjIzIiB4Mj0iMjUiIHkyPSIyOCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjIiLz48L3N2Zz4=">
+<link rel="shortcut icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iMTAiIGZpbGw9IiMyZDMyNTAiLz48cmVjdCB4PSI2IiB5PSIxOCIgd2lkdGg9IjM2IiBoZWlnaHQ9IjI0IiByeD0iMyIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBmaWxsPSJub25lIi8+PHBhdGggZD0iTTE3IDE4VjE1YTIgMiAwIDAgMSAyLTJoMTBhMiAyIDAgMCAxIDIgMnYzIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz48bGluZSB4MT0iNiIgeTE9IjI2IiB4Mj0iNDIiIHkyPSIyNiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz48cGF0aCBkPSJNMjkgMjJsNCA0LTYgMiAyLTZ6IiBmaWxsPSJ3aGl0ZSIvPjxsaW5lIHgxPSIzMCIgeTE9IjIzIiB4Mj0iMjUiIHkyPSIyOCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIxLjIiLz48L3N2Zz4=">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Koperasi Keluarga</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -9,17 +11,17 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg: #f5f4f0;
+  --bg: #f4f5f9;
   --surface: #ffffff;
-  --surface2: #f0efe9;
-  --border: #e2e0d8;
-  --border2: #d0cec4;
-  --text: #1a1916;
-  --text2: #6b6960;
-  --text3: #9b9890;
-  --accent: #2563eb;
-  --accent-bg: #eff4ff;
-  --accent-text: #1d4ed8;
+  --surface2: #eef0fb;
+  --border: #e2e4f0;
+  --border2: #d0d3e8;
+  --text: #1e2238;
+  --text2: #6b6e82;
+  --text3: #9b9ea6;
+  --accent: #2d3250;
+  --accent-bg: #e8eaf6;
+  --accent-text: #2d3250;
   --green: #16a34a;
   --green-bg: #f0fdf4;
   --green-text: #15803d;
@@ -104,10 +106,10 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
   text-decoration: none;
   white-space: nowrap;
 }
-.btn-primary { background: var(--text); color: white; }
-.btn-primary:hover { background: #2d2c28; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: #1e2238; }
 .btn-accent { background: var(--accent); color: white; }
-.btn-accent:hover { background: #1d4ed8; }
+.btn-accent:hover { background: #1e2238; }
 .btn-danger { background: var(--red-bg); color: var(--red-text); border: 1px solid #fecaca; }
 .btn-danger:hover { background: #fecaca; }
 .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
@@ -322,6 +324,155 @@ tbody tr:hover { background: var(--surface2); }
 }
 .tab-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 
+/* ── AUTH REDESIGN ── */
+#auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background: #f0f2ff;
+  position: relative;
+  overflow: hidden;
+}
+.auth-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.auth-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+}
+.auth-blob-1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #c5caf5 0%, transparent 70%);
+  top: -150px; left: -100px;
+}
+.auth-blob-2 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, #d4d8f8 0%, transparent 70%);
+  bottom: -100px; right: -80px;
+}
+.auth-blob-3 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, #bfc5f5 0%, transparent 70%);
+  top: 40%; left: 40%;
+}
+.auth-layout {
+  display: flex;
+  width: 100%;
+  max-width: 900px;
+  margin: auto;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  align-items: center;
+  padding: 40px 20px;
+  gap: 0;
+}
+.auth-brand-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+}
+.auth-brand-inner {
+  text-align: center;
+}
+.auth-brand-logo {
+  width: 80px; height: 80px;
+  background: #2d3250;
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 8px 32px rgba(45,50,80,0.25);
+}
+.auth-brand-name {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.5px;
+}
+.auth-brand-koperasi { color: #2d3250; }
+.auth-brand-keluarga { color: #9b9ea6; }
+.auth-brand-tagline {
+  font-size: 14px;
+  color: #6b6e82;
+  margin-bottom: 32px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.auth-form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(45,50,80,0.1);
+  border-radius: 20px;
+  padding: 36px 32px;
+  box-shadow: 0 8px 40px rgba(45,50,80,0.12), 0 2px 8px rgba(45,50,80,0.06);
+  backdrop-filter: blur(12px);
+}
+.auth-card-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.auth-card-logo-text { font-size: 18px; line-height: 1.2; }
+.auth-card-logo-sub { font-size: 11px; color: #9b9ea6; margin-top: 2px; letter-spacing: 0.04em; }
+.auth-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; color: #1e2238; }
+.auth-sub { font-size: 13px; color: #6b6e82; margin-bottom: 24px; }
+.auth-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e8eaf6;
+  text-align: center;
+}
+.auth-footer-deploy {
+  font-size: 11px;
+  color: #9b9ea6;
+  margin-bottom: 4px;
+}
+.auth-footer-deploy strong { color: #6b6e82; }
+.auth-footer-version {
+  font-size: 10px;
+  color: #b0b3be;
+  letter-spacing: 0.04em;
+}
+
+/* ── SIDEBAR LOGO UPDATE ── */
+.sidebar-logo-icon {
+  background: #2d3250 !important;
+}
+.sidebar-header { border-bottom: 1px solid #e8eaf6; }
+.nav-item.active { background: #2d3250 !important; color: white !important; }
+.nav-item:hover { background: #eef0fb !important; color: #2d3250 !important; }
+
+/* ── PAGE TRANSITIONS ── */
+.page {
+  animation: pageFadeIn 0.2s ease-out;
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── MOBILE AUTH ── */
+@media (max-width: 640px) {
+  .auth-brand-panel { display: none; }
+  .auth-form-panel { padding: 16px; }
+  .auth-card { padding: 28px 22px; border-radius: 16px; }
+  .auth-layout { padding: 20px 0; }
+}
+
 /* MOBILE */
 .mobile-header {
   display: none;
@@ -352,26 +503,67 @@ tbody tr:hover { background: var(--surface2); }
 
 <!-- AUTH -->
 <div id="auth-screen">
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">KK</div>
-      <div>
-        <div class="auth-logo-text">Koperasi Keluarga</div>
-        <div class="auth-logo-sub">Simpan &amp; Pinjam</div>
+  <!-- Pastel background blobs -->
+  <div class="auth-bg">
+    <div class="auth-blob auth-blob-1"></div>
+    <div class="auth-blob auth-blob-2"></div>
+    <div class="auth-blob auth-blob-3"></div>
+  </div>
+
+  <div class="auth-layout">
+    <!-- Left panel: branding -->
+    <div class="auth-brand-panel">
+      <div class="auth-brand-inner">
+        <div class="auth-brand-logo">
+          <svg width="52" height="52" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="16" width="40" height="28" rx="4" stroke="white" stroke-width="2.5" fill="none"/>
+            <path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="white" stroke-width="2.5" fill="none"/>
+            <line x1="4" y1="26" x2="44" y2="26" stroke="white" stroke-width="2"/>
+            <path d="M30 22l5 5-7 2 2-7z" fill="white"/>
+            <line x1="31" y1="23" x2="25" y2="29" stroke="white" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <div class="auth-brand-name">
+          <span class="auth-brand-koperasi">Koperasi</span><span class="auth-brand-keluarga">Keluarga</span>
+        </div>
+        <p class="auth-brand-tagline">Simpan &amp; Pinjam</p>
       </div>
     </div>
-    <h1 class="auth-title">Selamat datang</h1>
-    <p class="auth-sub">Masuk ke akun kamu untuk melanjutkan.</p>
-    <div id="auth-alert" class="alert alert-error"></div>
-    <div class="form-group">
-      <label class="form-label">Email</label>
-      <input class="form-input" type="email" id="login-email" placeholder="email@contoh.com" autocomplete="email">
+
+    <!-- Right panel: login form -->
+    <div class="auth-form-panel">
+      <div class="auth-card">
+        <div class="auth-card-logo">
+          <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="16" width="40" height="28" rx="4" stroke="#2d3250" stroke-width="2.5" fill="none"/>
+            <path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="#2d3250" stroke-width="2.5" fill="none"/>
+            <line x1="4" y1="26" x2="44" y2="26" stroke="#2d3250" stroke-width="2"/>
+            <path d="M30 22l5 5-7 2 2-7z" fill="#2d3250"/>
+            <line x1="31" y1="23" x2="25" y2="29" stroke="#2d3250" stroke-width="1.5"/>
+          </svg>
+          <div>
+            <div class="auth-card-logo-text"><span style="color:#2d3250;font-weight:700">Koperasi</span><span style="color:#9b9ea6;font-weight:600">Keluarga</span></div>
+            <div class="auth-card-logo-sub">Simpan &amp; Pinjam</div>
+          </div>
+        </div>
+        <h1 class="auth-title">Selamat datang</h1>
+        <p class="auth-sub">Masuk ke akun Anda untuk melanjutkan.</p>
+        <div id="auth-alert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" id="login-email" placeholder="email@contoh.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-full" id="btn-login" style="margin-top:12px;padding:12px;font-size:14px">Masuk</button>
+        <div class="auth-footer">
+          <div class="auth-footer-deploy">Deployed by <strong>Aditya Agustian</strong> &mdash; Private Family Cooperative System</div>
+          <div class="auth-footer-version">v1.0 &bull; KoperasiKeluarga &copy; 2026</div>
+        </div>
+      </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">Password</label>
-      <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn btn-primary btn-full" id="btn-login" style="margin-top:8px">Masuk</button>
   </div>
 </div>
 
@@ -382,8 +574,17 @@ tbody tr:hover { background: var(--surface2); }
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">
-        <div class="sidebar-logo-icon">KK</div>
-        <div class="sidebar-logo-text">Koperasi Keluarga</div>
+        <div class="sidebar-logo-icon" style="display:flex;align-items:center;justify-content:center;background:#2d3250;border-radius:8px;width:32px;height:32px;flex-shrink:0">
+          <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="16" width="40" height="28" rx="4" stroke="white" stroke-width="2.5" fill="none"/>
+            <path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="white" stroke-width="2.5" fill="none"/>
+            <line x1="4" y1="26" x2="44" y2="26" stroke="white" stroke-width="2"/>
+            <path d="M30 22l5 5-7 2 2-7z" fill="white"/>
+          </svg>
+        </div>
+        <div style="line-height:1.2">
+          <span style="color:#2d3250;font-weight:700;font-size:13px">Koperasi</span><span style="color:#9b9ea6;font-weight:600;font-size:13px">Keluarga</span>
+        </div>
       </div>
       <div class="sidebar-user">
         <span id="sidebar-name">-</span>
@@ -451,7 +652,12 @@ tbody tr:hover { background: var(--surface2); }
       <button class="hamburger" onclick="openSidebar()">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <div style="font-size:14px;font-weight:700">Koperasi Keluarga</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:24px;height:24px;background:#2d3250;border-radius:5px;display:flex;align-items:center;justify-content:center">
+          <svg width="14" height="14" viewBox="0 0 48 48" fill="none"><rect x="4" y="16" width="40" height="28" rx="4" stroke="white" stroke-width="3" fill="none"/><path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="white" stroke-width="3" fill="none"/><path d="M30 22l5 5-7 2 2-7z" fill="white"/></svg>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#2d3250"><span>Koperasi</span><span style="color:#9b9ea6">Keluarga</span></div>
+      </div>
       <div style="width:30px"></div>
     </div>
 
@@ -591,6 +797,10 @@ tbody tr:hover { background: var(--surface2); }
           </select>
         </div>
         <div class="table-wrap"><div id="anggota-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="section-title">Log Perubahan Data Anggota</div>
+        <div class="table-wrap"><div id="anggota-edit-log"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
 
@@ -756,6 +966,41 @@ tbody tr:hover { background: var(--surface2); }
   </div>
 </div>
 
+<!-- Edit Anggota -->
+<div class="modal-overlay" id="modal-edit-anggota">
+  <div class="modal">
+    <div class="modal-title">Edit Data Anggota</div>
+    <div class="modal-sub">Perubahan akan dicatat di log</div>
+    <input type="hidden" id="edit-anggota-id">
+    <div class="form-group">
+      <label class="form-label">Nama Lengkap</label>
+      <input class="form-input" type="text" id="edit-anggota-nama" placeholder="Nama lengkap">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">No. HP</label>
+        <input class="form-input" type="tel" id="edit-anggota-phone" placeholder="08xxxxxxxxxx">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-input form-select" id="edit-anggota-role">
+          <option value="member">Anggota</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alasan Perubahan <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="text" id="edit-anggota-reason" placeholder="Wajib diisi — jelaskan alasan perubahan">
+    </div>
+    <div id="edit-anggota-alert" class="alert alert-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-anggota')">Batal</button>
+      <button class="btn btn-primary" onclick="doEditAnggota()">Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Tambah Anggota -->
 <div class="modal-overlay" id="modal-tambah-anggota">
   <div class="modal">
@@ -834,6 +1079,18 @@ tbody tr:hover { background: var(--surface2); }
   </div>
 </div>
 
+<!-- Konfirmasi Nonaktifkan Anggota -->
+<div class="modal-overlay" id="modal-konfirmasi-nonaktif">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">⚠️ Konfirmasi Nonaktifkan</div>
+    <div id="konfirmasi-nonaktif-content" style="margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-konfirmasi-nonaktif')">Batal</button>
+      <button class="btn btn-danger" id="btn-konfirmasi-nonaktif-lanjut">Tetap Nonaktifkan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Detail Pinjaman -->
 <div class="modal-overlay" id="modal-detail-pinjaman">
   <div class="modal" style="max-width:560px">
@@ -850,7 +1107,7 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = 'v2.2-fk-fix';
+const APP_VERSION = 'v3.0-ui-upgrade';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1762,6 +2019,7 @@ async function loadAnggota() {
   const data = await dbQuery('profiles', 'select=*&order=full_name.asc');
   anggotaData = data || [];
   renderAnggotaTable(anggotaData);
+  loadAnggotaEditLog();
 }
 
 function filterAnggota() {
@@ -1788,7 +2046,10 @@ function renderAnggotaTable(data) {
       <td>${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
       <td style="display:flex;gap:6px">
-        ${a.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>` : '<span style="color:var(--text3);font-size:12px">Akun ini</span>'}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.phone||''}','${a.role}')">Edit</button>
+          ${a.id !== currentUser.id ? `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>` : '<span style="color:var(--text3);font-size:12px">Akun ini</span>'}
+        </div>
       </td>
     </tr>`).join('')}</tbody>
   </table>`;
@@ -1826,12 +2087,151 @@ async function doTambahAnggota() {
   loadAnggota();
 }
 
+// ── EDIT ANGGOTA ──
+let editAnggotaOriginal = {};
+
+function openEditAnggota(id, nama, phone, role) {
+  editAnggotaOriginal = { nama, phone, role };
+  document.getElementById('edit-anggota-id').value = id;
+  document.getElementById('edit-anggota-nama').value = nama;
+  document.getElementById('edit-anggota-phone').value = phone;
+  document.getElementById('edit-anggota-role').value = role;
+  document.getElementById('edit-anggota-reason').value = '';
+  document.getElementById('edit-anggota-alert').style.display = 'none';
+  openModal('modal-edit-anggota');
+}
+
+async function doEditAnggota() {
+  const id = document.getElementById('edit-anggota-id').value;
+  const nama = document.getElementById('edit-anggota-nama').value.trim();
+  const phone = document.getElementById('edit-anggota-phone').value.trim();
+  const role = document.getElementById('edit-anggota-role').value;
+  const reason = document.getElementById('edit-anggota-reason').value.trim();
+  const alertEl = document.getElementById('edit-anggota-alert');
+  alertEl.style.display = 'none';
+
+  if (!nama) { alertEl.textContent = 'Nama wajib diisi.'; alertEl.style.display = 'block'; return; }
+  if (!reason) { alertEl.textContent = 'Alasan perubahan wajib diisi.'; alertEl.style.display = 'block'; return; }
+
+  // Build changes log
+  const changes = [];
+  if (nama !== editAnggotaOriginal.nama) changes.push(`Nama: "${editAnggotaOriginal.nama}" → "${nama}"`);
+  if (phone !== editAnggotaOriginal.phone) changes.push(`HP: "${editAnggotaOriginal.phone}" → "${phone}"`);
+  if (role !== editAnggotaOriginal.role) changes.push(`Role: "${editAnggotaOriginal.role}" → "${role}"`);
+
+  if (changes.length === 0) {
+    alertEl.textContent = 'Tidak ada perubahan yang dilakukan.'; alertEl.style.display = 'block'; return;
+  }
+
+  // Update profile
+  const { error } = await dbUpdate('profiles', `id=eq.${id}`, { full_name: nama, phone, role });
+  if (error) { alertEl.textContent = 'Gagal: ' + JSON.stringify(error); alertEl.style.display = 'block'; return; }
+
+  // Log the edit in adjustments table (type: 'member_edit')
+  await dbInsert('adjustments', {
+    member_id: id,
+    type: 'savings', // reuse type field
+    value_before: 0,
+    value_after: 0,
+    difference: 0,
+    reason: `[EDIT ANGGOTA] ${changes.join('; ')} | Alasan: ${reason}`,
+    admin_id: currentUser.id
+  });
+
+  showToast('Data anggota berhasil diperbarui ✓');
+  closeModal('modal-edit-anggota');
+  await loadAllMembers();
+  loadAnggota();
+}
+
+async function loadAnggotaEditLog() {
+  const data = await dbQuery('adjustments', 
+    'select=created_at,reason,member_id,admin_id,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)' +
+    '&reason=like.*EDIT ANGGOTA*&order=created_at.desc&limit=50'
+  );
+  const el = document.getElementById('anggota-edit-log');
+  if (!el) return;
+  if (!(data||[]).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada log perubahan</div></div>'; return; }
+  el.innerHTML = `<table>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Perubahan</th><th>Admin</th></tr></thead>
+    <tbody>${data.map(l => {
+      const detail = l.reason.replace('[EDIT ANGGOTA] ', '').split(' | Alasan: ');
+      return `<tr>
+        <td>${fmtDateTime(l.created_at)}</td>
+        <td style="font-weight:500">${l.profiles?.full_name || '-'}</td>
+        <td style="font-size:12px;color:var(--text2)">${detail[0] || '-'}<br><span style="color:var(--text3);font-style:italic">Alasan: ${detail[1] || '-'}</span></td>
+        <td style="color:var(--text2)">${l.admin?.full_name || '-'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
 async function toggleMemberStatus(id, currentStatus) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-  const { error } = await dbUpdate('profiles', `id=eq.${id}`, { status: newStatus });
-  if (error) { showToast('Gagal: ' + error.message); return; }
-  showToast('Status anggota diperbarui ✓');
-  loadAnggota();
+
+  // If activating, no need to check
+  if (newStatus === 'active') {
+    const { error } = await dbUpdate('profiles', `id=eq.${id}`, { status: newStatus });
+    if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
+    showToast('Anggota berhasil diaktifkan ✓');
+    loadAnggota();
+    return;
+  }
+
+  // If deactivating, check for savings and active loans
+  showToast('Memeriksa data anggota...');
+  const [savings, activeLoans] = await Promise.all([
+    dbQuery('savings', `member_id=eq.${id}&select=type,amount`),
+    dbQuery('loans', `member_id=eq.${id}&status=eq.active&select=remaining_amount`)
+  ]);
+
+  // Calculate current balance
+  let saldo = 0;
+  (savings || []).forEach(s => {
+    saldo += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
+  });
+  const totalHutang = (activeLoans || []).reduce((a, l) => a + Number(l.remaining_amount), 0);
+
+  let warnings = [];
+  if (saldo > 0) {
+    warnings.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--amber-bg);border-radius:var(--radius-sm);margin-bottom:8px">
+      <span style="font-size:20px">💰</span>
+      <div><div style="font-weight:600;color:var(--amber-text)">Masih ada Simpanan</div>
+      <div style="font-size:13px;color:var(--text2)">Saldo simpanan: <strong>${fmt(saldo)}</strong></div></div>
+    </div>`);
+  }
+  if (totalHutang > 0) {
+    warnings.push(`<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--red-bg);border-radius:var(--radius-sm);margin-bottom:8px">
+      <span style="font-size:20px">💳</span>
+      <div><div style="font-weight:600;color:var(--red-text)">Masih ada Pinjaman Aktif</div>
+      <div style="font-size:13px;color:var(--text2)">Sisa tagihan: <strong>${fmt(totalHutang)}</strong></div></div>
+    </div>`);
+  }
+
+  if (warnings.length > 0) {
+    // Show confirmation modal with warnings
+    const contentEl = document.getElementById('konfirmasi-nonaktif-content');
+    contentEl.innerHTML = `
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px">Anggota ini masih memiliki:</p>
+      ${warnings.join('')}
+      <p style="font-size:13px;color:var(--text2);margin-top:10px">Apakah kamu yakin ingin menonaktifkan anggota ini? Data transaksi tidak akan dihapus.</p>
+    `;
+    const btn = document.getElementById('btn-konfirmasi-nonaktif-lanjut');
+    btn.onclick = async () => {
+      const { error } = await dbUpdate('profiles', `id=eq.${id}`, { status: 'inactive' });
+      if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
+      showToast('Anggota berhasil dinonaktifkan ✓');
+      closeModal('modal-konfirmasi-nonaktif');
+      loadAnggota();
+    };
+    openModal('modal-konfirmasi-nonaktif');
+  } else {
+    // No warnings, proceed directly
+    const { error } = await dbUpdate('profiles', `id=eq.${id}`, { status: 'inactive' });
+    if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
+    showToast('Anggota berhasil dinonaktifkan ✓');
+    loadAnggota();
+  }
 }
 
 // ADJUSTMENT

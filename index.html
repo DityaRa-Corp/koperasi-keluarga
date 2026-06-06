@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg: #f4f5f9;
+  --bg: #f3f4f9;
   --surface: #ffffff;
   --surface2: #eef0fb;
   --border: #e2e4f0;
@@ -44,6 +44,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+.main { background: var(--bg) url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%232d3250' fill-opacity='0.025'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
 
 /* AUTH */
 #auth-screen {
@@ -334,27 +335,69 @@ tbody tr:hover { background: var(--surface2); }
   position: relative;
   overflow: hidden;
 }
-.auth-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-.auth-blob {
+.auth-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  overflow: hidden;
+}
+.auth-wave {
+  position: absolute;
+  width: 200%;
+  bottom: 0;
+  left: -50%;
+}
+.auth-wave svg {
+  display: block;
+  width: 100%;
+}
+.auth-wave-1 { animation: waveMove1 12s ease-in-out infinite; opacity: 0.45; bottom: -20px; }
+.auth-wave-2 { animation: waveMove2 16s ease-in-out infinite; opacity: 0.3; bottom: 30px; }
+.auth-wave-3 { animation: waveMove3 20s ease-in-out infinite; opacity: 0.2; bottom: 60px; }
+
+@keyframes waveMove1 {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  25% { transform: translateX(-3%) scaleY(1.02); }
+  50% { transform: translateX(-6%) scaleY(0.98); }
+  75% { transform: translateX(-2%) scaleY(1.01); }
+}
+@keyframes waveMove2 {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  33% { transform: translateX(4%) scaleY(1.03); }
+  66% { transform: translateX(-4%) scaleY(0.97); }
+}
+@keyframes waveMove3 {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  40% { transform: translateX(-5%) scaleY(1.02); }
+  80% { transform: translateX(3%) scaleY(0.98); }
+}
+
+/* Floating orbs for extra depth */
+.auth-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.5;
+  filter: blur(60px);
+  animation: orbFloat 8s ease-in-out infinite;
 }
-.auth-blob-1 {
-  width: 500px; height: 500px;
-  background: radial-gradient(circle, #c5caf5 0%, transparent 70%);
-  top: -150px; left: -100px;
+.auth-orb-1 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, rgba(139,148,214,0.35) 0%, transparent 70%);
+  top: -80px; left: -60px;
+  animation-delay: 0s;
 }
-.auth-blob-2 {
-  width: 400px; height: 400px;
-  background: radial-gradient(circle, #d4d8f8 0%, transparent 70%);
-  bottom: -100px; right: -80px;
+.auth-orb-2 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(163,170,224,0.25) 0%, transparent 70%);
+  top: 30%; right: -40px;
+  animation-delay: -3s;
 }
-.auth-blob-3 {
-  width: 300px; height: 300px;
-  background: radial-gradient(circle, #bfc5f5 0%, transparent 70%);
-  top: 40%; left: 40%;
+.auth-orb-3 {
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(120,130,200,0.2) 0%, transparent 70%);
+  bottom: 25%; left: 15%;
+  animation-delay: -5s;
+}
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
 }
 .auth-layout {
   display: flex;
@@ -503,11 +546,26 @@ tbody tr:hover { background: var(--surface2); }
 
 <!-- AUTH -->
 <div id="auth-screen">
-  <!-- Pastel background blobs -->
+  <!-- Animated wave background -->
   <div class="auth-bg">
-    <div class="auth-blob auth-blob-1"></div>
-    <div class="auth-blob auth-blob-2"></div>
-    <div class="auth-blob auth-blob-3"></div>
+    <div class="auth-orb auth-orb-1"></div>
+    <div class="auth-orb auth-orb-2"></div>
+    <div class="auth-orb auth-orb-3"></div>
+    <div class="auth-wave auth-wave-3">
+      <svg viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,100 C180,160 360,40 540,100 C720,160 900,40 1080,100 C1260,160 1350,80 1440,100 L1440,200 L0,200 Z" fill="rgba(139,148,214,0.18)"/>
+      </svg>
+    </div>
+    <div class="auth-wave auth-wave-2">
+      <svg viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,80 C240,150 480,20 720,90 C960,160 1200,30 1440,100 L1440,220 L0,220 Z" fill="rgba(120,130,200,0.22)"/>
+      </svg>
+    </div>
+    <div class="auth-wave auth-wave-1">
+      <svg viewBox="0 0 1440 240" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,120 C200,60 400,180 600,120 C800,60 1000,180 1200,120 C1320,80 1380,140 1440,120 L1440,240 L0,240 Z" fill="rgba(100,112,190,0.28)"/>
+      </svg>
+    </div>
   </div>
 
   <div class="auth-layout">
@@ -1079,6 +1137,28 @@ tbody tr:hover { background: var(--surface2); }
   </div>
 </div>
 
+<!-- Approve Pinjaman dengan penyesuaian nominal -->
+<div class="modal-overlay" id="modal-approve-pinjaman">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">Setujui &amp; Cairkan Pinjaman</div>
+    <div class="modal-sub">Admin dapat menyesuaikan nominal sebelum mencairkan</div>
+    <div id="approve-pinjaman-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:13px"></div>
+    <div class="form-group">
+      <label class="form-label">Nominal yang Disetujui (Rp)</label>
+      <input class="form-input" type="number" id="approve-nominal" min="1000" placeholder="Isi nominal yang disetujui">
+      <div class="form-hint">Kosongkan atau isi sama dengan pengajuan untuk menyetujui penuh</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Catatan Admin (opsional)</label>
+      <input class="form-input" type="text" id="approve-note" placeholder="Misal: Disetujui sebagian">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-approve-pinjaman')">Batal</button>
+      <button class="btn btn-success" onclick="doApprovePinjaman()">Cairkan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Konfirmasi Nonaktifkan Anggota -->
 <div class="modal-overlay" id="modal-konfirmasi-nonaktif">
   <div class="modal" style="max-width:440px">
@@ -1107,7 +1187,7 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = 'v3.0-ui-upgrade';
+const APP_VERSION = 'v3.2-waves';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1202,7 +1282,24 @@ let anggotaData = [];
 // UTILS
 const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-const fmtDateTime = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+
+function getOverdueLevel(nextDueDate, status) {
+  if (status !== 'active' || !nextDueDate) return null;
+  const now = new Date();
+  const due = new Date(nextDueDate);
+  if (due >= now) return null; // not overdue
+  const daysDiff = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+  if (daysDiff <= 30)  return { level: 1, label: 'Level 1', color: '#d97706', bg: '#fffbeb', desc: 'Telat 1–30 hari' };
+  if (daysDiff <= 90)  return { level: 2, label: 'Level 2', color: '#dc6626', bg: '#fff4ee', desc: 'Telat 31–90 hari' };
+  if (daysDiff <= 180) return { level: 3, label: 'Level 3', color: '#dc2626', bg: '#fef2f2', desc: 'Telat 91–180 hari' };
+  return { level: 4, label: 'Level 4', color: '#7f1d1d', bg: '#fee2e2', desc: 'Telat >180 hari — Macet' };
+}
+
+function renderOverdueBadge(nextDueDate, status) {
+  const lvl = getOverdueLevel(nextDueDate, status);
+  if (!lvl) return '';
+  return `<span class="badge" style="background:${lvl.bg};color:${lvl.color};margin-left:4px" title="${lvl.desc}">⚠ ${lvl.label}</span>`;
+}const fmtDateTime = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 const isAdmin = () => currentProfile?.role === 'admin';
 
 function showToast(msg, duration = 3000) {
@@ -1372,6 +1469,10 @@ async function loadDashboard() {
     const myLoan = activeLoans.find(l => l.member_id === currentUser.id);
     document.getElementById('my-simpanan').textContent = fmt(mySavings);
     document.getElementById('my-pinjaman').textContent = myLoan ? fmt(myLoan.remaining_amount) : 'Tidak ada';
+    // Hide total stats for members - show only personal stats
+    document.getElementById('stat-simpanan').textContent = fmt(mySavings);
+    document.getElementById('stat-pinjaman').textContent = myLoan ? fmt(myLoan.remaining_amount) : fmt(0);
+    document.getElementById('stat-tunggak').textContent = myLoan && new Date(myLoan.next_due_date) < new Date() ? '1 pinjaman' : '0 pinjaman';
   }
 
   // Recent transactions
@@ -1397,9 +1498,15 @@ async function loadDashboard() {
 
 // SIMPANAN
 async function loadSimpanan() {
+  let savQ = 'select=member_id,type,amount';
+  let memQ = 'select=id,full_name&status=eq.active&order=full_name.asc';
+  if (!isAdmin()) {
+    savQ += `&member_id=eq.${currentUser.id}`;
+    memQ += `&id=eq.${currentUser.id}`;
+  }
   const [savings, members] = await Promise.all([
-    dbQuery('savings', 'select=member_id,type,amount'),
-    dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
+    dbQuery('savings', savQ),
+    dbQuery('profiles', memQ)
   ]);
   const memberMap = {};
   (members || []).forEach(m => memberMap[m.id] = m.full_name);
@@ -1482,6 +1589,14 @@ async function doTarik() {
   const amount = parseInt(document.getElementById('tarik-amount').value);
   const note = document.getElementById('tarik-note').value;
   if (!memberId || !amount) { showToast('Isi semua field'); return; }
+
+  // Rule: Tidak bisa tarik simpanan jika masih ada pinjaman aktif
+  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
+  if (activeLoans && activeLoans.length > 0) {
+    showToast('❌ Tidak bisa menarik simpanan — masih ada pinjaman aktif');
+    return;
+  }
+
   const bal = await getMemberBalance(memberId);
   if (amount > bal) { showToast('Jumlah penarikan melebihi saldo (' + fmt(bal) + ')'); return; }
   const { error } = await dbInsert('savings', { member_id: memberId, type: 'withdrawal', amount, balance_after: bal - amount, recorded_by: currentUser.id, note });
@@ -1507,7 +1622,8 @@ async function loadPinjaman() {
       const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
       const now = new Date(); const due = l.next_due_date ? new Date(l.next_due_date) : null;
       const overdue = due && due < now && l.status === 'active';
-      const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
+      const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
+      const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
       const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
       return `<tr>
         <td style="font-weight:500">${l.profiles?.full_name || '-'}</td>
@@ -1565,6 +1681,51 @@ async function doAjukanPinjaman() {
   const type = document.getElementById('ajukan-cicilan-type').value;
   const note = document.getElementById('ajukan-note').value;
   if (!memberId || !pokok || !tenor) { showToast('Isi semua field yang wajib'); return; }
+
+  // ── VALIDASI RULES PINJAMAN ──
+  showToast('Memeriksa kelayakan...');
+
+  // Rule 1: Tidak bisa pinjam jika masih ada pinjaman aktif
+  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
+  if (activeLoans && activeLoans.length > 0) {
+    showToast('❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas');
+    return;
+  }
+
+  // Rule 2: Tidak bisa pinjam jika ada tunggakan (overdue)
+  const overdueLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&next_due_date=lt.${new Date().toISOString().split('T')[0]}&select=id&limit=1`);
+  if (overdueLoans && overdueLoans.length > 0) {
+    showToast('❌ Tidak bisa mengajukan — masih ada cicilan yang menunggak');
+    return;
+  }
+
+  // Rule 3: Minimal simpanan Rp 100.000
+  const saldo = await getMemberBalance(memberId);
+  if (saldo < 100000) {
+    showToast('❌ Saldo simpanan minimal Rp 100.000 untuk dapat mengajukan pinjaman (saldo saat ini: ' + fmt(saldo) + ')');
+    return;
+  }
+
+  // Rule 4: Masa tunggu 1 bulan setelah pinjaman terakhir lunas
+  const lastCompleted = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=disbursed_at&order=disbursed_at.desc&limit=1`);
+  if (lastCompleted && lastCompleted.length > 0 && lastCompleted[0].disbursed_at) {
+    // Check if there are payments for this loan and get last payment date
+    const lastLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=id&order=disbursed_at.desc&limit=1`);
+    if (lastLoan && lastLoan.length > 0) {
+      const lastPayments = await dbQuery('loan_payments', `loan_id=eq.${lastLoan[0].id}&select=created_at&order=created_at.desc&limit=1`);
+      if (lastPayments && lastPayments.length > 0) {
+        const lastPayDate = new Date(lastPayments[0].created_at);
+        const oneMonthLater = new Date(lastPayDate);
+        oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+        if (new Date() < oneMonthLater) {
+          const waitUntil = oneMonthLater.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+          showToast('❌ Masa tunggu 1 bulan setelah pinjaman lunas. Bisa mengajukan lagi mulai ' + waitUntil);
+          return;
+        }
+      }
+    }
+  }
+
   await getBunga();
   const periodPerMonth = type === 'weekly' ? 4 : type === 'biweekly' ? 2 : 1;
   const months = tenor / periodPerMonth;
@@ -1609,7 +1770,7 @@ async function showDetailPinjaman(loanId) {
   content.innerHTML = `
     <div class="detail-grid" style="margin-bottom:16px">
       <div class="detail-item"><label>Anggota</label><span style="font-weight:600">${loan.profiles?.full_name}</span></div>
-      <div class="detail-item"><label>Status</label><span>${loan.status === 'active' ? '<span class="badge badge-blue">Aktif</span>' : loan.status === 'pending' ? '<span class="badge badge-amber">Menunggu</span>' : loan.status === 'completed' ? '<span class="badge badge-green">Lunas</span>' : '<span class="badge badge-gray">Ditolak</span>'}</span></div>
+      <div class="detail-item"><label>Status</label><span>${loan.status === 'active' ? '<span class="badge badge-blue">Aktif</span>' : loan.status === 'pending' ? '<span class="badge badge-amber">Menunggu</span>' : loan.status === 'completed' ? '<span class="badge badge-green">Lunas</span>' : '<span class="badge badge-gray">Ditolak</span>'}${isAdmin() ? renderOverdueBadge(loan.next_due_date, loan.status) : ''}</span></div>
       <div class="detail-item"><label>Pokok Pinjaman</label><span class="td-mono">${fmt(loan.principal)}</span></div>
       <div class="detail-item"><label>Bunga Flat</label><span>${loan.interest_rate}%/bulan</span></div>
       <div class="detail-item"><label>Total Bunga</label><span class="td-mono">${fmt(loan.total_interest)}</span></div>
@@ -1647,14 +1808,58 @@ async function showDetailPinjaman(loanId) {
   openModal('modal-detail-pinjaman');
 }
 
+function openApproveForm() {
+  // Get current loan data to pre-fill
+  dbQuery('loans', `select=principal,interest_rate,total_amount,installment_type,installment_count,member_id,profiles!loans_member_id_fkey(full_name)&id=eq.${currentLoanId}&limit=1`).then(arr => {
+    const l = arr?.[0];
+    if (!l) return;
+    const info = document.getElementById('approve-pinjaman-info');
+    info.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Peminjam</div><div style="font-weight:600">${l.profiles?.full_name}</div></div>
+      <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Pengajuan</div><div style="font-weight:600;color:var(--accent)">${fmt(l.principal)}</div></div>
+      <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Total Tagihan</div><div style="font-weight:600">${fmt(l.total_amount)}</div></div>
+      <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Tenor</div><div style="font-weight:600">${l.installment_count}x</div></div>
+    </div>`;
+    document.getElementById('approve-nominal').value = l.principal;
+    document.getElementById('approve-note').value = '';
+    closeModal('modal-detail-pinjaman');
+    openModal('modal-approve-pinjaman');
+  });
+}
+
 async function doApprovePinjaman() {
-  const { error } = await dbUpdate('loans', `id=eq.${currentLoanId}`, { status: 'active', approved_by: currentUser.id, disbursed_at: new Date().toISOString(), next_due_date: null });
-  const loanArr2 = await dbQuery('loans', `select=installment_type&id=eq.${currentLoanId}&limit=1`);
+  const approvedNominal = parseInt(document.getElementById('approve-nominal').value);
+  const approveNote = document.getElementById('approve-note').value;
+  if (!approvedNominal || approvedNominal < 1000) { showToast('Isi nominal yang disetujui'); return; }
+
+  // Recalculate if nominal changed
+  const loanArr2 = await dbQuery('loans', `select=*&id=eq.${currentLoanId}&limit=1`);
   const loan = loanArr2?.[0];
-  await dbUpdate('loans', `id=eq.${currentLoanId}`, { next_due_date: getNextDueDate(loan.installment_type) });
-  if (error) { showToast('Gagal: ' + error.message); return; }
+  if (!loan) return;
+
+  await getBunga();
+  const periodPerMonth = loan.installment_type === 'weekly' ? 4 : loan.installment_type === 'biweekly' ? 2 : 1;
+  const months = loan.installment_count / periodPerMonth;
+  const totalBunga = Math.round(approvedNominal * (currentBunga / 100) * months);
+  const totalTagihan = approvedNominal + totalBunga;
+  const cicilanPerPeriod = Math.round(totalTagihan / loan.installment_count);
+  const nextDue = getNextDueDate(loan.installment_type);
+
+  const { error } = await dbUpdate('loans', `id=eq.${currentLoanId}`, {
+    status: 'active',
+    principal: approvedNominal,
+    total_interest: totalBunga,
+    total_amount: totalTagihan,
+    installment_amount: cicilanPerPeriod,
+    remaining_amount: totalTagihan,
+    approved_by: currentUser.id,
+    disbursed_at: new Date().toISOString(),
+    next_due_date: nextDue,
+    note: approveNote || loan.note
+  });
+  if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
   showToast('Pinjaman disetujui dan dicairkan ✓');
-  closeModal('modal-detail-pinjaman');
+  closeModal('modal-approve-pinjaman');
   loadPinjaman(); loadDashboard();
 }
 
@@ -1681,7 +1886,8 @@ async function loadCicilan() {
       <tbody>${upcoming.map(l => {
         const overdue = new Date(l.next_due_date) < now;
         const tdColor = overdue ? 'color:var(--red);font-weight:600' : 'color:var(--amber);font-weight:400';
-        const statusBadge2 = overdue ? '<span class="badge badge-red">Menunggak</span>' : '<span class="badge badge-amber">Jatuh Tempo</span>';
+        const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
+        const statusBadge2 = overdue ? `<span class="badge badge-red">Menunggak</span>${overdueLvlBadge}` : '<span class="badge badge-amber">Jatuh Tempo</span>';
         const catatBtn = isAdmin() ? '<button class="btn btn-success btn-sm" onclick="openCatatCicilan(\'' + l.id + '\')">Catat Bayar</button>' : '';
         return '<tr>' +
           '<td style="font-weight:500">' + l.profiles?.full_name + '</td>' +
@@ -1908,9 +2114,16 @@ async function switchLaporanTab(tab, btn) {
 }
 
 async function renderLaporanSimpanan() {
+  let savingsQ = 'select=member_id,type,amount,balance_after,created_at,note,profiles!savings_member_id_fkey(full_name)&order=created_at.desc';
+  let membersQ = 'select=id,full_name&status=eq.active&order=full_name.asc';
+  // Members can only see their own data
+  if (!isAdmin()) {
+    savingsQ += `&member_id=eq.${currentUser.id}`;
+    membersQ += `&id=eq.${currentUser.id}`;
+  }
   const [savings, members] = await Promise.all([
-    dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
-    dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
+    dbQuery('savings', savingsQ),
+    dbQuery('profiles', membersQ)
   ]);
   const balances = {};
   (members || []).forEach(m => balances[m.id] = { name: m.full_name, deposit: 0, withdraw: 0, last: null });
@@ -1942,7 +2155,9 @@ async function renderLaporanSimpanan() {
 }
 
 async function renderLaporanPinjaman() {
-  const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc');
+  let loanQ = 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc';
+  if (!isAdmin()) loanQ += `&member_id=eq.${currentUser.id}`;
+  const loans = await dbQuery('loans', loanQ);
   const active = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = active.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
@@ -1973,7 +2188,9 @@ async function renderLaporanPinjaman() {
 }
 
 async function renderLaporanCicilan() {
-  const data = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc');
+  let cicQ = 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc';
+  if (!isAdmin()) cicQ += `&member_id=eq.${currentUser.id}`;
+  const data = await dbQuery('loan_payments', cicQ);
   const totalDibayar = (data || []).reduce((a, p) => a + Number(p.amount_paid), 0);
   document.getElementById('laporan-content').innerHTML = `
     <div class="stats-grid" style="margin-bottom:20px">

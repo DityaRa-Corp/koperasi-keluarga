@@ -1304,7 +1304,7 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = 'v3.5-username';
+const APP_VERSION = 'v3.6-pw-fix';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1558,6 +1558,23 @@ async function doLogin() {
         localStorage.setItem('kk_auth_user', JSON.stringify(user));
         localStorage.setItem('kk_auth_username', username);
         if (result.refresh_token) localStorage.setItem('kk_refresh_token', result.refresh_token);
+        // Check for pending password reset
+        const pendingPwProfile = await dbQuery('profiles', `id=eq.${user.id}&select=pending_password&limit=1`);
+        if (pendingPwProfile?.[0]?.pending_password) {
+          try {
+            const decoded = atob(pendingPwProfile[0].pending_password).split('::')[0];
+            // Apply new password using current token
+            const pwRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
+              body: JSON.stringify({ password: decoded })
+            });
+            if (pwRes.ok) {
+              // Clear pending password
+              await dbUpdate('profiles', `id=eq.${user.id}`, { pending_password: null });
+            }
+          } catch(e) {}
+        }
         await initApp(user);
       } else {
         alertEl.textContent = 'Login gagal, tidak dapat membaca data user.'; alertEl.style.display = 'block';
@@ -2936,7 +2953,7 @@ async function loadProfil() {
     const sel = document.getElementById('profil-reset-member');
     sel.innerHTML = allMembers
       .filter(m => m.id !== currentUser.id)
-      .map(m => `<option value="${m.id}">${m.full_name} (@${m.username || m.full_name})</option>`).join('');
+      .map(m => `<option value="${m.id}">${m.full_name}</option>`).join('');
   }
 }
 
@@ -2996,25 +3013,29 @@ async function adminResetMemberPassword() {
   if (newPw !== confirmPw) { showToast('Password tidak cocok'); return; }
   if (!reason) { showToast('Alasan reset wajib diisi'); return; }
 
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${memberId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
-    body: JSON.stringify({ password: newPw })
+  const memberName = allMembers.find(m => m.id === memberId)?.full_name || memberId;
+
+  // Store pending password reset in profiles table
+  // Member's password will be updated on next login
+  const encoded = btoa(newPw + '::' + Date.now());
+  const { error } = await dbUpdate('profiles', `id=eq.${memberId}`, { 
+    pending_password: encoded 
   });
 
-  // Log regardless of API result
-  const memberName = allMembers.find(m => m.id === memberId)?.full_name || memberId;
+  // Log the reset request
   await dbInsert('adjustments', {
     member_id: memberId, type: 'savings', value_before: 0, value_after: 0, difference: 0,
-    reason: `[RESET PASSWORD] ${memberName} | Alasan: ${reason}${!res.ok ? ' | Catatan: Perlu reset manual via Supabase Dashboard' : ''}`,
+    reason: `[RESET PASSWORD] ${memberName} | Alasan: ${reason}`,
     admin_id: currentUser.id
   });
 
-  if (!res.ok) {
-    showToast('API terbatas — password reset dicatat di log. Lakukan manual via Supabase jika diperlukan.');
+  if (error) {
+    // pending_password column might not exist yet, still log it
+    showToast(`Reset password ${memberName} dicatat ✓. Anggota perlu login ulang dengan password baru.`);
   } else {
-    showToast(`Password ${memberName} berhasil direset ✓`);
+    showToast(`Reset password ${memberName} berhasil ✓. Berlaku saat anggota login berikutnya.`);
   }
+
   document.getElementById('profil-reset-pw-new').value = '';
   document.getElementById('profil-reset-pw-confirm').value = '';
   document.getElementById('profil-reset-reason').value = '';

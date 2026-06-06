@@ -608,8 +608,8 @@ tbody tr:hover { background: var(--surface2); }
         <p class="auth-sub">Masuk ke akun Anda untuk melanjutkan.</p>
         <div id="auth-alert" class="alert alert-error"></div>
         <div class="form-group">
-          <label class="form-label">Email</label>
-          <input class="form-input" type="email" id="login-email" placeholder="email@contoh.com" autocomplete="email">
+          <label class="form-label">Username</label>
+          <input class="form-input" type="text" id="login-username" placeholder="Masukkan username" autocomplete="username" autocapitalize="none" autocorrect="off">
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
@@ -894,10 +894,24 @@ tbody tr:hover { background: var(--surface2); }
         <div class="section-title">Informasi Akun</div>
         <div class="detail-grid" style="margin-bottom:16px">
           <div class="detail-item"><label>Nama</label><span id="profil-nama">-</span></div>
+          <div class="detail-item"><label>Username</label><span id="profil-username" class="td-mono" style="color:var(--accent)">-</span></div>
           <div class="detail-item"><label>Role</label><span id="profil-role">-</span></div>
           <div class="detail-item"><label>No. HP</label><span id="profil-phone">-</span></div>
           <div class="detail-item"><label>Status</label><span id="profil-status">-</span></div>
         </div>
+      </div>
+      <div class="card" style="max-width:480px;margin-bottom:14px">
+        <div class="section-title">Ubah Username Saya</div>
+        <div class="form-group">
+          <label class="form-label">Username Baru</label>
+          <input class="form-input" type="text" id="profil-new-username" placeholder="Huruf kecil, angka, underscore" autocapitalize="none" autocorrect="off">
+          <div class="form-hint" id="profil-username-hint">Username saat ini: <span id="profil-current-username">-</span></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alasan Perubahan <span style="color:var(--red)">*</span></label>
+          <input class="form-input" type="text" id="profil-username-reason" placeholder="Wajib diisi">
+        </div>
+        <button class="btn btn-primary" onclick="changeMyUsername()">Ubah Username</button>
       </div>
       <div class="card" style="max-width:480px;margin-bottom:14px">
         <div class="section-title">Ubah Password Saya</div>
@@ -1116,9 +1130,16 @@ tbody tr:hover { background: var(--surface2); }
     <div class="modal-title">Edit Data Anggota</div>
     <div class="modal-sub">Perubahan akan dicatat di log</div>
     <input type="hidden" id="edit-anggota-id">
-    <div class="form-group">
-      <label class="form-label">Nama Lengkap</label>
-      <input class="form-input" type="text" id="edit-anggota-nama" placeholder="Nama lengkap">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nama Lengkap</label>
+        <input class="form-input" type="text" id="edit-anggota-nama" placeholder="Nama lengkap">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input class="form-input" type="text" id="edit-anggota-username" placeholder="username baru" autocapitalize="none" autocorrect="off">
+        <div class="form-hint">Huruf kecil, angka, tanpa spasi</div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -1156,13 +1177,19 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Email</label>
-        <input class="form-input" type="email" id="anggota-email" placeholder="email@contoh.com">
+        <label class="form-label">Username <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="anggota-username" placeholder="Contoh: budi123" autocapitalize="none" autocorrect="off">
+        <div class="form-hint">Huruf kecil, angka, tanpa spasi</div>
       </div>
       <div class="form-group">
         <label class="form-label">No. HP</label>
         <input class="form-input" type="tel" id="anggota-phone" placeholder="08xxxxxxxxxx">
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email (untuk sistem) <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="email" id="anggota-email" placeholder="email@contoh.com">
+      <div class="form-hint">Email digunakan sistem, anggota login pakai username</div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -1277,7 +1304,7 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = 'v3.4-profile-adj';
+const APP_VERSION = 'v3.5-username';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1459,24 +1486,66 @@ function clearFailedAttempts(email) {
 }
 
 async function doLogin() {
-  const email = document.getElementById('login-email').value.trim();
+  const username = document.getElementById('login-username').value.trim().toLowerCase();
   const pw = document.getElementById('login-password').value;
   const alertEl = document.getElementById('auth-alert');
   alertEl.className = 'alert alert-error';
   alertEl.style.display = 'none';
-  if (!email || !pw) { alertEl.textContent = 'Email dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
+  if (!username || !pw) { alertEl.textContent = 'Username dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
 
   // Check local lock first (5 failed attempts)
-  const attempts = getFailedAttempts(email);
+  const attempts = getFailedAttempts(username);
   if (attempts.count >= 5) {
-    alertEl.textContent = '🔒 Akun terkunci setelah 5x percobaan gagal. Hubungi Admin untuk membuka kunci akun Anda.';
+    alertEl.textContent = '🔒 Akun terkunci setelah 5x percobaan gagal. Hubungi Admin untuk membuka kunci.';
     alertEl.style.display = 'block';
     return;
   }
 
   const btn = document.getElementById('btn-login');
   btn.disabled = true; btn.textContent = 'Memuat...';
+
   try {
+    // Step 1: Look up email by username from profiles
+    const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id,status,email_ref&limit=1`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    const profiles = await profileRes.json();
+
+    if (!profiles || profiles.length === 0) {
+      // Username not found - increment failed attempts
+      const newCount = attempts.count + 1;
+      setFailedAttempts(username, newCount);
+      const sisa = 5 - newCount;
+      if (newCount >= 5) {
+        alertEl.textContent = '🔒 Akun terkunci setelah 5x percobaan gagal. Hubungi Admin untuk membuka kunci.';
+      } else {
+        alertEl.textContent = `Username atau password salah. ${sisa} percobaan tersisa sebelum akun terkunci.`;
+      }
+      alertEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Masuk';
+      return;
+    }
+
+    const profile = profiles[0];
+
+    // Check if account is locked
+    if (profile.status === 'locked') {
+      alertEl.textContent = '🔒 Akun Anda terkunci. Hubungi Admin untuk membuka kunci.';
+      alertEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Masuk';
+      return;
+    }
+
+    // Step 2: Get email from auth.users via the email_ref stored in profiles
+    const email = profile.email_ref;
+    if (!email) {
+      alertEl.textContent = 'Akun tidak valid. Hubungi Admin.';
+      alertEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Masuk';
+      return;
+    }
+
+    // Step 3: Login with email + password
     const result = await supabaseLogin(email, pw);
     btn.disabled = false; btn.textContent = 'Masuk';
 
@@ -1484,33 +1553,24 @@ async function doLogin() {
       authToken = result.access_token;
       const user = result.user || jwtDecode(result.access_token);
       if (user && user.id) {
-        // Check if account is locked in profiles DB
-        const profileArr = await dbQuery('profiles', `id=eq.${user.id}&select=status,full_name&limit=1`);
-        const prof = profileArr?.[0];
-        if (prof?.status === 'locked') {
-          authToken = null;
-          alertEl.textContent = '🔒 Akun Anda terkunci oleh Admin. Hubungi Admin untuk membuka kunci.';
-          alertEl.style.display = 'block';
-          return;
-        }
-        // Login success - clear failed attempts
-        clearFailedAttempts(email);
+        clearFailedAttempts(username);
         localStorage.setItem('kk_auth_token', authToken);
         localStorage.setItem('kk_auth_user', JSON.stringify(user));
+        localStorage.setItem('kk_auth_username', username);
         if (result.refresh_token) localStorage.setItem('kk_refresh_token', result.refresh_token);
         await initApp(user);
       } else {
         alertEl.textContent = 'Login gagal, tidak dapat membaca data user.'; alertEl.style.display = 'block';
       }
     } else {
-      // Wrong password - increment failed counter
+      // Wrong password
       const newCount = attempts.count + 1;
-      setFailedAttempts(email, newCount);
+      setFailedAttempts(username, newCount);
       const sisa = 5 - newCount;
       if (newCount >= 5) {
-        alertEl.textContent = '🔒 Akun terkunci setelah 5x percobaan gagal. Hubungi Admin untuk membuka kunci akun Anda.';
+        alertEl.textContent = '🔒 Akun terkunci setelah 5x percobaan gagal. Hubungi Admin untuk membuka kunci.';
       } else {
-        alertEl.textContent = `Email atau password salah. ${sisa} percobaan tersisa sebelum akun terkunci.`;
+        alertEl.textContent = `Username atau password salah. ${sisa} percobaan tersisa sebelum akun terkunci.`;
       }
       alertEl.style.display = 'block';
     }
@@ -2381,17 +2441,18 @@ function renderAnggotaTable(data) {
   const el = document.getElementById('anggota-list');
   if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada anggota ditemukan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>No</th><th>Nama</th><th>No. HP</th><th>Role</th><th>Status</th><th>Bergabung</th><th>Aksi</th></tr></thead>
+    <thead><tr><th>No</th><th>Nama</th><th>Username</th><th>No. HP</th><th>Role</th><th>Status</th><th>Bergabung</th><th>Aksi</th></tr></thead>
     <tbody>${data.map((a, i) => `<tr>
       <td>${i+1}</td>
       <td style="font-weight:500">${a.full_name}</td>
+      <td><span class="td-mono" style="font-size:12px;color:var(--accent)">${a.username || '-'}</span></td>
       <td style="color:var(--text2)">${a.phone || '-'}</td>
       <td>${a.role === 'admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Anggota</span>'}</td>
       <td>${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
       <td style="display:flex;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.phone||''}','${a.role}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.phone||''}','${a.role}','${a.username||''}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',false)" title="Reset Password">🔑</button>
           ${a.id !== currentUser.id ? `
             ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
@@ -2404,14 +2465,19 @@ function renderAnggotaTable(data) {
 
 async function doTambahAnggota() {
   const nama = document.getElementById('anggota-nama').value.trim();
+  const username = document.getElementById('anggota-username').value.trim().toLowerCase();
   const email = document.getElementById('anggota-email').value.trim();
   const phone = document.getElementById('anggota-phone').value.trim();
   const password = document.getElementById('anggota-password').value;
   const role = document.getElementById('anggota-role').value;
   const alertEl = document.getElementById('anggota-modal-alert');
   alertEl.style.display = 'none';
-  if (!nama || !email || !password) { alertEl.textContent = 'Nama, email, dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
+  if (!nama || !username || !email || !password) { alertEl.textContent = 'Nama, username, email, dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
+  if (!/^[a-z0-9_]+$/.test(username)) { alertEl.textContent = 'Username hanya boleh huruf kecil, angka, dan underscore.'; alertEl.style.display = 'block'; return; }
   if (password.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
+  // Check username uniqueness
+  const existingUser = await dbQuery('profiles', `username=eq.${username}&select=id&limit=1`);
+  if (existingUser && existingUser.length > 0) { alertEl.textContent = 'Username sudah digunakan, pilih username lain.'; alertEl.style.display = 'block'; return; }
   // Use REST API to sign up
   const signupRes = await fetch(SUPABASE_URL + '/auth/v1/signup', {
     method: 'POST',
@@ -2420,13 +2486,19 @@ async function doTambahAnggota() {
   });
   const signupData = await signupRes.json();
   if (!signupRes.ok || signupData.error) { alertEl.textContent = 'Gagal: ' + (signupData.error?.message || signupData.msg || JSON.stringify(signupData)); alertEl.style.display = 'block'; return; }
-  // Update profile role if admin
-  if (role === 'admin' && signupData.id) {
-    await dbUpdate('profiles', `id=eq.${signupData.id}`, { role: 'admin' });
+  // Update profile with username, role, and email_ref
+  const newUserId = signupData.id || signupData.user?.id;
+  if (newUserId) {
+    await dbUpdate('profiles', `id=eq.${newUserId}`, { 
+      role: role === 'admin' ? 'admin' : 'member',
+      username: username,
+      email_ref: email
+    });
   }
   showToast('Anggota berhasil ditambahkan ✓');
   closeModal('modal-tambah-anggota');
   document.getElementById('anggota-nama').value = '';
+  document.getElementById('anggota-username').value = '';
   document.getElementById('anggota-email').value = '';
   document.getElementById('anggota-phone').value = '';
   document.getElementById('anggota-password').value = '';
@@ -2561,10 +2633,11 @@ async function lockMemberAccount(memberId, memberName) {
 // ── EDIT ANGGOTA ──
 let editAnggotaOriginal = {};
 
-function openEditAnggota(id, nama, phone, role) {
-  editAnggotaOriginal = { nama, phone, role };
+function openEditAnggota(id, nama, phone, role, username) {
+  editAnggotaOriginal = { nama, phone, role, username };
   document.getElementById('edit-anggota-id').value = id;
   document.getElementById('edit-anggota-nama').value = nama;
+  document.getElementById('edit-anggota-username').value = username || '';
   document.getElementById('edit-anggota-phone').value = phone;
   document.getElementById('edit-anggota-role').value = role;
   document.getElementById('edit-anggota-reason').value = '';
@@ -2575,6 +2648,7 @@ function openEditAnggota(id, nama, phone, role) {
 async function doEditAnggota() {
   const id = document.getElementById('edit-anggota-id').value;
   const nama = document.getElementById('edit-anggota-nama').value.trim();
+  const username = document.getElementById('edit-anggota-username').value.trim().toLowerCase();
   const phone = document.getElementById('edit-anggota-phone').value.trim();
   const role = document.getElementById('edit-anggota-role').value;
   const reason = document.getElementById('edit-anggota-reason').value.trim();
@@ -2582,11 +2656,21 @@ async function doEditAnggota() {
   alertEl.style.display = 'none';
 
   if (!nama) { alertEl.textContent = 'Nama wajib diisi.'; alertEl.style.display = 'block'; return; }
+  if (username && !/^[a-z0-9_]+$/.test(username)) { alertEl.textContent = 'Username hanya boleh huruf kecil, angka, dan underscore.'; alertEl.style.display = 'block'; return; }
   if (!reason) { alertEl.textContent = 'Alasan perubahan wajib diisi.'; alertEl.style.display = 'block'; return; }
+
+  // Check username uniqueness (if changed)
+  if (username && username !== editAnggotaOriginal.username) {
+    const existingUser = await dbQuery('profiles', `username=eq.${username}&select=id&limit=1`);
+    if (existingUser && existingUser.length > 0 && existingUser[0].id !== id) {
+      alertEl.textContent = 'Username sudah digunakan, pilih username lain.'; alertEl.style.display = 'block'; return;
+    }
+  }
 
   // Build changes log
   const changes = [];
   if (nama !== editAnggotaOriginal.nama) changes.push(`Nama: "${editAnggotaOriginal.nama}" → "${nama}"`);
+  if (username && username !== editAnggotaOriginal.username) changes.push(`Username: "${editAnggotaOriginal.username}" → "${username}"`);
   if (phone !== editAnggotaOriginal.phone) changes.push(`HP: "${editAnggotaOriginal.phone}" → "${phone}"`);
   if (role !== editAnggotaOriginal.role) changes.push(`Role: "${editAnggotaOriginal.role}" → "${role}"`);
 
@@ -2595,7 +2679,9 @@ async function doEditAnggota() {
   }
 
   // Update profile
-  const { error } = await dbUpdate('profiles', `id=eq.${id}`, { full_name: nama, phone, role });
+  const updateData = { full_name: nama, phone, role };
+  if (username) updateData.username = username;
+  const { error } = await dbUpdate('profiles', `id=eq.${id}`, updateData);
   if (error) { alertEl.textContent = 'Gagal: ' + JSON.stringify(error); alertEl.style.display = 'block'; return; }
 
   // Log the edit in adjustments table (type: 'member_edit')
@@ -2832,8 +2918,13 @@ async function changePassword() {
 
 // ── PROFIL PAGE ──
 async function loadProfil() {
-  // Fill profile info
+  // Reload fresh profile data
+  const profileArr = await dbQuery('profiles', `id=eq.${currentUser.id}&select=*&limit=1`);
+  if (profileArr && profileArr.length > 0) currentProfile = profileArr[0];
+
   document.getElementById('profil-nama').textContent = currentProfile?.full_name || '-';
+  document.getElementById('profil-username').textContent = currentProfile?.username || '-';
+  document.getElementById('profil-current-username').textContent = currentProfile?.username || '-';
   document.getElementById('profil-role').innerHTML = currentProfile?.role === 'admin'
     ? '<span class="badge badge-purple">Admin</span>'
     : '<span class="badge badge-blue">Anggota</span>';
@@ -2845,8 +2936,38 @@ async function loadProfil() {
     const sel = document.getElementById('profil-reset-member');
     sel.innerHTML = allMembers
       .filter(m => m.id !== currentUser.id)
-      .map(m => `<option value="${m.id}">${m.full_name}</option>`).join('');
+      .map(m => `<option value="${m.id}">${m.full_name} (@${m.username || m.full_name})</option>`).join('');
   }
+}
+
+async function changeMyUsername() {
+  const newUsername = document.getElementById('profil-new-username').value.trim().toLowerCase();
+  const reason = document.getElementById('profil-username-reason').value.trim();
+  if (!newUsername) { showToast('Masukkan username baru'); return; }
+  if (!/^[a-z0-9_]+$/.test(newUsername)) { showToast('Username hanya boleh huruf kecil, angka, dan underscore'); return; }
+  if (!reason) { showToast('Alasan perubahan wajib diisi'); return; }
+  if (newUsername === currentProfile?.username) { showToast('Username sama dengan yang sekarang'); return; }
+
+  // Check uniqueness
+  const existing = await dbQuery('profiles', `username=eq.${newUsername}&select=id&limit=1`);
+  if (existing && existing.length > 0) { showToast('Username sudah digunakan, pilih yang lain'); return; }
+
+  const oldUsername = currentProfile?.username || '-';
+  const { error } = await dbUpdate('profiles', `id=eq.${currentUser.id}`, { username: newUsername });
+  if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
+
+  // Log
+  await dbInsert('adjustments', {
+    member_id: currentUser.id, type: 'savings', value_before: 0, value_after: 0, difference: 0,
+    reason: `[EDIT ANGGOTA] Username: "${oldUsername}" → "${newUsername}" | Alasan: ${reason}`,
+    admin_id: currentUser.id
+  });
+
+  showToast('Username berhasil diubah ✓');
+  localStorage.setItem('kk_auth_username', newUsername);
+  document.getElementById('profil-new-username').value = '';
+  document.getElementById('profil-username-reason').value = '';
+  loadProfil();
 }
 
 async function changeMyPassword() {

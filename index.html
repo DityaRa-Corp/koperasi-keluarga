@@ -1313,7 +1313,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v3.9-svckey';
+const APP_VERSION = 'v4.0-rpc';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -2645,37 +2645,33 @@ async function doResetPassword() {
     admin_id: currentUser.id
   });
 
-  // Use service role key to directly update password
-  const pwRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${memberId}`, {
-    method: 'PUT',
+  // Use DB function to reset password
+  const pwRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_user_password`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SUPABASE_SERVICE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + authToken
     },
-    body: JSON.stringify({ password: newPw })
+    body: JSON.stringify({ user_id: memberId, new_password: newPw })
   });
 
   if (!pwRes.ok) {
     const err = await pwRes.json();
-    alertEl.textContent = 'Gagal: ' + (err.message || JSON.stringify(err));
+    alertEl.textContent = 'Gagal reset password: ' + (err.message || JSON.stringify(err));
     alertEl.style.display = 'block'; return;
   }
 
-  // If unlock, reset status and failed_attempts
-  if (resetPwIsUnlock) {
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'active', failed_attempts: 0, pending_password: null })
-    });
-  } else {
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pending_password: null })
-    });
-  }
+  // Update profile status
+  const profileUpdate = resetPwIsUnlock
+    ? { status: 'active', failed_attempts: 0, pending_password: null }
+    : { pending_password: null };
+
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(profileUpdate)
+  });
 
   // Log
   const unlockActionType = resetPwIsUnlock ? 'UNLOCK AKUN' : 'RESET PASSWORD';
@@ -3076,25 +3072,24 @@ async function adminResetMemberPassword() {
 
   const memberName = allMembers.find(m => m.id === memberId)?.full_name || memberId;
 
-  // Use service role key to directly update password in Supabase Auth
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${memberId}`, {
-    method: 'PUT',
+  // Use DB function to reset password (bypasses CORS restriction)
+  const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_user_password`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SUPABASE_SERVICE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + authToken
     },
-    body: JSON.stringify({ password: newPw })
+    body: JSON.stringify({ user_id: memberId, new_password: newPw })
   });
 
-  const memberName2 = memberName;
-  if (!res.ok) {
-    const err = await res.json();
-    showToast('Gagal reset password: ' + (err.message || JSON.stringify(err)));
+  if (!rpcRes.ok) {
+    const err = await rpcRes.json();
+    showToast('Gagal: ' + (err.message || JSON.stringify(err)));
     return;
   }
 
-  // Clear any pending password
+  // Clear pending password & reset failed attempts
   await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
     method: 'PATCH',
     headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },

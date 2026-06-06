@@ -850,7 +850,7 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = 'v2.0-final';
+const APP_VERSION = 'v2.1-auth-fix';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1024,6 +1024,7 @@ async function doLogin() {
       if (user && user.id) {
         localStorage.setItem('kk_auth_token', authToken);
         localStorage.setItem('kk_auth_user', JSON.stringify(user));
+        if (result.refresh_token) localStorage.setItem('kk_refresh_token', result.refresh_token);
         await initApp(user);
       } else {
         alertEl.textContent = 'Login gagal, tidak dapat membaca data user.'; alertEl.style.display = 'block';
@@ -1044,6 +1045,7 @@ async function doLogout() {
   currentUser = null; currentProfile = null;
   localStorage.removeItem('kk_auth_token');
   localStorage.removeItem('kk_auth_user');
+  localStorage.removeItem('kk_refresh_token');
   try { await db.auth.signOut(); } catch(e) {}
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
@@ -1917,12 +1919,45 @@ window.addEventListener('click', e => {
   const savedUser = localStorage.getItem('kk_auth_user');
   if (savedToken && savedUser) {
     try {
-      authToken = savedToken;
-      const user = JSON.parse(savedUser);
-      await initApp(user);
+      // Verify token is still valid by making a test request
+      const testRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + savedToken }
+      });
+      if (testRes.ok) {
+        authToken = savedToken;
+        const user = JSON.parse(savedUser);
+        await initApp(user);
+      } else {
+        // Token expired - try to refresh
+        const savedRefresh = localStorage.getItem('kk_refresh_token');
+        if (savedRefresh) {
+          const refreshRes = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+            body: JSON.stringify({ refresh_token: savedRefresh })
+          });
+          const refreshData = await refreshRes.json();
+          if (refreshData.access_token) {
+            authToken = refreshData.access_token;
+            localStorage.setItem('kk_auth_token', authToken);
+            localStorage.setItem('kk_refresh_token', refreshData.refresh_token || savedRefresh);
+            const user = refreshData.user || JSON.parse(savedUser);
+            localStorage.setItem('kk_auth_user', JSON.stringify(user));
+            await initApp(user);
+          } else {
+            localStorage.removeItem('kk_auth_token');
+            localStorage.removeItem('kk_auth_user');
+            localStorage.removeItem('kk_refresh_token');
+          }
+        } else {
+          localStorage.removeItem('kk_auth_token');
+          localStorage.removeItem('kk_auth_user');
+        }
+      }
     } catch(e) {
       localStorage.removeItem('kk_auth_token');
       localStorage.removeItem('kk_auth_user');
+      localStorage.removeItem('kk_refresh_token');
     }
   }
 })();

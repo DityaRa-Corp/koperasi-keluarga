@@ -850,7 +850,7 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <script>
-const APP_VERSION = 'v2.1-auth-fix';
+const APP_VERSION = 'v2.2-fk-fix';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1088,8 +1088,8 @@ async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const [savings, loans, members] = await Promise.all([
-    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles(full_name)&order=created_at.desc'),
-    dbQuery('loans', 'select=*,profiles(full_name)&status=neq.rejected'),
+    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
+    dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
     dbQuery('profiles', 'select=id&status=eq.active')
   ]);
 
@@ -1099,7 +1099,7 @@ async function loadDashboard() {
     if (!memberBalances[s.member_id]) memberBalances[s.member_id] = 0;
     memberBalances[s.member_id] += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
   });
-  const totalSimpanan = Object.values(memberBalances).reduce((a, b) => a + b, 0);
+  const totalSimpanan = Object.values(memberBalances).reduce((a, b) => Number(a) + Number(b), 0);
   const activeLoans = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
   const now = new Date();
@@ -1119,7 +1119,7 @@ async function loadDashboard() {
 
   // Recent transactions
   const recent = (savings || []).slice(0, 8);
-  const recentPayments = await dbQuery('loan_payments', 'select=*,profiles(full_name)&order=created_at.desc&limit=5');
+  const recentPayments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=5');
   const combined = [
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
     ...((recentPayments || []).map(p => ({ ...p, kind: 'payment' })))
@@ -1171,7 +1171,7 @@ async function loadSimpanan() {
 async function loadSimpananHistory() {
   const memberId = document.getElementById('filter-simpanan-member').value;
   const month = document.getElementById('filter-simpanan-month').value;
-  let qParams = 'select=*,profiles(full_name)&order=created_at.desc&limit=100';
+  let qParams = 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc&limit=100';
   if (memberId) qParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) qParams += `&member_id=eq.${currentUser.id}`;
   if (month) { qParams += `&created_at=gte.${month}-01&created_at=lte.${month}-31`; }
@@ -1237,7 +1237,7 @@ async function doTarik() {
 
 // PINJAMAN
 async function loadPinjaman() {
-  let qParams = 'select=*,profiles(full_name)&order=created_at.desc';
+  let qParams = 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc';
   if (!isAdmin()) qParams += `&member_id=eq.${currentUser.id}`;
   const statusMap = { aktif: 'active', pending: 'pending', lunas: 'completed' };
   if (currentPinjamanTab !== 'semua') qParams += `&status=eq.${statusMap[currentPinjamanTab] || currentPinjamanTab}`;
@@ -1343,7 +1343,7 @@ function getNextDueDate(type) {
 
 async function showDetailPinjaman(loanId) {
   currentLoanId = loanId;
-  const loanArr = await dbQuery('loans', `select=*,profiles(full_name)&id=eq.${loanId}&limit=1`);
+  const loanArr = await dbQuery('loans', `select=*,profiles!loans_member_id_fkey(full_name)&id=eq.${loanId}&limit=1`);
   const loan = loanArr?.[0];
   const payments = await dbQuery('loan_payments', `select=*&loan_id=eq.${loanId}&order=created_at.asc`);
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
@@ -1411,7 +1411,7 @@ async function doRejectPinjaman() {
 
 // CICILAN
 async function loadCicilan() {
-  let cicQParams = 'select=*,profiles(full_name)&status=eq.active&order=next_due_date.asc';
+  let cicQParams = 'select=*,profiles!loans_member_id_fkey(full_name)&status=eq.active&order=next_due_date.asc';
   if (!isAdmin()) cicQParams += `&member_id=eq.${currentUser.id}`;
   const activeLoans = await dbQuery('loans', cicQParams);
   const now = new Date();
@@ -1442,7 +1442,7 @@ async function loadCicilan() {
 
 let currentCicilanLoan = null;
 async function openCatatCicilan(loanId) {
-  const loanArr3 = await dbQuery('loans', `select=*,profiles(full_name)&id=eq.${loanId}&limit=1`);
+  const loanArr3 = await dbQuery('loans', `select=*,profiles!loans_member_id_fkey(full_name)&id=eq.${loanId}&limit=1`);
   const loan = loanArr3?.[0];
   currentCicilanLoan = loan;
   const info = document.getElementById('cicilan-detail-info');
@@ -1522,7 +1522,7 @@ async function exportLaporan() {
 
     // ── Sheet 1: Simpanan ──
     const [savings, members] = await Promise.all([
-      dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles(full_name)&order=created_at.desc'),
+      dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
       dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
     ]);
     const balances = {};
@@ -1531,7 +1531,7 @@ async function exportLaporan() {
       if (!balances[s.member_id]) balances[s.member_id] = { name: s.profiles?.full_name || s.member_id, deposit: 0, withdraw: 0, last: null };
       if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
       else balances[s.member_id].withdraw += Number(s.amount);
-      if (!balances[s.member_id].last) balances[s.member_id].last = s.created_at;
+      balances[s.member_id].last = s.created_at;
     });
     const simpRows = [['No', 'Nama Anggota', 'Total Setor (Rp)', 'Total Tarik (Rp)', 'Saldo (Rp)', 'Transaksi Terakhir']];
     Object.values(balances).forEach((r, i) => {
@@ -1542,7 +1542,7 @@ async function exportLaporan() {
     XLSX.utils.book_append_sheet(wb, wsSimpanan, 'Simpanan');
 
     // ── Sheet 2: Riwayat Simpanan ──
-    const savingsDetail = await dbQuery('savings', 'select=*,profiles(full_name)&order=created_at.desc');
+    const savingsDetail = await dbQuery('savings', 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc');
     const simpDetailRows = [['Tanggal', 'Nama Anggota', 'Jenis', 'Jumlah (Rp)', 'Saldo Setelah (Rp)', 'Keterangan']];
     (savingsDetail||[]).forEach(s => {
       simpDetailRows.push([
@@ -1559,7 +1559,7 @@ async function exportLaporan() {
     XLSX.utils.book_append_sheet(wb, wsSimpDetail, 'Riwayat Simpanan');
 
     // ── Sheet 3: Pinjaman ──
-    const loans = await dbQuery('loans', 'select=*,profiles(full_name)&order=created_at.desc');
+    const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc');
     const typeLabel = { weekly:'Mingguan', biweekly:'2 Mingguan', monthly:'Bulanan' };
     const statusLabel = { active:'Aktif', pending:'Menunggu', completed:'Lunas', rejected:'Ditolak' };
     const pinjamanRows = [['No. Pinjaman','Anggota','Tgl Cair','Pokok (Rp)','Bunga %','Total Bunga (Rp)','Total Tagihan (Rp)','Jenis Cicilan','Cicilan/Periode (Rp)','Dibayar (Rp)','Sisa (Rp)','Jatuh Tempo','Status']];
@@ -1652,7 +1652,7 @@ async function switchLaporanTab(tab, btn) {
 
 async function renderLaporanSimpanan() {
   const [savings, members] = await Promise.all([
-    dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles(full_name)&order=created_at.desc'),
+    dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
     dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
   ]);
   const balances = {};
@@ -1665,7 +1665,7 @@ async function renderLaporanSimpanan() {
     if (balances[s.member_id]) {
       if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
       else balances[s.member_id].withdraw += Number(s.amount);
-      if (!balances[s.member_id].last) balances[s.member_id].last = s.created_at;
+      balances[s.member_id].last = s.created_at;
     }
   });
   const rows = Object.values(balances);
@@ -1685,7 +1685,7 @@ async function renderLaporanSimpanan() {
 }
 
 async function renderLaporanPinjaman() {
-  const loans = await dbQuery('loans', 'select=*,profiles(full_name)&order=created_at.desc');
+  const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc');
   const active = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = active.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };

@@ -1313,10 +1313,10 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.2-edge-reset';
+const APP_VERSION = 'v4.3-comprehensive-fix';
 console.log('App loaded:', APP_VERSION);
 // Edge Function URL untuk reset password
-
+const EDGE_RESET_PW_URL = `${SUPABASE_URL}/functions/v1/reset-member-password`;
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
 // Service key loaded from meta tag (injected at deploy time)
@@ -1340,7 +1340,6 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // Auth token storage
 let authToken = null;
-const EDGE_RESET_PW_URL = SUPABASE_URL + `/functions/v1/reset-member-password`;
 
 function jwtDecode(token) {
   try {
@@ -1538,30 +1537,9 @@ async function doLogin() {
     const email = profile.email_ref;
     if (!email) { alertEl.textContent = 'Akun tidak valid. Hubungi Admin.'; alertEl.style.display = 'block'; return; }
 
-    // Step 2: Try pending_password first (admin-set new password)
+    // Login langsung ke Supabase Auth
     let loginResult = null;
-    let usedPendingPw = false;
-    if (false && profile.pending_password) {
-      try {
-        const pendingPw = atob(profile.pending_password).split('::')[0];
-        if (pendingPw === pw) {
-          // User entered the new (pending) password - apply it to auth
-          // First login with old approach won't work, so we store and try
-          // Try logging in with pending password directly
-          loginResult = await supabaseLogin(email, pendingPw);
-          if (loginResult.access_token) {
-            usedPendingPw = true;
-          } else {
-            loginResult = null;
-          }
-        }
-      } catch(e) {}
-    }
-
-    // Step 3: Try normal login
-    if (!loginResult) {
-      loginResult = await supabaseLogin(email, pw);
-    }
+    loginResult = await supabaseLogin(email, pw);
 
     if (loginResult && loginResult.access_token) {
       authToken = loginResult.access_token;
@@ -1571,26 +1549,8 @@ async function doLogin() {
         await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
           method: 'PATCH',
           headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ failed_attempts: 0 })
+          body: JSON.stringify({ failed_attempts: 0, pending_password: null })
         });
-        // If used pending password, update auth password and clear pending
-        if (usedPendingPw || profile.pending_password) {
-          try {
-            const pendingPw = atob(profile.pending_password).split('::')[0];
-            const pwRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
-              body: JSON.stringify({ password: pendingPw })
-            });
-            if (pwRes.ok) {
-              await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
-                method: 'PATCH',
-                headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pending_password: null })
-              });
-            }
-          } catch(e) {}
-        }
         clearFailedAttempts(username);
         localStorage.setItem('kk_auth_token', authToken);
         localStorage.setItem('kk_auth_user', JSON.stringify(user));
@@ -1655,7 +1615,7 @@ async function initApp(user) {
 
 // MEMBERS
 async function loadAllMembers() {
-  const data = await dbQuery('profiles', 'status=eq.active&order=full_name.asc&select=*');
+  const data = await dbQuery('profiles', 'order=full_name.asc&select=*');
   allMembers = data || [];
   populateMemberSelects();
 }

@@ -1295,7 +1295,7 @@ tbody tr:hover { background: var(--surface2); }
     <div id="detail-pinjaman-content"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
-      <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="doApprovePinjaman()">Setujui & Cairkan</button>
+      <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
       <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="doRejectPinjaman()">Tolak</button>
     </div>
   </div>
@@ -1313,8 +1313,10 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.1-rpc-fix';
+const APP_VERSION = 'v4.2-edge-reset';
 console.log('App loaded:', APP_VERSION);
+// Edge Function URL untuk reset password
+const EDGE_RESET_PW_URL = `${SUPABASE_URL}/functions/v1/reset-member-password`;
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
 // Service key loaded from meta tag (injected at deploy time)
@@ -1769,7 +1771,7 @@ async function loadSimpananHistory() {
   let qParams = 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc&limit=100';
   if (memberId) qParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) qParams += `&member_id=eq.${currentUser.id}`;
-  if (month) { qParams += `&created_at=gte.${month}-01&created_at=lte.${month}-31`; }
+  if (month) { const [y,m] = month.split('-'); const next = m==='12'?`${+y+1}-01`:`${y}-${String(+m+1).padStart(2,'0')}`; qParams += `&created_at=gte.${month}-01&created_at=lt.${next}-01`; }
   const data = await dbQuery('savings', qParams);
   const el = document.getElementById('simpanan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada transaksi</div></div>'; return; }
@@ -2187,7 +2189,7 @@ async function loadCicilanHistory() {
   let cihParams = 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=100';
   if (memberId) cihParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) cihParams += `&member_id=eq.${currentUser.id}`;
-  if (month) { cihParams += `&created_at=gte.${month}-01&created_at=lte.${month}-31`; }
+  if (month) { const [y,m] = month.split('-'); const next = m==='12'?`${+y+1}-01`:`${y}-${String(+m+1).padStart(2,'0')}`; cihParams += `&created_at=gte.${month}-01&created_at=lt.${next}-01`; }
   const data = await dbQuery('loan_payments', cihParams);
   const el = document.getElementById('cicilan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat cicilan</div></div>'; return; }
@@ -2591,51 +2593,56 @@ async function doResetPassword() {
   const confirmPw = document.getElementById('reset-pw-confirm').value;
   const reason = document.getElementById('reset-pw-reason').value.trim();
   const alertEl = document.getElementById('reset-pw-alert');
+  const btn = document.getElementById('reset-pw-btn');
   alertEl.style.display = 'none';
 
   if (!newPw || newPw.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
   if (newPw !== confirmPw) { alertEl.textContent = 'Password tidak cocok.'; alertEl.style.display = 'block'; return; }
   if (!reason) { alertEl.textContent = 'Alasan reset wajib diisi.'; alertEl.style.display = 'block'; return; }
 
-  // Use RPC function to reset password
-  const pwRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_user_password`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + authToken
-    },
-    body: JSON.stringify({ user_id: memberId, new_password: newPw })
-  });
+  // Disable button saat loading
+  const origText = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Memproses...';
 
-  if (!pwRes.ok) {
-    const err = await pwRes.json();
-    alertEl.textContent = 'Gagal reset password: ' + (err.message || JSON.stringify(err));
-    alertEl.style.display = 'block'; return;
+  try {
+    // ── Panggil Edge Function (bukan RPC — RPC gagal karena Argon2) ──────────
+    const res = await fetch(EDGE_RESET_PW_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify({ member_id: memberId, new_password: newPw, reason })
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      alertEl.textContent = 'Gagal: ' + (result.message || 'Error tidak diketahui');
+      alertEl.style.display = 'block'; return;
+    }
+
+    // Edge Function sudah handle: clear pending_password, reset failed_attempts, log adjustments
+    // Jika unlock: tambahan update status
+    if (resetPwIsUnlock) {
+      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'active', failed_attempts: 0 })
+      });
+    }
+
+    showToast(resetPwIsUnlock ? '🔓 Akun di-unlock & password langsung aktif ✓' : '🔑 Password berhasil direset ✓');
+    closeModal('modal-reset-password');
+    loadAnggota();
+
+  } catch (e) {
+    alertEl.textContent = 'Error: ' + e.message;
+    alertEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = origText;
   }
-
-  // Update profile: unlock if needed, clear pending password
-  const profileUpdate = resetPwIsUnlock
-    ? { status: 'active', failed_attempts: 0, pending_password: null }
-    : { pending_password: null };
-
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify(profileUpdate)
-  });
-
-  // Log
-  const unlockActionType = resetPwIsUnlock ? 'UNLOCK AKUN' : 'RESET PASSWORD';
-  await dbInsert('adjustments', {
-    member_id: memberId, type: 'savings', value_before: 0, value_after: 0, difference: 0,
-    reason: `[${unlockActionType}] Alasan: ${reason}`,
-    admin_id: currentUser.id
-  });
-
-  showToast(resetPwIsUnlock ? '🔓 Akun di-unlock & password langsung aktif ✓' : '🔑 Password langsung direset ✓');
-  closeModal('modal-reset-password');
-  loadAnggota();
 }
 
 async function lockMemberAccount(memberId, memberName) {
@@ -3014,42 +3021,39 @@ async function adminResetMemberPassword() {
   if (!reason) { showToast('Alasan reset wajib diisi'); return; }
 
   const memberName = allMembers.find(m => m.id === memberId)?.full_name || memberId;
+  const btn = document.querySelector('[onclick="adminResetMemberPassword()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
 
-  // Use DB function to reset password (bypasses CORS restriction)
-  const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_user_password`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + authToken
-    },
-    body: JSON.stringify({ user_id: memberId, new_password: newPw })
-  });
+  try {
+    // ── Panggil Edge Function (bukan RPC) ─────────────────────────────────
+    const res = await fetch(EDGE_RESET_PW_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + authToken
+      },
+      body: JSON.stringify({ member_id: memberId, new_password: newPw, reason })
+    });
 
-  if (!rpcRes.ok) {
-    const err = await rpcRes.json();
-    showToast('Gagal: ' + (err.message || JSON.stringify(err)));
-    return;
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      showToast('Gagal: ' + (result.message || 'Error tidak diketahui'));
+      return;
+    }
+
+    // Edge Function sudah handle: clear pending_password, reset failed_attempts, log
+    showToast(`✅ Password ${memberName} berhasil direset. Langsung berlaku sekarang.`);
+    document.getElementById('profil-reset-pw-new').value = '';
+    document.getElementById('profil-reset-pw-confirm').value = '';
+    document.getElementById('profil-reset-reason').value = '';
+
+  } catch (e) {
+    showToast('Error: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Reset Password Anggota'; }
   }
-
-  // Clear pending password & reset failed attempts
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pending_password: null, failed_attempts: 0 })
-  });
-
-  // Log
-  await dbInsert('adjustments', {
-    member_id: memberId, type: 'savings', value_before: 0, value_after: 0, difference: 0,
-    reason: `[RESET PASSWORD] ${memberName} | Alasan: ${reason}`,
-    admin_id: currentUser.id
-  });
-
-  showToast(`✅ Password ${memberName} berhasil direset. Langsung berlaku sekarang.`);
-  document.getElementById('profil-reset-pw-new').value = '';
-  document.getElementById('profil-reset-pw-confirm').value = '';
-  document.getElementById('profil-reset-reason').value = '';
 }
 
 // INIT

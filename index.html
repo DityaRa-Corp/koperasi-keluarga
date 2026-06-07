@@ -1313,7 +1313,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.0-rpc';
+const APP_VERSION = 'v4.1-rpc-fix';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -2597,55 +2597,7 @@ async function doResetPassword() {
   if (newPw !== confirmPw) { alertEl.textContent = 'Password tidak cocok.'; alertEl.style.display = 'block'; return; }
   if (!reason) { alertEl.textContent = 'Alasan reset wajib diisi.'; alertEl.style.display = 'block'; return; }
 
-  // Get member's auth user id to reset password via admin API
-  // We use Supabase admin endpoint with service role - but we only have anon key
-  // Solution: use the user's own update (admin impersonation not available on free tier)
-  // Alternative: Store new password request in a special table, but that's insecure
-  // Best approach for free tier: Use Supabase password recovery flow
-  // For now: Update via admin REST with our auth token (works if admin has sufficient rights)
-
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${memberId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + authToken
-    },
-    body: JSON.stringify({ password: newPw })
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    // Fallback: try to update password through profiles note system
-    // Since admin API requires service role, we log it and admin must do manually
-    alertEl.textContent = 'Reset via API memerlukan service role key. Lihat catatan di bawah.';
-    alertEl.style.display = 'block';
-
-    // Still log the intent
-    await dbInsert('adjustments', {
-      member_id: memberId, type: 'savings', value_before: 0, value_after: 0, difference: 0,
-      reason: `[${resetPwIsUnlock ? 'UNLOCK AKUN' : 'RESET PASSWORD'}] Alasan: ${reason} | Status: Perlu reset manual via Supabase Dashboard`,
-      admin_id: currentUser.id
-    });
-    if (resetPwIsUnlock) {
-      await dbUpdate('profiles', `id=eq.${memberId}`, { status: 'active' });
-      clearFailedAttemptsById(memberId);
-      showToast('Akun berhasil di-unlock. Reset password perlu dilakukan manual di Supabase.');
-      closeModal('modal-reset-password');
-      loadAnggota();
-    }
-    return;
-  }
-
-  // Success - log it
-  const actionType = resetPwIsUnlock ? 'UNLOCK AKUN' : 'RESET PASSWORD';
-  await dbInsert('adjustments', {
-    member_id: memberId, type: 'savings', value_before: 0, value_after: 0, difference: 0,
-    reason: `[${actionType}] Alasan: ${reason}`,
-    admin_id: currentUser.id
-  });
-
-  // Use DB function to reset password
+  // Use RPC function to reset password
   const pwRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/reset_user_password`, {
     method: 'POST',
     headers: {
@@ -2662,7 +2614,7 @@ async function doResetPassword() {
     alertEl.style.display = 'block'; return;
   }
 
-  // Update profile status
+  // Update profile: unlock if needed, clear pending password
   const profileUpdate = resetPwIsUnlock
     ? { status: 'active', failed_attempts: 0, pending_password: null }
     : { pending_password: null };
@@ -2686,15 +2638,6 @@ async function doResetPassword() {
   loadAnggota();
 }
 
-async function clearFailedAttemptsById(memberId) {
-  // Clear all failed attempt keys for this user (search by profile)
-  const keys = Object.keys(localStorage).filter(k => k.startsWith('kk_fail_'));
-  // We can't map memberId to email directly from client, so clear all
-  // (safe because they'll just need to login again)
-  // Admin can also manually clear by telling the user
-}
-
-// Lock account after 5 failed attempts (called from anggota management)
 async function lockMemberAccount(memberId, memberName) {
   await dbUpdate('profiles', `id=eq.${memberId}`, { status: 'locked' });
   await dbInsert('adjustments', {

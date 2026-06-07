@@ -1541,7 +1541,7 @@ async function doLogin() {
     // Step 2: Try pending_password first (admin-set new password)
     let loginResult = null;
     let usedPendingPw = false;
-    if (profile.pending_password) {
+    if (false && profile.pending_password) {
       try {
         const pendingPw = atob(profile.pending_password).split('::')[0];
         if (pendingPw === pw) {

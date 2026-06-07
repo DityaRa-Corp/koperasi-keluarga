@@ -1662,10 +1662,7 @@ async function loadDashboard() {
     const myLoan = activeLoans.find(l => l.member_id === currentUser.id);
     document.getElementById('my-simpanan').textContent = fmt(mySavings);
     document.getElementById('my-pinjaman').textContent = myLoan ? fmt(myLoan.remaining_amount) : 'Tidak ada';
-    // Hide total stats for members - show only personal stats
-    document.getElementById('stat-simpanan').textContent = fmt(mySavings);
-    document.getElementById('stat-pinjaman').textContent = myLoan ? fmt(myLoan.remaining_amount) : fmt(0);
-    document.getElementById('stat-tunggak').textContent = myLoan && new Date(myLoan.next_due_date) < new Date() ? '1 pinjaman' : '0 pinjaman';
+    // Stat cards (total koperasi) tetap tampil untuk semua user
   }
 
   // Recent transactions — filter by member jika bukan admin

@@ -1668,9 +1668,10 @@ async function loadDashboard() {
     document.getElementById('stat-tunggak').textContent = myLoan && new Date(myLoan.next_due_date) < new Date() ? '1 pinjaman' : '0 pinjaman';
   }
 
-  // Recent transactions
-  const recent = (savings || []).slice(0, 8);
-  const recentPayments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=5');
+  // Recent transactions — filter by member jika bukan admin
+  const recentFilter = isAdmin() ? '' : `&member_id=eq.${currentUser.id}`;
+  const recent = isAdmin() ? (savings || []).slice(0, 8) : (savings || []).filter(s => s.member_id === currentUser.id).slice(0, 8);
+  const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=5${recentFilter}`);
   const combined = [
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
     ...((recentPayments || []).map(p => ({ ...p, kind: 'payment' })))
@@ -2499,6 +2500,16 @@ async function doTambahAnggota() {
       role: role === 'admin' ? 'admin' : 'member',
       username: username,
       email_ref: email
+    });
+    // Auto-confirm email via service key — tanpa ini user tidak bisa login
+    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${newUserId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY
+      },
+      body: JSON.stringify({ email_confirm: true })
     });
   }
   showToast('Anggota berhasil ditambahkan ✓');

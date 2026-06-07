@@ -1316,7 +1316,7 @@ tbody tr:hover { background: var(--surface2); }
 const APP_VERSION = 'v4.2-edge-reset';
 console.log('App loaded:', APP_VERSION);
 // Edge Function URL untuk reset password
-const EDGE_RESET_PW_URL = `${SUPABASE_URL}/functions/v1/reset-member-password`;
+
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
 // Service key loaded from meta tag (injected at deploy time)
@@ -1340,6 +1340,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 // Auth token storage
 let authToken = null;
+const EDGE_RESET_PW_URL = SUPABASE_URL + `/functions/v1/reset-member-password`;
 
 function jwtDecode(token) {
   try {

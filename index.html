@@ -1141,18 +1141,12 @@ tbody tr:hover { background: var(--surface2); }
         <div class="form-hint">Huruf kecil, angka, tanpa spasi</div>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">No. HP</label>
-        <input class="form-input" type="tel" id="edit-anggota-phone" placeholder="08xxxxxxxxxx">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Role</label>
-        <select class="form-input form-select" id="edit-anggota-role">
-          <option value="member">Anggota</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
+    <div class="form-group">
+      <label class="form-label">Role</label>
+      <select class="form-input form-select" id="edit-anggota-role">
+        <option value="member">Anggota</option>
+        <option value="admin">Admin</option>
+      </select>
     </div>
     <div class="form-group">
       <label class="form-label">Alasan Perubahan <span style="color:var(--red)">*</span></label>
@@ -1172,7 +1166,7 @@ tbody tr:hover { background: var(--surface2); }
     <div class="modal-title" id="anggota-modal-title">Tambah Anggota</div>
     <div class="modal-sub">Buat akun login baru untuk anggota</div>
     <div class="form-group">
-      <label class="form-label">Nama Lengkap</label>
+      <label class="form-label">Nama Lengkap <span style="color:var(--red)">*</span></label>
       <input class="form-input" type="text" id="anggota-nama" placeholder="Nama lengkap anggota">
     </div>
     <div class="form-row">
@@ -1182,27 +1176,16 @@ tbody tr:hover { background: var(--surface2); }
         <div class="form-hint">Huruf kecil, angka, tanpa spasi</div>
       </div>
       <div class="form-group">
-        <label class="form-label">No. HP</label>
-        <input class="form-input" type="tel" id="anggota-phone" placeholder="08xxxxxxxxxx">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Email (untuk sistem) <span style="color:var(--red)">*</span></label>
-      <input class="form-input" type="email" id="anggota-email" placeholder="email@contoh.com">
-      <div class="form-hint">Email digunakan sistem, anggota login pakai username</div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" type="password" id="anggota-password" placeholder="Min. 6 karakter">
-      </div>
-      <div class="form-group">
         <label class="form-label">Role</label>
         <select class="form-input form-select" id="anggota-role">
           <option value="member">Anggota</option>
           <option value="admin">Admin</option>
         </select>
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="password" id="anggota-password" placeholder="Min. 6 karakter">
     </div>
     <div id="anggota-modal-alert" class="alert alert-error"></div>
     <div class="modal-actions">
@@ -2456,10 +2439,11 @@ function renderAnggotaTable(data) {
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
       <td style="display:flex;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.phone||''}','${a.role}','${a.username||''}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.role}','${a.username||''}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',false)" title="Reset Password">🔑</button>
           ${a.id !== currentUser.id ? `
             ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
+            <button class="btn btn-danger btn-sm" onclick="hapusAnggota('${a.id}','${a.full_name}')">Hapus</button>
           ` : '<span style="color:var(--text3);font-size:12px">Akun ini</span>'}
         </div>
       </td>
@@ -2470,54 +2454,55 @@ function renderAnggotaTable(data) {
 async function doTambahAnggota() {
   const nama = document.getElementById('anggota-nama').value.trim();
   const username = document.getElementById('anggota-username').value.trim().toLowerCase();
-  const email = document.getElementById('anggota-email').value.trim();
-  const phone = document.getElementById('anggota-phone').value.trim();
   const password = document.getElementById('anggota-password').value;
   const role = document.getElementById('anggota-role').value;
   const alertEl = document.getElementById('anggota-modal-alert');
   alertEl.style.display = 'none';
-  if (!nama || !username || !email || !password) { alertEl.textContent = 'Nama, username, email, dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
+
+  if (!nama || !username || !password) { alertEl.textContent = 'Nama, username, dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
   if (!/^[a-z0-9_]+$/.test(username)) { alertEl.textContent = 'Username hanya boleh huruf kecil, angka, dan underscore.'; alertEl.style.display = 'block'; return; }
   if (password.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
-  // Check username uniqueness
+
+  // Cek username unik
   const existingUser = await dbQuery('profiles', `username=eq.${username}&select=id&limit=1`);
   if (existingUser && existingUser.length > 0) { alertEl.textContent = 'Username sudah digunakan, pilih username lain.'; alertEl.style.display = 'block'; return; }
-  // Use REST API to sign up
+
+  // Generate email dummy dari username (tidak perlu valid, confirm email dimatikan)
+  const dummyEmail = `${username}@koperasi.internal`;
+
+  // Signup ke Supabase Auth
   const signupRes = await fetch(SUPABASE_URL + '/auth/v1/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
-    body: JSON.stringify({ email, password, data: { full_name: nama, phone, role } })
+    body: JSON.stringify({ email: dummyEmail, password, data: { full_name: nama, role } })
   });
   const signupData = await signupRes.json();
   if (!signupRes.ok || signupData.error) { alertEl.textContent = 'Gagal: ' + (signupData.error?.message || signupData.msg || JSON.stringify(signupData)); alertEl.style.display = 'block'; return; }
-  // Update profile with username, role, and email_ref
+
   const newUserId = signupData.id || signupData.user?.id;
   if (newUserId) {
-    await dbUpdate('profiles', `id=eq.${newUserId}`, { 
+    // Update profile: username, role, email_ref
+    await dbUpdate('profiles', `id=eq.${newUserId}`, {
       role: role === 'admin' ? 'admin' : 'member',
-      username: username,
-      email_ref: email
+      username,
+      email_ref: dummyEmail
     });
-    // Auto-confirm email via service key — tanpa ini user tidak bisa login
+    // Auto-confirm email via Admin API agar bisa langsung login
     await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${newUserId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY
-      },
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY },
       body: JSON.stringify({ email_confirm: true })
     });
   }
+
   showToast('Anggota berhasil ditambahkan ✓');
   closeModal('modal-tambah-anggota');
   document.getElementById('anggota-nama').value = '';
   document.getElementById('anggota-username').value = '';
-  document.getElementById('anggota-email').value = '';
-  document.getElementById('anggota-phone').value = '';
   document.getElementById('anggota-password').value = '';
   await loadAllMembers();
   loadAnggota();
+}
 }
 
 // ── RESET PASSWORD & UNLOCK ──
@@ -2625,12 +2610,11 @@ async function lockMemberAccount(memberId, memberName) {
 // ── EDIT ANGGOTA ──
 let editAnggotaOriginal = {};
 
-function openEditAnggota(id, nama, phone, role, username) {
-  editAnggotaOriginal = { nama, phone, role, username };
+function openEditAnggota(id, nama, role, username) {
+  editAnggotaOriginal = { nama, role, username };
   document.getElementById('edit-anggota-id').value = id;
   document.getElementById('edit-anggota-nama').value = nama;
   document.getElementById('edit-anggota-username').value = username || '';
-  document.getElementById('edit-anggota-phone').value = phone;
   document.getElementById('edit-anggota-role').value = role;
   document.getElementById('edit-anggota-reason').value = '';
   document.getElementById('edit-anggota-alert').style.display = 'none';
@@ -2641,7 +2625,6 @@ async function doEditAnggota() {
   const id = document.getElementById('edit-anggota-id').value;
   const nama = document.getElementById('edit-anggota-nama').value.trim();
   const username = document.getElementById('edit-anggota-username').value.trim().toLowerCase();
-  const phone = document.getElementById('edit-anggota-phone').value.trim();
   const role = document.getElementById('edit-anggota-role').value;
   const reason = document.getElementById('edit-anggota-reason').value.trim();
   const alertEl = document.getElementById('edit-anggota-alert');
@@ -2671,7 +2654,7 @@ async function doEditAnggota() {
   }
 
   // Update profile
-  const updateData = { full_name: nama, phone, role };
+  const updateData = { full_name: nama, role };
   if (username) updateData.username = username;
   const { error } = await dbUpdate('profiles', `id=eq.${id}`, updateData);
   if (error) { alertEl.textContent = 'Gagal: ' + JSON.stringify(error); alertEl.style.display = 'block'; return; }
@@ -2691,6 +2674,50 @@ async function doEditAnggota() {
   closeModal('modal-edit-anggota');
   await loadAllMembers();
   loadAnggota();
+}
+
+async function hapusAnggota(id, nama) {
+  // Cek apakah punya pinjaman aktif
+  const activeLoan = await dbQuery('loans', `member_id=eq.${id}&status=eq.active&select=id&limit=1`);
+  if (activeLoan && activeLoan.length > 0) {
+    showToast(`❌ ${nama} masih punya pinjaman aktif. Lunasi dulu sebelum menghapus.`);
+    return;
+  }
+  // Cek apakah punya pinjaman belum diproses (pending)
+  const pendingLoan = await dbQuery('loans', `member_id=eq.${id}&status=eq.pending&select=id&limit=1`);
+  if (pendingLoan && pendingLoan.length > 0) {
+    showToast(`❌ ${nama} masih punya pengajuan pinjaman yang belum diproses.`);
+    return;
+  }
+  // Konfirmasi hapus
+  if (!confirm(`Hapus anggota "${nama}"?\n\nSemua data simpanan dan riwayat transaksinya juga akan dihapus.\nTindakan ini TIDAK BISA dibatalkan.`)) return;
+
+  try {
+    // Hapus data di tabel-tabel terkait dulu
+    await fetch(`${SUPABASE_URL}/rest/v1/adjustments?member_id=eq.${id}`, {
+      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/savings?member_id=eq.${id}`, {
+      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/loan_payments?member_id=eq.${id}`, {
+      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    await fetch(`${SUPABASE_URL}/rest/v1/loans?member_id=eq.${id}`, {
+      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+    // Hapus dari auth.users via Admin API
+    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY }
+    });
+    // profiles akan terhapus otomatis karena CASCADE dari auth.users
+    showToast(`✅ Anggota "${nama}" berhasil dihapus`);
+    await loadAllMembers();
+    loadAnggota();
+  } catch(e) {
+    showToast('Gagal menghapus: ' + e.message);
+  }
 }
 
 async function loadAnggotaEditLog() {

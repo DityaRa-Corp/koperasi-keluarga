@@ -3075,7 +3075,6 @@ async function doEditAnggota() {
   const changes = [];
   if (nama !== editAnggotaOriginal.nama) changes.push(`Nama: "${editAnggotaOriginal.nama}" → "${nama}"`);
   if (username && username !== editAnggotaOriginal.username) changes.push(`Username: "${editAnggotaOriginal.username}" → "${username}"`);
-  if (phone !== editAnggotaOriginal.phone) changes.push(`HP: "${editAnggotaOriginal.phone}" → "${phone}"`);
   if (role !== editAnggotaOriginal.role) changes.push(`Role: "${editAnggotaOriginal.role}" → "${role}"`);
 
   if (changes.length === 0) {

@@ -682,6 +682,13 @@ tbody tr:hover { background: var(--surface2); }
         </button>
       </div>
       <div class="nav-section">
+        <div class="nav-section-label">Keluarga</div>
+        <button class="nav-item" onclick="showPage('event')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+          Event
+        </button>
+      </div>
+      <div class="nav-section">
         <div class="nav-section-label">Akun</div>
         <button class="nav-item" onclick="showPage('profil')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -706,6 +713,9 @@ tbody tr:hover { background: var(--surface2); }
     </nav>
 
     <div class="sidebar-footer">
+      <div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0 8px;line-height:1.4">
+        Developed by<br><span style="font-weight:600;color:var(--text2)">Aditya Agustian</span>
+      </div>
       <button class="btn btn-ghost btn-full btn-sm" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Keluar
@@ -774,6 +784,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="stats-grid" id="stats-grid">
           <div class="card"><div class="card-title">Total Simpanan Anggota</div><div class="card-value green" id="stat-simpanan">-</div><div class="card-sub">Saldo tersimpan anggota</div></div>
           <div class="card"><div class="card-title">Keuntungan Bunga</div><div class="card-value green" id="stat-bunga-masuk">-</div><div class="card-sub">Dari cicilan terbayar</div></div>
+          <div class="card"><div class="card-title">Peminjam Aktif</div><div class="card-value amber" id="stat-peminjam-aktif">-</div><div class="card-sub">Sedang meminjam</div></div>
           <div class="card"><div class="card-title">Pinjaman Menunggak</div><div class="card-value red" id="stat-tunggak">-</div><div class="card-sub">Melewati jatuh tempo</div></div>
           <div class="card"><div class="card-title">Anggota Aktif</div><div class="card-value" id="stat-anggota">-</div><div class="card-sub">Terdaftar</div></div>
         </div>
@@ -943,6 +954,26 @@ tbody tr:hover { background: var(--surface2); }
     </div>
 
     <!-- PROFIL & PASSWORD (semua user) -->
+    <!-- EVENT -->
+    <div class="page" id="page-event">
+      <div class="page-header">
+        <div class="page-title">Event Keluarga</div>
+        <div class="page-sub">Rencanakan dan kelola kegiatan bersama keluarga</div>
+        <div class="page-actions">
+          <button class="btn btn-primary admin-only" style="display:none" onclick="openModalBuatEvent()">+ Buat Event</button>
+        </div>
+      </div>
+      <div id="event-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+    </div>
+
+    <!-- DETAIL EVENT -->
+    <div class="page" id="page-event-detail">
+      <div style="margin-bottom:16px">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('event')">← Kembali ke Daftar Event</button>
+      </div>
+      <div id="event-detail-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+    </div>
+
     <div class="page" id="page-profil">
       <div class="page-header">
         <div class="page-title">Profil &amp; Password</div>
@@ -1066,26 +1097,120 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <!-- Tarik Simpanan -->
+<!-- Modal Cairkan Simpanan (menggantikan modal-tarik) -->
 <div class="modal-overlay" id="modal-tarik">
-  <div class="modal">
-    <div class="modal-title">Tarik Simpanan</div>
-    <div class="modal-sub">Catat penarikan simpanan anggota</div>
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">Cairkan Simpanan</div>
+    <div class="modal-sub">Proses pencairan simpanan anggota</div>
     <div class="form-group">
       <label class="form-label">Anggota</label>
-      <select class="form-input form-select" id="tarik-member" onchange="updateTarikSaldo()"></select>
+      <select class="form-input form-select" id="tarik-member" onchange="updateCairanInfo()"></select>
     </div>
-    <div class="form-hint" id="tarik-saldo-info" style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">Pilih anggota untuk melihat saldo</div>
+    <!-- Info saldo anggota -->
+    <div id="cairan-info" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;font-size:13px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Saldo Simpanan</div><div id="cairan-saldo" style="font-weight:700;color:var(--green);font-size:15px">-</div></div>
+        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Porsi Keuntungan</div><div id="cairan-pct" style="font-weight:700;color:var(--accent);font-size:15px">-</div></div>
+        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Total Keuntungan Koperasi</div><div id="cairan-total-bunga" style="font-weight:600;font-size:13px">-</div></div>
+        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Bagian Keuntungan</div><div id="cairan-bagian-bunga" style="font-weight:700;color:var(--amber);font-size:15px">-</div></div>
+      </div>
+    </div>
+    <!-- Opsi cairkan -->
     <div class="form-group">
-      <label class="form-label">Jumlah Penarikan (Rp)</label>
-      <input class="form-input" type="number" id="tarik-amount" placeholder="Contoh: 200000" min="1000">
+      <label class="form-label">Opsi Pencairan</label>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer" id="opsi-tanpa-label">
+          <input type="radio" name="opsi-cairan" value="tanpa" id="opsi-tanpa" checked onchange="updateCairanTotal()" style="margin-top:2px">
+          <div>
+            <div style="font-weight:600;font-size:13px">Simpanan Saja</div>
+            <div style="font-size:12px;color:var(--text2)">Anggota menerima saldo simpanannya saja</div>
+            <div style="font-size:13px;font-weight:700;color:var(--green);margin-top:4px">Total: <span id="total-tanpa-keuntungan">-</span></div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer" id="opsi-dengan-label">
+          <input type="radio" name="opsi-cairan" value="dengan" id="opsi-dengan" onchange="updateCairanTotal()" style="margin-top:2px">
+          <div>
+            <div style="font-weight:600;font-size:13px">Simpanan + Keuntungan Koperasi</div>
+            <div style="font-size:12px;color:var(--text2)">Simpanan + porsi keuntungan berdasarkan persentase simpanan</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px" id="rumus-keuntungan">-</div>
+            <div style="font-size:13px;font-weight:700;color:var(--amber);margin-top:4px">Total: <span id="total-dengan-keuntungan">-</span></div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div id="cairan-alert" class="alert alert-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-tarik')">Batal</button>
+      <button class="btn btn-danger" onclick="doCairanSimpanan()">Proses Pencairan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Buat Event -->
+<div class="modal-overlay" id="modal-buat-event">
+  <div class="modal">
+    <div class="modal-title" id="event-modal-title">Buat Event Baru</div>
+    <div class="modal-sub">Event liburan atau kegiatan keluarga</div>
+    <input type="hidden" id="event-edit-id">
+    <div class="form-group">
+      <label class="form-label">Judul Event <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="text" id="event-judul" placeholder="Contoh: Liburan ke Bali 2026">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tanggal Rencana <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="date" id="event-tanggal">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Deskripsi (opsional)</label>
+      <input class="form-input" type="text" id="event-deskripsi" placeholder="Catatan atau tujuan event">
+    </div>
+    <div id="event-modal-alert" class="alert alert-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-buat-event')">Batal</button>
+      <button class="btn btn-primary" onclick="doSimpanEvent()">Simpan Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah Item Event -->
+<div class="modal-overlay" id="modal-item-event">
+  <div class="modal">
+    <div class="modal-title">Tambah Rincian Biaya</div>
+    <div class="modal-sub" id="item-event-sub">Item pengeluaran untuk event</div>
+    <input type="hidden" id="item-event-id">
+    <input type="hidden" id="item-event-event-id">
+    <div class="form-group">
+      <label class="form-label">Nama Item <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="text" id="item-event-nama" placeholder="Contoh: Transport, Konsumsi, Hotel">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Estimasi Biaya (Rp) <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="text" inputmode="numeric" id="item-event-biaya" placeholder="Contoh: 500000">
     </div>
     <div class="form-group">
       <label class="form-label">Keterangan (opsional)</label>
-      <input class="form-input" type="text" id="tarik-note" placeholder="Alasan penarikan">
+      <input class="form-input" type="text" id="item-event-ket" placeholder="Detail tambahan">
+    </div>
+    <div id="item-event-alert" class="alert alert-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-item-event')">Batal</button>
+      <button class="btn btn-primary" onclick="doSimpanItemEvent()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Konfirmasi Finalisasi Event -->
+<div class="modal-overlay" id="modal-final-event">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">⚠️ Konfirmasi Finalisasi Event</div>
+    <div class="modal-sub">Pastikan semua rincian sudah benar</div>
+    <div id="final-event-preview" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:13px"></div>
+    <div style="background:var(--red-bg);border:1px solid #fecaca;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:var(--red-text)">
+      <strong>⛔ Perhatian:</strong> Setelah difinalkan, rincian <strong>tidak bisa diubah</strong> dan saldo kas koperasi akan <strong>terpotong otomatis</strong>. Tindakan ini <strong>tidak bisa dibatalkan</strong>.
     </div>
     <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modal-tarik')">Batal</button>
-      <button class="btn btn-danger" onclick="doTarik()">Catat Penarikan</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-final-event')">Batal</button>
+      <button class="btn btn-danger" onclick="doFinalEvent()">Ya, Finalkan Event</button>
     </div>
   </div>
 </div>
@@ -1123,10 +1248,6 @@ tbody tr:hover { background: var(--surface2); }
         <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Total Tagihan</div><div id="sim-total" style="font-weight:600">-</div></div>
         <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Cicilan/periode</div><div id="sim-cicilan" style="font-weight:700;color:var(--accent)">-</div></div>
       </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Keterangan (opsional)</label>
-      <input class="form-input" type="text" id="ajukan-note" placeholder="Keperluan pinjaman">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-ajukan')">Batal</button>
@@ -1309,10 +1430,6 @@ tbody tr:hover { background: var(--surface2); }
       <label class="form-label">Bunga per Cicilan (Rp) <span style="color:var(--text3);font-weight:400;font-size:12px">— opsional, 0 = tanpa bunga</span></label>
       <input class="form-input" type="number" id="approve-bunga-nominal" min="0" value="0" placeholder="Contoh: 50000">
       <div class="form-hint">Nominal bunga tetap per cicilan. Kosongkan atau isi 0 untuk tanpa bunga.</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Catatan Admin (opsional)</label>
-      <input class="form-input" type="text" id="approve-note" placeholder="Misal: Disetujui sebagian">
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-approve-pinjaman')">Batal</button>
@@ -1527,6 +1644,7 @@ function showPage(name) {
   if (name === 'adjustment') loadAdjustment();
   if (name === 'pengaturan') loadPengaturan();
   if (name === 'profil') loadProfil();
+  if (name === 'event') loadEvent();
 }
 
 function setRoleUI() {
@@ -1645,10 +1763,8 @@ async function doLogout() {
   localStorage.removeItem('kk_auth_username');
   try { await db.auth.signOut(); } catch(e) {}
   // Clear semua form agar tidak ada data draft saat ganti akun
-  ['ajukan-pokok','ajukan-tenor','ajukan-note',
-   'cicilan-amount','cicilan-note',
+  ['ajukan-pokok','ajukan-tenor',
    'setor-amount','setor-note',
-   'tarik-amount','tarik-note',
    'anggota-nama','anggota-username','anggota-password'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   // Tutup semua modal yang mungkin terbuka
@@ -1721,6 +1837,7 @@ async function loadDashboard() {
   document.getElementById('stat-simpanan').textContent = fmt(totalSimpanan);
   document.getElementById('stat-kas').textContent = fmt(totalKas);
   document.getElementById('stat-bunga-masuk').textContent = fmt(totalBungaMasuk);
+  document.getElementById('stat-peminjam-aktif').textContent = activeLoans.length + ' orang';
   // Kas dalam vs luar
   const kasDiluar = activeLoans.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const kasDalam = Math.max(0, totalKas - kasDiluar);
@@ -1846,36 +1963,6 @@ async function doSetor() {
   loadSimpanan(); loadDashboard();
 }
 
-async function updateTarikSaldo() {
-  const memberId = document.getElementById('tarik-member').value;
-  if (!memberId) return;
-  const bal = await getMemberBalance(memberId);
-  document.getElementById('tarik-saldo-info').innerHTML = `Saldo saat ini: <strong style="color:var(--green)">${fmt(bal)}</strong>`;
-}
-
-async function doTarik() {
-  const memberId = document.getElementById('tarik-member').value;
-  const amount = parseInt(document.getElementById('tarik-amount').value);
-  const note = document.getElementById('tarik-note').value;
-  if (!memberId || !amount) { showToast('Isi semua field'); return; }
-
-  // Rule: Tidak bisa tarik simpanan jika masih ada pinjaman aktif
-  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
-  if (activeLoans && activeLoans.length > 0) {
-    showToast('❌ Tidak bisa menarik simpanan — masih ada pinjaman aktif');
-    return;
-  }
-
-  const bal = await getMemberBalance(memberId);
-  if (amount > bal) { showToast('Jumlah penarikan melebihi saldo (' + fmt(bal) + ')'); return; }
-  const { error } = await dbInsert('savings', { member_id: memberId, type: 'withdrawal', amount, balance_after: bal - amount, recorded_by: currentUser.id, note });
-  if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
-  showToast('Penarikan berhasil dicatat ✓');
-  closeModal('modal-tarik');
-  document.getElementById('tarik-amount').value = '';
-  loadSimpanan(); loadDashboard();
-}
-
 // PINJAMAN
 async function loadPinjaman() {
   let qParams = 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc';
@@ -1980,24 +2067,34 @@ async function doAjukanPinjaman() {
     return;
   }
 
-  // Rule 4: Masa tunggu 1 bulan setelah pinjaman terakhir lunas
-  const lastCompleted = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=disbursed_at&order=disbursed_at.desc&limit=1`);
-  if (lastCompleted && lastCompleted.length > 0 && lastCompleted[0].disbursed_at) {
-    // Check if there are payments for this loan and get last payment date
-    const lastLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=id&order=disbursed_at.desc&limit=1`);
-    if (lastLoan && lastLoan.length > 0) {
-      const lastPayments = await dbQuery('loan_payments', `loan_id=eq.${lastLoan[0].id}&select=created_at&order=created_at.desc&limit=1`);
-      if (lastPayments && lastPayments.length > 0) {
-        const lastPayDate = new Date(lastPayments[0].created_at);
-        const oneMonthLater = new Date(lastPayDate);
-        oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
-        if (new Date() < oneMonthLater) {
-          const waitUntil = oneMonthLater.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
-          showToast('❌ Masa tunggu 1 bulan setelah pinjaman lunas. Bisa mengajukan lagi mulai ' + waitUntil);
-          return;
+  // Rule 4: Masa tunggu 1 bulan setelah pinjaman terakhir lunas (bisa di-bypass admin)
+  const memberProfile = await dbQuery('profiles', `id=eq.${memberId}&select=bypass_waiting&limit=1`);
+  const hasBypass = memberProfile?.[0]?.bypass_waiting === true;
+  if (!hasBypass) {
+    const lastCompleted = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=disbursed_at&order=disbursed_at.desc&limit=1`);
+    if (lastCompleted && lastCompleted.length > 0 && lastCompleted[0].disbursed_at) {
+      const lastLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=id&order=disbursed_at.desc&limit=1`);
+      if (lastLoan && lastLoan.length > 0) {
+        const lastPayments = await dbQuery('loan_payments', `loan_id=eq.${lastLoan[0].id}&select=created_at&order=created_at.desc&limit=1`);
+        if (lastPayments && lastPayments.length > 0) {
+          const lastPayDate = new Date(lastPayments[0].created_at);
+          const oneMonthLater = new Date(lastPayDate);
+          oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+          if (new Date() < oneMonthLater) {
+            const waitUntil = oneMonthLater.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
+            showToast('❌ Masa tunggu 1 bulan setelah pinjaman lunas. Bisa mengajukan lagi mulai ' + waitUntil);
+            return;
+          }
         }
       }
     }
+  } else {
+    // Reset bypass flag setelah dipakai
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
+      method: 'PATCH',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bypass_waiting: false })
+    });
   }
 
   await getBunga();
@@ -2764,12 +2861,11 @@ function renderAnggotaTable(data) {
   const el = document.getElementById('anggota-list');
   if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada anggota ditemukan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>No</th><th>Nama</th><th>Username</th><th>No. HP</th><th>Role</th><th>Status</th><th>Bergabung</th><th>Aksi</th></tr></thead>
+    <thead><tr><th>No</th><th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Bergabung</th><th>Aksi</th></tr></thead>
     <tbody>${data.map((a, i) => `<tr>
       <td>${i+1}</td>
       <td style="font-weight:500">${a.full_name}</td>
       <td><span class="td-mono" style="font-size:12px;color:var(--accent)">${a.username || '-'}</span></td>
-      <td style="color:var(--text2)">${a.phone || '-'}</td>
       <td>${a.role === 'admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Anggota</span>'}</td>
       <td>${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
@@ -2777,6 +2873,7 @@ function renderAnggotaTable(data) {
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.role}','${a.username||''}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',false)" title="Reset Password">🔑</button>
+          <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${a.full_name}')" title="Bypass Masa Tunggu Pinjaman">⏩</button>
           ${a.id !== currentUser.id ? `
             ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
             <button class="btn btn-danger btn-sm" onclick="hapusAnggota('${a.id}','${a.full_name}')">Hapus</button>
@@ -3479,6 +3576,327 @@ function resetIdleTimer() {
     }
   }
 })();
+
+// ══════════════════════════════════════════════════════════════
+// BYPASS MASA TUNGGU
+// ══════════════════════════════════════════════════════════════
+async function bypassMasaTunggu(memberId, memberName) {
+  if (!confirm(`Bypass masa tunggu 1 bulan untuk ${memberName}?\n\nAnggota ini akan bisa mengajukan pinjaman baru segera tanpa menunggu 1 bulan.\n\nLanjutkan?`)) return;
+  await dbInsert('adjustments', {
+    member_id: memberId, type: 'savings',
+    value_before: 0, value_after: 0, difference: 0,
+    reason: `[BYPASS MASA TUNGGU] Diizinkan admin untuk mengajukan pinjaman baru lebih awal`,
+    admin_id: currentUser.id
+  });
+  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
+    method: 'PATCH',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bypass_waiting: true })
+  });
+  showToast(`✅ Masa tunggu ${memberName} berhasil di-bypass. Berlaku untuk 1 kali pengajuan berikutnya.`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// CAIRKAN SIMPANAN
+// ══════════════════════════════════════════════════════════════
+let _cairanTotalSimpanan = 0;
+let _cairanTotalBunga = 0;
+
+async function updateCairanInfo() {
+  const memberId = document.getElementById('tarik-member').value;
+  const infoEl = document.getElementById('cairan-info');
+  if (!memberId) { infoEl.style.display = 'none'; return; }
+  const saldo = await getMemberBalance(memberId);
+  const allSavings = await dbQuery('savings', 'select=member_id,type,amount');
+  const balances = {};
+  (allSavings || []).forEach(s => {
+    if (!balances[s.member_id]) balances[s.member_id] = 0;
+    balances[s.member_id] += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
+  });
+  const totalSimpanan = Object.values(balances).reduce((a,b) => Number(a) + Number(b), 0);
+  const payments = await dbQuery('loan_payments', 'select=interest_component');
+  const totalBunga = (payments || []).reduce((a,p) => a + Number(p.interest_component || 0), 0);
+  const porsi = totalSimpanan > 0 ? saldo / totalSimpanan : 0;
+  const bagianBunga = Math.round(totalBunga * porsi);
+  _cairanTotalSimpanan = totalSimpanan;
+  _cairanTotalBunga = totalBunga;
+  document.getElementById('cairan-saldo').textContent = fmt(saldo);
+  document.getElementById('cairan-pct').textContent = (porsi * 100).toFixed(1) + '%';
+  document.getElementById('cairan-total-bunga').textContent = fmt(totalBunga);
+  document.getElementById('cairan-bagian-bunga').textContent = fmt(bagianBunga);
+  document.getElementById('rumus-keuntungan').textContent =
+    `${fmt(saldo)} ÷ ${fmt(totalSimpanan)} × ${fmt(totalBunga)} = ${fmt(bagianBunga)}`;
+  document.getElementById('total-tanpa-keuntungan').textContent = fmt(saldo);
+  document.getElementById('total-dengan-keuntungan').textContent = fmt(saldo + bagianBunga);
+  infoEl.style.display = 'block';
+}
+
+async function doCairanSimpanan() {
+  const memberId = document.getElementById('tarik-member').value;
+  const opsi = document.querySelector('input[name="opsi-cairan"]:checked')?.value;
+  const alertEl = document.getElementById('cairan-alert');
+  alertEl.style.display = 'none';
+  if (!memberId) { alertEl.textContent = 'Pilih anggota terlebih dahulu'; alertEl.style.display = 'block'; return; }
+  const activeLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
+  if (activeLoan && activeLoan.length > 0) {
+    alertEl.textContent = '❌ Tidak bisa cairkan simpanan — anggota masih punya pinjaman aktif';
+    alertEl.style.display = 'block'; return;
+  }
+  const saldo = await getMemberBalance(memberId);
+  if (saldo <= 0) { alertEl.textContent = 'Saldo simpanan kosong'; alertEl.style.display = 'block'; return; }
+  const porsi = _cairanTotalSimpanan > 0 ? saldo / _cairanTotalSimpanan : 0;
+  const bagianBunga = opsi === 'dengan' ? Math.round(_cairanTotalBunga * porsi) : 0;
+  const totalCairan = saldo + bagianBunga;
+  const konfirmasi = opsi === 'dengan'
+    ? `Cairkan simpanan ${fmt(saldo)} + keuntungan ${fmt(bagianBunga)} = ${fmt(totalCairan)}?`
+    : `Cairkan simpanan ${fmt(saldo)}?`;
+  if (!confirm(konfirmasi)) return;
+  const { error: e1 } = await dbInsert('savings', {
+    member_id: memberId, type: 'withdrawal', amount: saldo,
+    balance_after: 0, recorded_by: currentUser.id,
+    note: opsi === 'dengan' ? 'Pencairan simpanan + keuntungan koperasi' : 'Pencairan simpanan'
+  });
+  if (e1) { alertEl.textContent = 'Gagal: ' + e1.message; alertEl.style.display = 'block'; return; }
+  if (opsi === 'dengan' && bagianBunga > 0) {
+    await dbInsert('adjustments', {
+      member_id: memberId, type: 'savings',
+      value_before: _cairanTotalBunga, value_after: _cairanTotalBunga - bagianBunga,
+      difference: -bagianBunga,
+      reason: `[BAGI KEUNTUNGAN] Porsi ${(porsi*100).toFixed(1)}% dari total bunga ${fmt(_cairanTotalBunga)} = ${fmt(bagianBunga)}`,
+      admin_id: currentUser.id
+    });
+  }
+  showToast(`✅ Pencairan ${fmt(totalCairan)} berhasil diproses`);
+  closeModal('modal-tarik');
+  loadSimpanan(); loadDashboard();
+}
+
+// ══════════════════════════════════════════════════════════════
+// EVENT KELUARGA
+// ══════════════════════════════════════════════════════════════
+let currentEventId = null;
+
+async function loadEvent() {
+  const el = document.getElementById('event-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat...</div>';
+  const events = await dbQuery('events', 'select=*&order=created_at.desc');
+  if (!events || !events.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎉</div><div class="empty-state-title">Belum ada event</div><div class="empty-state-sub">Buat event pertama untuk keluarga</div></div>';
+    return;
+  }
+  const statusBadge = { draft: 'badge-amber', final: 'badge-green', selesai: 'badge-gray' };
+  const statusLabel = { draft: '📝 Draft', final: '✅ Final', selesai: '🏁 Selesai' };
+  el.innerHTML = '<div style="display:grid;gap:14px">' +
+    events.map(e => `<div class="card" style="cursor:pointer" onclick="showEventDetail('${e.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700;margin-bottom:4px">${e.judul}</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${e.deskripsi || ''}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
+            <span>📅 ${fmtDate(e.tanggal)}</span>
+            <span>💰 ${fmt(e.total_biaya || 0)}</span>
+          </div>
+        </div>
+        <span class="badge ${statusBadge[e.status] || 'badge-gray'}">${statusLabel[e.status] || e.status}</span>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+async function showEventDetail(eventId) {
+  currentEventId = eventId;
+  showPage('event-detail');
+  const el = document.getElementById('event-detail-content');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat...</div>';
+  const [evArr, items] = await Promise.all([
+    dbQuery('events', `select=*&id=eq.${eventId}&limit=1`),
+    dbQuery('event_items', `select=*&event_id=eq.${eventId}&order=created_at.asc`)
+  ]);
+  const ev = evArr?.[0];
+  if (!ev) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Event tidak ditemukan</div></div>'; return; }
+  const isDraft = ev.status === 'draft';
+  const statusLabel = { draft: '📝 Draft', final: '✅ Final', selesai: '🏁 Selesai' };
+  const statusBadge = { draft: 'badge-amber', final: 'badge-green', selesai: 'badge-gray' };
+  const totalBiaya = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+  const colSpan = isDraft && isAdmin() ? 4 : 3;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">${ev.judul}</h2>
+        <div style="color:var(--text2);font-size:13px">${ev.deskripsi || ''}</div>
+        <div style="color:var(--text2);font-size:13px;margin-top:4px">📅 ${fmtDate(ev.tanggal)}</div>
+      </div>
+      <span class="badge ${statusBadge[ev.status] || 'badge-gray'}" style="font-size:13px;padding:4px 14px">${statusLabel[ev.status] || ev.status}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+      <div class="card"><div class="card-title">Total Anggaran</div><div class="card-value" style="color:var(--accent)">${fmt(totalBiaya)}</div></div>
+      <div class="card"><div class="card-title">Jumlah Item</div><div class="card-value">${(items||[]).length} item</div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="font-weight:700;font-size:15px">Rincian Biaya</div>
+        ${isDraft && isAdmin() ? `<button class="btn btn-primary btn-sm" onclick="openModalItemEvent('${eventId}')">+ Tambah Item</button>` : ''}
+      </div>
+      ${!items || !items.length
+        ? '<div class="empty-state" style="padding:24px"><div class="empty-state-title">Belum ada rincian biaya</div></div>'
+        : `<div class="table-wrap"><table>
+          <thead><tr><th>Nama Item</th><th>Keterangan</th><th style="text-align:right">Biaya</th>${isDraft && isAdmin() ? '<th></th>' : ''}</tr></thead>
+          <tbody>${(items||[]).map(it =>
+            `<tr><td style="font-weight:500">${it.nama_item}</td><td style="color:var(--text2);font-size:12px">${it.keterangan || '-'}</td>
+            <td class="td-mono" style="text-align:right">${fmt(it.biaya)}</td>
+            ${isDraft && isAdmin() ? `<td><button class="btn btn-ghost btn-sm" onclick="hapusItemEvent('${it.id}','${it.nama_item.replace(/'/g,"\\'")}')">Hapus</button></td>` : ''}</tr>`
+          ).join('')}
+          <tr style="background:var(--surface2);font-weight:700">
+            <td colspan="2">Total</td>
+            <td class="td-mono" style="text-align:right;color:var(--accent)">${fmt(totalBiaya)}</td>
+            ${isDraft && isAdmin() ? '<td></td>' : ''}
+          </tr></tbody>
+        </table></div>`}
+    </div>
+    ${isAdmin() ? `<div style="display:flex;gap:10px;flex-wrap:wrap">
+      ${isDraft
+        ? `<button class="btn btn-ghost btn-sm" onclick="openModalEditEvent('${ev.id}')">✏️ Edit Event</button>
+           ${items && items.length > 0 ? `<button class="btn btn-success" onclick="konfirmasiFinalisasiEvent('${ev.id}')">✅ Finalkan Event</button>` : ''}`
+        : ev.status === 'final'
+          ? `<button class="btn btn-ghost" onclick="tandaiSelesaiEvent('${ev.id}')">🏁 Tandai Selesai</button>`
+          : ''
+      }
+    </div>` : ''}`;
+}
+
+function openModalBuatEvent() {
+  document.getElementById('event-edit-id').value = '';
+  document.getElementById('event-modal-title').textContent = 'Buat Event Baru';
+  ['event-judul','event-tanggal','event-deskripsi'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('event-modal-alert').style.display = 'none';
+  openModal('modal-buat-event');
+}
+
+function openModalEditEvent(id) {
+  dbQuery('events', `id=eq.${id}&select=*&limit=1`).then(arr => {
+    const ev = arr?.[0]; if (!ev) return;
+    document.getElementById('event-edit-id').value = ev.id;
+    document.getElementById('event-modal-title').textContent = 'Edit Event';
+    document.getElementById('event-judul').value = ev.judul;
+    document.getElementById('event-tanggal').value = ev.tanggal;
+    document.getElementById('event-deskripsi').value = ev.deskripsi || '';
+    document.getElementById('event-modal-alert').style.display = 'none';
+    openModal('modal-buat-event');
+  });
+}
+
+async function doSimpanEvent() {
+  const id = document.getElementById('event-edit-id').value;
+  const judul = document.getElementById('event-judul').value.trim();
+  const tanggal = document.getElementById('event-tanggal').value;
+  const deskripsi = document.getElementById('event-deskripsi').value.trim();
+  const alertEl = document.getElementById('event-modal-alert');
+  alertEl.style.display = 'none';
+  if (!judul) { alertEl.textContent = 'Judul event wajib diisi'; alertEl.style.display = 'block'; return; }
+  if (!tanggal) { alertEl.textContent = 'Tanggal rencana wajib diisi'; alertEl.style.display = 'block'; return; }
+  if (id) {
+    const { error } = await dbUpdate('events', `id=eq.${id}`, { judul, tanggal, deskripsi });
+    if (error) { alertEl.textContent = 'Gagal: ' + error.message; alertEl.style.display = 'block'; return; }
+    showToast('Event berhasil diupdate ✓');
+    closeModal('modal-buat-event');
+    showEventDetail(id);
+  } else {
+    const { error } = await dbInsert('events', { judul, tanggal, deskripsi, status: 'draft', total_biaya: 0, created_by: currentUser.id });
+    if (error) { alertEl.textContent = 'Gagal: ' + error.message; alertEl.style.display = 'block'; return; }
+    showToast('Event berhasil dibuat ✓');
+    closeModal('modal-buat-event');
+    loadEvent();
+  }
+}
+
+function openModalItemEvent(eventId) {
+  document.getElementById('item-event-id').value = '';
+  document.getElementById('item-event-event-id').value = eventId;
+  ['item-event-nama','item-event-biaya','item-event-ket'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('item-event-alert').style.display = 'none';
+  openModal('modal-item-event');
+}
+
+async function doSimpanItemEvent() {
+  const eventId = document.getElementById('item-event-event-id').value;
+  const nama = document.getElementById('item-event-nama').value.trim();
+  const biaya = parseInt(document.getElementById('item-event-biaya').value.replace(/[^0-9]/g,'')) || 0;
+  const ket = document.getElementById('item-event-ket').value.trim();
+  const alertEl = document.getElementById('item-event-alert');
+  alertEl.style.display = 'none';
+  if (!nama) { alertEl.textContent = 'Nama item wajib diisi'; alertEl.style.display = 'block'; return; }
+  if (!biaya || biaya < 1000) { alertEl.textContent = 'Biaya minimal Rp 1.000'; alertEl.style.display = 'block'; return; }
+  const { error } = await dbInsert('event_items', { event_id: eventId, nama_item: nama, biaya, keterangan: ket });
+  if (error) { alertEl.textContent = 'Gagal: ' + error.message; alertEl.style.display = 'block'; return; }
+  const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
+  const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+  await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
+  showToast('Rincian berhasil ditambahkan ✓');
+  closeModal('modal-item-event');
+  showEventDetail(eventId);
+}
+
+async function hapusItemEvent(itemId, namaItem) {
+  if (!confirm('Hapus item "' + namaItem + '"?')) return;
+  const item = await dbQuery('event_items', `id=eq.${itemId}&select=event_id&limit=1`);
+  const eventId = item?.[0]?.event_id;
+  await fetch(`${SUPABASE_URL}/rest/v1/event_items?id=eq.${itemId}`, {
+    method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
+  });
+  if (eventId) {
+    const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
+    const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+    await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
+    showEventDetail(eventId);
+  }
+  showToast('Item berhasil dihapus');
+}
+
+async function konfirmasiFinalisasiEvent(eventId) {
+  const [evArr, items] = await Promise.all([
+    dbQuery('events', `id=eq.${eventId}&select=*&limit=1`),
+    dbQuery('event_items', `event_id=eq.${eventId}&select=*&order=created_at.asc`)
+  ]);
+  const ev = evArr?.[0]; if (!ev) return;
+  const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+  document.getElementById('final-event-preview').innerHTML =
+    '<div style="font-weight:700;font-size:15px;margin-bottom:10px">🎉 ' + ev.judul + '</div>' +
+    '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">📅 ' + fmtDate(ev.tanggal) + '</div>' +
+    '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
+    (items||[]).map(it => '<tr><td style="padding:4px 0">' + it.nama_item + '</td><td style="text-align:right;font-weight:600">' + fmt(it.biaya) + '</td></tr>').join('') +
+    '<tr style="border-top:2px solid var(--border);font-weight:700;color:var(--accent)"><td style="padding-top:8px">TOTAL</td><td style="text-align:right;padding-top:8px">' + fmt(total) + '</td></tr>' +
+    '</table>';
+  currentEventId = eventId;
+  openModal('modal-final-event');
+}
+
+async function doFinalEvent() {
+  if (!currentEventId) return;
+  const [evArr, items] = await Promise.all([
+    dbQuery('events', `id=eq.${currentEventId}&select=judul&limit=1`),
+    dbQuery('event_items', `event_id=eq.${currentEventId}&select=biaya`)
+  ]);
+  const judul = evArr?.[0]?.judul || 'Event';
+  const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+  const { error } = await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'final', total_biaya: total });
+  if (error) { showToast('Gagal finalisasi: ' + error.message); return; }
+  await dbInsert('savings', {
+    member_id: currentUser.id, type: 'withdrawal', amount: total,
+    balance_after: 0, recorded_by: currentUser.id, note: '🎉 Event: ' + judul
+  });
+  showToast('✅ Event "' + judul + '" berhasil difinalkan. Kas terpotong ' + fmt(total));
+  closeModal('modal-final-event');
+  showEventDetail(currentEventId);
+  loadDashboard();
+}
+
+async function tandaiSelesaiEvent(eventId) {
+  if (!confirm('Tandai event ini sebagai Selesai?')) return;
+  await dbUpdate('events', `id=eq.${eventId}`, { status: 'selesai' });
+  showToast('Event ditandai Selesai ✓');
+  showEventDetail(eventId);
+}
+
 </script>
 </body>
 </html>

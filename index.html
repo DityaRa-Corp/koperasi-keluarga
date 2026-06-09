@@ -2006,23 +2006,37 @@ async function doAjukanPinjaman() {
   const totalBunga = Math.round(pokok * (currentBunga / 100) * months);
   const totalTagihan = pokok + totalBunga;
   const cicilanPerPeriod = Math.round(totalTagihan / tenor);
-  const { error } = await dbInsert('loans', {
+  const { data: insertData, error } = await dbInsert('loans', {
     member_id: memberId, principal: pokok, interest_rate: currentBunga,
     total_interest: totalBunga, total_amount: totalTagihan,
     installment_type: type, installment_amount: cicilanPerPeriod,
     installment_count: tenor, remaining_amount: totalTagihan, note,
-    status: isAdmin() ? 'active' : 'pending',
-    disbursed_at: isAdmin() ? new Date().toISOString() : null,
-    approved_by: isAdmin() ? currentUser.id : null,
-    next_due_date: isAdmin() ? getNextDueDate(type) : null
+    status: 'pending',
+    disbursed_at: null,
+    approved_by: null,
+    next_due_date: null
   });
   if (error) { showToast('Gagal: ' + error.message); return; }
-  showToast(isAdmin() ? 'Pinjaman berhasil dibuat ✓' : 'Pengajuan berhasil dikirim ✓');
-  closeModal('modal-ajukan');
+
+  if (isAdmin()) {
+    // Admin langsung buka modal approve supaya bisa set bunga nominal
+    showToast('Pengajuan dibuat. Silakan set bunga dan cairkan.');
+    closeModal('modal-ajukan-pinjaman');
+    await loadPinjaman();
+    // Ambil ID pinjaman yang baru dibuat lalu buka approve form
+    const newLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.pending&order=created_at.desc&limit=1&select=id`);
+    if (newLoan && newLoan[0]) {
+      currentLoanId = newLoan[0].id;
+      openApproveForm();
+    }
+  } else {
+    showToast('Pengajuan berhasil dikirim ✓');
+    closeModal('modal-ajukan-pinjaman');
+    loadPinjaman();
+  }
   document.getElementById('ajukan-pokok').value = '';
   document.getElementById('ajukan-tenor').value = '';
   document.getElementById('simulasi-cicilan').style.display = 'none';
-  loadPinjaman(); loadDashboard();
 }
 
 function getNextDueDate(type) {

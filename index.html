@@ -2021,7 +2021,7 @@ async function doAjukanPinjaman() {
   if (isAdmin()) {
     // Admin langsung buka modal approve supaya bisa set bunga nominal
     showToast('Pengajuan dibuat. Silakan set bunga dan cairkan.');
-    closeModal('modal-ajukan-pinjaman');
+    closeModal('modal-ajukan');
     await loadPinjaman();
     // Ambil ID pinjaman yang baru dibuat lalu buka approve form
     const newLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.pending&order=created_at.desc&limit=1&select=id`);
@@ -2031,7 +2031,7 @@ async function doAjukanPinjaman() {
     }
   } else {
     showToast('Pengajuan berhasil dikirim ✓');
-    closeModal('modal-ajukan-pinjaman');
+    closeModal('modal-ajukan');
     loadPinjaman();
   }
   document.getElementById('ajukan-pokok').value = '';

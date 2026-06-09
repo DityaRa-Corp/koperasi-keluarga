@@ -809,7 +809,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-sub">Kelola setoran dan penarikan simpanan anggota</div>
         <div class="page-actions">
           <button class="btn btn-success admin-only" style="display:none" onclick="openModal('modal-setor')">+ Setor</button>
-          <button class="btn btn-danger admin-only" style="display:none" onclick="openModal('modal-tarik')">− Tarik</button>
+          <button class="btn btn-danger admin-only" style="display:none" onclick="openModal('modal-tarik')">💸 Cairkan Simpanan</button>
         </div>
       </div>
       <div class="card" style="margin-bottom:14px">
@@ -3647,7 +3647,7 @@ async function doCairanSimpanan() {
     : `Cairkan simpanan ${fmt(saldo)}?`;
   if (!confirm(konfirmasi)) return;
   const { error: e1 } = await dbInsert('savings', {
-    member_id: memberId, type: 'withdrawal', amount: saldo,
+    member_id: memberId, type: 'withdraw', amount: saldo,
     balance_after: 0, recorded_by: currentUser.id,
     note: opsi === 'dengan' ? 'Pencairan simpanan + keuntungan koperasi' : 'Pencairan simpanan'
   });
@@ -3876,7 +3876,7 @@ async function doFinalEvent() {
   const { error } = await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'final', total_biaya: total });
   if (error) { showToast('Gagal finalisasi: ' + error.message); return; }
   await dbInsert('savings', {
-    member_id: currentUser.id, type: 'withdrawal', amount: total,
+    member_id: currentUser.id, type: 'withdraw', amount: total,
     balance_after: 0, recorded_by: currentUser.id, note: '🎉 Event: ' + judul
   });
   showToast('✅ Event "' + judul + '" berhasil difinalkan. Kas terpotong ' + fmt(total));

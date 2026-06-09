@@ -1060,7 +1060,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="form-group">
       <label class="form-label">Pokok Pinjaman (Rp)</label>
-      <input class="form-input" type="number" id="ajukan-pokok" placeholder="Contoh: 1000000" min="10000" oninput="updateSimulasiCicilan()">
+      <input class="form-input" type="text" inputmode="numeric" id="ajukan-pokok" placeholder="Contoh: 1000000" oninput="updateSimulasiCicilan()">
     </div>
     <div class="form-group">
       <label class="form-label">Jenis Cicilan</label>
@@ -1072,7 +1072,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="form-group">
       <label class="form-label">Jumlah Cicilan (periode)</label>
-      <input class="form-input" type="number" id="ajukan-tenor" placeholder="Contoh: 6" min="1" max="120" oninput="updateSimulasiCicilan()">
+      <input class="form-input" type="text" inputmode="numeric" id="ajukan-tenor" placeholder="Contoh: 6" oninput="updateSimulasiCicilan()">
     </div>
     <div id="simulasi-cicilan" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;font-size:13px">
       <div style="font-weight:600;margin-bottom:8px">Simulasi Cicilan</div>
@@ -1845,13 +1845,13 @@ function switchPinjamanTab(tab, btn) {
 let currentBunga = 2;
 async function getBunga() {
   const data = await dbQuery('interest_settings', 'select=rate&order=updated_at.desc&limit=1');
-  currentBunga = data?.[0]?.rate || 2;
+  currentBunga = data?.[0]?.rate ?? 2;
   return currentBunga;
 }
 
 async function updateSimulasiCicilan() {
-  const pokok = parseInt(document.getElementById('ajukan-pokok').value) || 0;
-  const tenor = parseInt(document.getElementById('ajukan-tenor').value) || 0;
+  const pokok = parseInt(document.getElementById('ajukan-pokok').value.replace(/[^0-9]/g, '')) || 0;
+  const tenor = parseInt(document.getElementById('ajukan-tenor').value.replace(/[^0-9]/g, '')) || 0;
   const type = document.getElementById('ajukan-cicilan-type').value;
   if (!pokok || !tenor) { document.getElementById('simulasi-cicilan').style.display = 'none'; return; }
   await getBunga();
@@ -1871,11 +1871,15 @@ async function updateSimulasiCicilan() {
 
 async function doAjukanPinjaman() {
   const memberId = isAdmin() ? document.getElementById('ajukan-member').value : currentUser.id;
-  const pokok = parseInt(document.getElementById('ajukan-pokok').value);
-  const tenor = parseInt(document.getElementById('ajukan-tenor').value);
+  const pokokRaw = document.getElementById('ajukan-pokok').value.replace(/[^0-9]/g, '');
+  const tenorRaw = document.getElementById('ajukan-tenor').value.replace(/[^0-9]/g, '');
+  const pokok = parseInt(pokokRaw) || 0;
+  const tenor = parseInt(tenorRaw) || 0;
   const type = document.getElementById('ajukan-cicilan-type').value;
   const note = document.getElementById('ajukan-note').value;
-  if (!memberId || !pokok || !tenor) { showToast('Isi semua field yang wajib'); return; }
+  if (!memberId) { showToast('Pilih anggota terlebih dahulu'); return; }
+  if (!pokok || pokok < 10000) { showToast('Pokok pinjaman minimal Rp 10.000'); return; }
+  if (!tenor || tenor < 1) { showToast('Jumlah cicilan minimal 1'); return; }
 
   // ── VALIDASI RULES PINJAMAN ──
   showToast('Memeriksa kelayakan...');

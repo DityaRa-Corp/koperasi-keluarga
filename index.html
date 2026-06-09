@@ -206,7 +206,7 @@ nav { flex: 1; padding: 8px; }
 .card-value.amber { color: var(--amber); }
 .card-value.blue { color: #2563eb; }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
 
 /* TABLE */
 .table-wrap { overflow-x: auto; }
@@ -985,7 +985,6 @@ tbody tr:hover { background: var(--surface2); }
           <div class="detail-item"><label>Nama</label><span id="profil-nama">-</span></div>
           <div class="detail-item"><label>Username</label><span id="profil-username" class="td-mono" style="color:var(--accent)">-</span></div>
           <div class="detail-item"><label>Role</label><span id="profil-role">-</span></div>
-          <div class="detail-item"><label>No. HP</label><span id="profil-phone">-</span></div>
           <div class="detail-item"><label>Status</label><span id="profil-status">-</span></div>
         </div>
       </div>
@@ -1120,7 +1119,7 @@ tbody tr:hover { background: var(--surface2); }
       <label class="form-label">Opsi Pencairan</label>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
         <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer" id="opsi-tanpa-label">
-          <input type="radio" name="opsi-cairan" value="tanpa" id="opsi-tanpa" checked onchange="updateCairanTotal()" style="margin-top:2px">
+          <input type="radio" name="opsi-cairan" value="tanpa" id="opsi-tanpa" checked onchange="updateCairanInfo()" style="margin-top:2px">
           <div>
             <div style="font-weight:600;font-size:13px">Simpanan Saja</div>
             <div style="font-size:12px;color:var(--text2)">Anggota menerima saldo simpanannya saja</div>
@@ -1128,7 +1127,7 @@ tbody tr:hover { background: var(--surface2); }
           </div>
         </label>
         <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer" id="opsi-dengan-label">
-          <input type="radio" name="opsi-cairan" value="dengan" id="opsi-dengan" onchange="updateCairanTotal()" style="margin-top:2px">
+          <input type="radio" name="opsi-cairan" value="dengan" id="opsi-dengan" onchange="updateCairanInfo()" style="margin-top:2px">
           <div>
             <div style="font-weight:600;font-size:13px">Simpanan + Keuntungan Koperasi</div>
             <div style="font-size:12px;color:var(--text2)">Simpanan + porsi keuntungan berdasarkan persentase simpanan</div>
@@ -2037,7 +2036,7 @@ async function doAjukanPinjaman() {
   const pokok = parseInt(pokokRaw) || 0;
   const tenor = parseInt(tenorRaw) || 0;
   const type = document.getElementById('ajukan-cicilan-type').value;
-  const note = document.getElementById('ajukan-note').value;
+  const note = '';
   if (!memberId) { showToast('Pilih anggota terlebih dahulu'); return; }
   if (!pokok || pokok < 10000) { showToast('Pokok pinjaman minimal Rp 10.000'); return; }
   if (!tenor || tenor < 1) { showToast('Jumlah cicilan minimal 1'); return; }
@@ -2213,7 +2212,6 @@ function openApproveForm() {
       ? Math.round(l.principal * (currentBunga / 100) * months / l.installment_count)
       : 0;
     document.getElementById('approve-bunga-nominal').value = defaultBungaNominal;
-    document.getElementById('approve-note').value = '';
     closeModal('modal-detail-pinjaman');
     openModal('modal-approve-pinjaman');
   });
@@ -2222,7 +2220,6 @@ function openApproveForm() {
 async function doApprovePinjaman() {
   const approvedNominal = parseInt(document.getElementById('approve-nominal').value);
   const bungaPerCicilan = parseInt(document.getElementById('approve-bunga-nominal').value) || 0;
-  const approveNote = document.getElementById('approve-note').value;
   if (!approvedNominal || approvedNominal < 1000) { showToast('Isi nominal yang disetujui'); return; }
   if (bungaPerCicilan < 0) { showToast('Bunga tidak boleh negatif'); return; }
 
@@ -2253,7 +2250,7 @@ async function doApprovePinjaman() {
     approved_by: currentUser.id,
     disbursed_at: new Date().toISOString(),
     next_due_date: nextDue,
-    note: approveNote || loan.note
+    note: loan.note
   });
   if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
   showToast('Pinjaman disetujui dan dicairkan ✓');
@@ -3379,7 +3376,6 @@ async function loadProfil() {
   document.getElementById('profil-role').innerHTML = currentProfile?.role === 'admin'
     ? '<span class="badge badge-purple">Admin</span>'
     : '<span class="badge badge-blue">Anggota</span>';
-  document.getElementById('profil-phone').textContent = currentProfile?.phone || '-';
   document.getElementById('profil-status').innerHTML = '<span class="badge badge-green">Aktif</span>';
 
   // Populate member select for admin reset

@@ -872,6 +872,7 @@ tbody tr:hover { background: var(--surface2); }
           <button class="tab-btn" onclick="switchLaporanTab('pinjaman', this)">Pinjaman</button>
           <button class="tab-btn" onclick="switchLaporanTab('cicilan', this)">Cicilan</button>
           <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('adjustment', this)">Adjustment</button>
+          <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('jurnal', this)">📒 Jurnal Kas</button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="exportLaporan()" style="gap:6px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -2342,6 +2343,27 @@ async function exportLaporan() {
     wsCicilan['!cols'] = [{wch:15},{wch:25},{wch:12},{wch:16},{wch:20},{wch:20},{wch:18},{wch:30}];
     XLSX.utils.book_append_sheet(wb, wsCicilan, 'Cicilan');
 
+    // ── Sheet 5: Jurnal Kas (admin only) ──
+    if (isAdmin()) {
+      const [savJ, payJ, loanJ] = await Promise.all([
+        dbQuery('savings', 'select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc'),
+        dbQuery('loan_payments', 'select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc'),
+        dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&status=eq.active&order=disbursed_at.asc')
+      ]);
+      const jEntries = [];
+      (savJ||[]).forEach(s => jEntries.push({ date: new Date(s.created_at), ket: `${s.type==='deposit'?'Setoran Simpanan':'Penarikan Simpanan'} — ${s.profiles?.full_name||'-'}${s.note?' ('+s.note+')':''}`, masuk: s.type==='deposit'?Number(s.amount):0, keluar: s.type==='withdraw'?Number(s.amount):0 }));
+      (payJ||[]).forEach(p => jEntries.push({ date: new Date(p.created_at), ket: `Bayar Cicilan — ${p.profiles?.full_name||'-'}`, masuk: Number(p.amount_paid), keluar: 0 }));
+      (loanJ||[]).forEach(l => { if(l.disbursed_at) jEntries.push({ date: new Date(l.disbursed_at), ket: `Cair Pinjaman — ${l.profiles?.full_name||'-'}`, masuk: 0, keluar: Number(l.principal) }); });
+      jEntries.sort((a,b) => a.date - b.date);
+      let jSaldo = 0;
+      const jurnalRows = [['Tanggal','Keterangan','Uang Masuk (Rp)','Uang Keluar (Rp)','Saldo Kas (Rp)']];
+      jEntries.forEach(e => { jSaldo += e.masuk - e.keluar; jurnalRows.push([e.date.toLocaleDateString('id-ID'), e.ket, e.masuk||'', e.keluar||'', jSaldo]); });
+      jurnalRows.push(['','TOTAL', jEntries.reduce((a,e)=>a+e.masuk,0), jEntries.reduce((a,e)=>a+e.keluar,0), jSaldo]);
+      const wsJurnal = XLSX.utils.aoa_to_sheet(jurnalRows);
+      wsJurnal['!cols'] = [{wch:14},{wch:45},{wch:18},{wch:18},{wch:18}];
+      XLSX.utils.book_append_sheet(wb, wsJurnal, 'Jurnal Kas');
+    }
+
     // ── Sheet 5: Adjustment (admin only) ──
     if (isAdmin()) {
       const adjustments = await dbQuery('adjustments', 'select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc');
@@ -2418,6 +2440,7 @@ async function switchLaporanTab(tab, btn) {
   else if (tab === 'pinjaman') await renderLaporanPinjaman();
   else if (tab === 'cicilan') await renderLaporanCicilan();
   else if (tab === 'adjustment') await renderLaporanAdjustment();
+  else if (tab === 'jurnal') await renderLaporanJurnal();
 }
 
 async function renderLaporanSimpanan() {
@@ -2538,6 +2561,152 @@ async function renderLaporanAdjustment() {
         <td style="color:var(--text2)">${a.admin?.full_name || '-'}</td>
       </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:32px">Belum ada log adjustment</td></tr>'}</tbody>
     </table></div>`;
+}
+
+async function renderLaporanJurnal() {
+  if (!isAdmin()) { document.getElementById('laporan-content').innerHTML = '<div class="empty-state"><div class="empty-state-title">Akses ditolak</div></div>'; return; }
+  document.getElementById('laporan-content').innerHTML = '<div class="loading"><div class="spinner"></div> Memuat jurnal kas...</div>';
+
+  const dateFilter = getLaporanDateFilter();
+
+  // Ambil semua sumber transaksi secara paralel
+  const [savings, payments, loans] = await Promise.all([
+    dbQuery('savings', `select=id,type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
+    dbQuery('loan_payments', `select=id,amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
+    dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&status=eq.active&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`)
+  ]);
+
+  // Susun semua transaksi jadi satu array
+  const entries = [];
+
+  (savings || []).forEach(s => {
+    entries.push({
+      date: new Date(s.created_at),
+      keterangan: `${s.type === 'deposit' ? 'Setoran Simpanan' : 'Penarikan Simpanan'} — ${s.profiles?.full_name || '-'}${s.note ? ' (' + s.note + ')' : ''}`,
+      masuk:  s.type === 'deposit'  ? Number(s.amount) : 0,
+      keluar: s.type === 'withdraw' ? Number(s.amount) : 0,
+      ikon: s.type === 'deposit' ? '💰' : '💸',
+      warna: s.type === 'deposit' ? 'var(--green)' : 'var(--red)'
+    });
+  });
+
+  (payments || []).forEach(p => {
+    entries.push({
+      date: new Date(p.created_at),
+      keterangan: `Pembayaran Cicilan — ${p.profiles?.full_name || '-'}${Number(p.interest_component) > 0 ? ' (Pokok: ' + fmtShort(p.principal_component) + ' + Bunga: ' + fmtShort(p.interest_component) + ')' : ''}${p.note ? ' · ' + p.note : ''}`,
+      masuk:  Number(p.amount_paid),
+      keluar: 0,
+      ikon: '✅',
+      warna: 'var(--green)'
+    });
+  });
+
+  (loans || []).forEach(l => {
+    if (!l.disbursed_at) return;
+    entries.push({
+      date: new Date(l.disbursed_at),
+      keterangan: `Pencairan Pinjaman — ${l.profiles?.full_name || '-'}`,
+      masuk:  0,
+      keluar: Number(l.principal),
+      ikon: '🏦',
+      warna: 'var(--amber)'
+    });
+  });
+
+  // Urutkan berdasarkan tanggal
+  entries.sort((a, b) => a.date - b.date);
+
+  if (!entries.length) {
+    document.getElementById('laporan-content').innerHTML = `
+      <div class="empty-state"><div class="empty-state-title">Belum ada transaksi</div>
+      <div class="empty-state-sub">Coba ubah rentang tanggal filter</div></div>`;
+    return;
+  }
+
+  // Hitung saldo awal (semua transaksi sebelum filter dari) untuk running balance
+  let saldoAwal = 0;
+  const dateFrom = document.getElementById('laporan-date-from')?.value;
+  if (dateFrom) {
+    // Ambil semua transaksi sebelum dateFrom untuk hitung saldo awal
+    const [savBefore, payBefore, loanBefore] = await Promise.all([
+      dbQuery('savings', `select=type,amount&created_at=lt.${dateFrom}T00:00:00`),
+      dbQuery('loan_payments', `select=amount_paid&created_at=lt.${dateFrom}T00:00:00`),
+      dbQuery('loans', `select=principal&status=eq.active&disbursed_at=lt.${dateFrom}T00:00:00`)
+    ]);
+    (savBefore||[]).forEach(s => { saldoAwal += s.type==='deposit' ? Number(s.amount) : -Number(s.amount); });
+    (payBefore||[]).forEach(p => { saldoAwal += Number(p.amount_paid); });
+    (loanBefore||[]).forEach(l => { saldoAwal -= Number(l.principal); });
+  }
+
+  // Hitung running balance
+  let saldo = saldoAwal;
+  let totalMasuk = 0, totalKeluar = 0;
+  const rows = entries.map(e => {
+    saldo += e.masuk - e.keluar;
+    totalMasuk  += e.masuk;
+    totalKeluar += e.keluar;
+    return { ...e, saldo };
+  });
+
+  // Render tabel
+  const fromLabel = dateFrom || 'Awal';
+  const toLabel   = document.getElementById('laporan-date-to')?.value || 'Sekarang';
+
+  document.getElementById('laporan-content').innerHTML = `
+    <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:150px;padding:14px 18px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Saldo Awal</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text1)">${fmt(saldoAwal)}</div>
+      </div>
+      <div class="card" style="flex:1;min-width:150px;padding:14px 18px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Total Uang Masuk</div>
+        <div style="font-size:16px;font-weight:700;color:var(--green)">${fmt(totalMasuk)}</div>
+      </div>
+      <div class="card" style="flex:1;min-width:150px;padding:14px 18px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Total Uang Keluar</div>
+        <div style="font-size:16px;font-weight:700;color:var(--red)">${fmt(totalKeluar)}</div>
+      </div>
+      <div class="card" style="flex:1;min-width:150px;padding:14px 18px;background:var(--accent);color:white">
+        <div style="font-size:12px;opacity:0.8;margin-bottom:4px">Saldo Akhir</div>
+        <div style="font-size:16px;font-weight:700">${fmt(saldo)}</div>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th>Tanggal</th>
+        <th>Keterangan</th>
+        <th style="text-align:right">Uang Masuk</th>
+        <th style="text-align:right">Uang Keluar</th>
+        <th style="text-align:right">Saldo Kas</th>
+      </tr></thead>
+      <tbody>
+        ${saldoAwal > 0 || dateFrom ? `<tr style="background:var(--surface2)">
+          <td colspan="4" style="color:var(--text2);font-style:italic;font-size:12px">Saldo awal per ${fromLabel}</td>
+          <td style="text-align:right;font-weight:700">${fmt(saldoAwal)}</td>
+        </tr>` : ''}
+        ${rows.map(r => `<tr>
+          <td style="white-space:nowrap;color:var(--text2);font-size:13px">${fmtDate(r.date.toISOString())}</td>
+          <td style="font-size:13px">${r.ikon} ${r.keterangan}</td>
+          <td style="text-align:right;font-weight:600;color:var(--green)">${r.masuk > 0 ? fmt(r.masuk) : '<span style="color:var(--text3)">—</span>'}</td>
+          <td style="text-align:right;font-weight:600;color:var(--red)">${r.keluar > 0 ? fmt(r.keluar) : '<span style="color:var(--text3)">—</span>'}</td>
+          <td style="text-align:right;font-weight:700;color:${r.saldo >= 0 ? 'var(--text1)' : 'var(--red)'}">${fmt(r.saldo)}</td>
+        </tr>`).join('')}
+        <tr style="background:var(--surface2);font-weight:700;border-top:2px solid var(--border)">
+          <td colspan="2" style="font-size:13px">Total Periode ${fromLabel} — ${toLabel}</td>
+          <td style="text-align:right;color:var(--green)">${fmt(totalMasuk)}</td>
+          <td style="text-align:right;color:var(--red)">${fmt(totalKeluar)}</td>
+          <td style="text-align:right;color:var(--accent)">${fmt(saldo)}</td>
+        </tr>
+      </tbody>
+    </table></div>`;
+}
+
+// Helper format angka pendek untuk keterangan
+function fmtShort(n) {
+  const num = Number(n);
+  if (num >= 1000000) return (num/1000000).toFixed(1).replace('.0','') + 'jt';
+  if (num >= 1000) return (num/1000).toFixed(0) + 'rb';
+  return fmt(num);
 }
 
 // ANGGOTA

@@ -204,6 +204,7 @@ nav { flex: 1; padding: 8px; }
 .card-value.green { color: var(--green); }
 .card-value.red { color: var(--red); }
 .card-value.amber { color: var(--amber); }
+.card-value.blue { color: #2563eb; }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
 
@@ -733,7 +734,8 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-sub" id="dashboard-date">-</div>
       </div>
       <div class="stats-grid" id="stats-grid">
-        <div class="card"><div class="card-title">Total Simpanan Aktif</div><div class="card-value green" id="stat-simpanan">-</div><div class="card-sub">Saldo tersimpan</div></div>
+        <div class="card"><div class="card-title">Total Simpanan Aktif</div><div class="card-value green" id="stat-simpanan">-</div><div class="card-sub">Saldo tersimpan anggota</div></div>
+        <div class="card"><div class="card-title">Total Kas Koperasi</div><div class="card-value blue" id="stat-kas">-</div><div class="card-sub">Simpanan + keuntungan bunga</div></div>
         <div class="card"><div class="card-title">Pinjaman Berjalan</div><div class="card-value amber" id="stat-pinjaman">-</div><div class="card-sub">Total sisa tagihan</div></div>
         <div class="card"><div class="card-title">Pinjaman Menunggak</div><div class="card-value red" id="stat-tunggak">-</div><div class="card-sub">Melewati jatuh tempo</div></div>
         <div class="card"><div class="card-title">Anggota Aktif</div><div class="card-value" id="stat-anggota">-</div><div class="card-sub">Terdaftar</div></div>
@@ -1638,10 +1640,11 @@ function populateMemberSelects() {
 async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const [savings, loans, members] = await Promise.all([
+  const [savings, loans, members, allPayments] = await Promise.all([
     dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
-    dbQuery('profiles', 'select=id&status=eq.active')
+    dbQuery('profiles', 'select=id&status=eq.active'),
+    dbQuery('loan_payments', 'select=interest_component')
   ]);
 
   // Calculate balances per member
@@ -1651,12 +1654,15 @@ async function loadDashboard() {
     memberBalances[s.member_id] += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
   });
   const totalSimpanan = Object.values(memberBalances).reduce((a, b) => Number(a) + Number(b), 0);
+  const totalBungaMasuk = (allPayments || []).reduce((a, p) => a + Number(p.interest_component || 0), 0);
+  const totalKas = totalSimpanan + totalBungaMasuk;
   const activeLoans = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
   const now = new Date();
   const tunggak = activeLoans.filter(l => l.next_due_date && new Date(l.next_due_date) < now);
 
   document.getElementById('stat-simpanan').textContent = fmt(totalSimpanan);
+  document.getElementById('stat-kas').textContent = fmt(totalKas);
   document.getElementById('stat-pinjaman').textContent = fmt(totalPinjaman);
   document.getElementById('stat-tunggak').textContent = tunggak.length + ' pinjaman';
   document.getElementById('stat-anggota').textContent = (members || []).length + ' orang';

@@ -2176,13 +2176,13 @@ async function loadCicilan() {
         const dueDateStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
         const overdue  = dueDateStr && dueDateStr < todayStr3;
         const todayDue = dueDateStr && dueDateStr === todayStr3;
-        const tdColor = overdue ? 'color:var(--red);font-weight:600' : 'color:var(--amber);font-weight:600';
+        const tdColor = overdue ? 'color:var(--red);font-weight:600' : todayDue ? 'color:var(--amber);font-weight:600' : 'color:var(--text2)';
         const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
         const statusBadge2 = overdue
           ? `<span class="badge badge-red">Menunggak</span>${overdueLvlBadge}`
           : todayDue
             ? `<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>`
-            : `<span class="badge badge-amber">Jatuh Tempo</span>`;
+            : `<span class="badge badge-blue">Aktif</span>`;
         const catatBtn = isAdmin() ? '<button class="btn btn-success btn-sm" onclick="openCatatCicilan(\'' + l.id + '\')">Catat Bayar</button>' : '';
         return '<tr>' +
           '<td style="font-weight:500">' + l.profiles?.full_name + '</td>' +

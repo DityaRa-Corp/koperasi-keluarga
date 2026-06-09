@@ -1463,10 +1463,10 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-dig
 
 function getOverdueLevel(nextDueDate, status) {
   if (status !== 'active' || !nextDueDate) return null;
-  const now = new Date();
-  const due = new Date(nextDueDate);
-  if (due >= now) return null; // not overdue
-  const daysDiff = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+  const todayStr = new Date().toLocaleDateString('sv'); // 'sv' locale = YYYY-MM-DD
+  const dueStr   = nextDueDate.split('T')[0];
+  if (dueStr >= todayStr) return null; // hari-H atau belum → tidak overdue
+  const daysDiff = Math.floor((new Date(todayStr) - new Date(dueStr)) / (1000 * 60 * 60 * 24));
   if (daysDiff <= 30)  return { level: 1, label: 'Level 1', color: '#d97706', bg: '#fffbeb', desc: 'Telat 1–30 hari' };
   if (daysDiff <= 90)  return { level: 2, label: 'Level 2', color: '#dc6626', bg: '#fff4ee', desc: 'Telat 31–90 hari' };
   if (daysDiff <= 180) return { level: 3, label: 'Level 3', color: '#dc2626', bg: '#fef2f2', desc: 'Telat 91–180 hari' };
@@ -1707,7 +1707,8 @@ async function loadDashboard() {
   const activeLoans = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
   const now = new Date();
-  const tunggak = activeLoans.filter(l => l.next_due_date && new Date(l.next_due_date) < now);
+  const todayStr = new Date().toLocaleDateString('sv');
+  const tunggak = activeLoans.filter(l => l.next_due_date && l.next_due_date.split('T')[0] < todayStr);
 
   document.getElementById('stat-simpanan').textContent = fmt(totalSimpanan);
   document.getElementById('stat-kas').textContent = fmt(totalKas);
@@ -1880,8 +1881,8 @@ async function loadPinjaman() {
     <thead><tr><th>Anggota</th><th>Pokok</th><th>Total Tagihan</th><th>Sudah Dibayar</th><th>Sisa</th><th>Cicilan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
     <tbody>${data.map(l => {
       const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
-      const now = new Date(); const due = l.next_due_date ? new Date(l.next_due_date) : null;
-      const overdue = due && due < now && l.status === 'active';
+      const todayStr2 = new Date().toLocaleDateString('sv');
+      const overdue = l.next_due_date && l.next_due_date.split('T')[0] < todayStr2 && l.status === 'active';
       const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
       const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
       const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
@@ -1957,7 +1958,8 @@ async function doAjukanPinjaman() {
   }
 
   // Rule 2: Tidak bisa pinjam jika ada tunggakan (overdue)
-  const overdueLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&next_due_date=lt.${new Date().toISOString().split('T')[0]}&select=id&limit=1`);
+  const todayForQuery = new Date().toLocaleDateString('sv');
+  const overdueLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&next_due_date=lt.${todayForQuery}&select=id&limit=1`);
   if (overdueLoans && overdueLoans.length > 0) {
     showToast('❌ Tidak bisa mengajukan — masih ada cicilan yang menunggak');
     return;
@@ -2154,17 +2156,25 @@ async function loadCicilan() {
   if (!isAdmin()) cicQParams += `&member_id=eq.${currentUser.id}`;
   const activeLoans = await dbQuery('loans', cicQParams);
   const now = new Date();
-  const upcoming = (activeLoans || []).filter(l => l.next_due_date && new Date(l.next_due_date) <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000));
+  const todayStr3 = now.toLocaleDateString('sv');
+  const sevenDaysStr = new Date(now.getTime() + 7*24*60*60*1000).toLocaleDateString('sv');
+  const upcoming = (activeLoans || []).filter(l => l.next_due_date && l.next_due_date.split('T')[0] <= sevenDaysStr);
   const el = document.getElementById('cicilan-tunggak');
   if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan jatuh tempo</div><div class="empty-state-sub">Semua cicilan dalam kondisi baik</div></div>'; }
   else {
     el.innerHTML = `<table>
       <thead><tr><th>Anggota</th><th>Cicilan/Periode</th><th>Sisa Tagihan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
       <tbody>${upcoming.map(l => {
-        const overdue = new Date(l.next_due_date) < now;
-        const tdColor = overdue ? 'color:var(--red);font-weight:600' : 'color:var(--amber);font-weight:400';
+        const dueDateStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
+        const overdue  = dueDateStr && dueDateStr < todayStr3;
+        const todayDue = dueDateStr && dueDateStr === todayStr3;
+        const tdColor = overdue ? 'color:var(--red);font-weight:600' : 'color:var(--amber);font-weight:600';
         const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-        const statusBadge2 = overdue ? `<span class="badge badge-red">Menunggak</span>${overdueLvlBadge}` : '<span class="badge badge-amber">Jatuh Tempo</span>';
+        const statusBadge2 = overdue
+          ? `<span class="badge badge-red">Menunggak</span>${overdueLvlBadge}`
+          : todayDue
+            ? `<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>`
+            : `<span class="badge badge-amber">Jatuh Tempo</span>`;
         const catatBtn = isAdmin() ? '<button class="btn btn-success btn-sm" onclick="openCatatCicilan(\'' + l.id + '\')">Catat Bayar</button>' : '';
         return '<tr>' +
           '<td style="font-weight:500">' + l.profiles?.full_name + '</td>' +
@@ -2348,7 +2358,7 @@ async function exportLaporan() {
       const [savJ, payJ, loanJ] = await Promise.all([
         dbQuery('savings', 'select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc'),
         dbQuery('loan_payments', 'select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc'),
-        dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&status=eq.active&order=disbursed_at.asc')
+        dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc')
       ]);
       const jEntries = [];
       (savJ||[]).forEach(s => jEntries.push({ date: new Date(s.created_at), ket: `${s.type==='deposit'?'Setoran Simpanan':'Penarikan Simpanan'} — ${s.profiles?.full_name||'-'}${s.note?' ('+s.note+')':''}`, masuk: s.type==='deposit'?Number(s.amount):0, keluar: s.type==='withdraw'?Number(s.amount):0 }));
@@ -2573,7 +2583,7 @@ async function renderLaporanJurnal() {
   const [savings, payments, loans] = await Promise.all([
     dbQuery('savings', `select=id,type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
     dbQuery('loan_payments', `select=id,amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
-    dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&status=eq.active&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`)
+    dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`)
   ]);
 
   // Susun semua transaksi jadi satu array
@@ -2631,7 +2641,7 @@ async function renderLaporanJurnal() {
     const [savBefore, payBefore, loanBefore] = await Promise.all([
       dbQuery('savings', `select=type,amount&created_at=lt.${dateFrom}T00:00:00`),
       dbQuery('loan_payments', `select=amount_paid&created_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('loans', `select=principal&status=eq.active&disbursed_at=lt.${dateFrom}T00:00:00`)
+      dbQuery('loans', `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${dateFrom}T00:00:00`)
     ]);
     (savBefore||[]).forEach(s => { saldoAwal += s.type==='deposit' ? Number(s.amount) : -Number(s.amount); });
     (payBefore||[]).forEach(p => { saldoAwal += Number(p.amount_paid); });

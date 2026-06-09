@@ -1714,6 +1714,7 @@ async function loadDashboard() {
   // Kas dalam vs luar
   const kasDiluar = activeLoans.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const kasDalam = Math.max(0, totalKas - kasDiluar);
+  const pctLuar = totalKas > 0 ? Math.min(100, Math.round((kasDiluar / totalKas) * 100)) : 0;
   document.getElementById('kas-dalam').textContent = fmt(kasDalam);
   document.getElementById('kas-luar').textContent = fmt(kasDiluar);
   const pctLuarEl = document.getElementById('kas-pct-luar');

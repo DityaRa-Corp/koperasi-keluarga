@@ -1460,10 +1460,18 @@ let anggotaData = [];
 // UTILS
 const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+// Helper: tanggal hari ini format YYYY-MM-DD sesuai timezone lokal (aman di semua browser)
+function getTodayStr() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 function getOverdueLevel(nextDueDate, status) {
   if (status !== 'active' || !nextDueDate) return null;
-  const todayStr = new Date().toLocaleDateString('sv'); // 'sv' locale = YYYY-MM-DD
+  const todayStr = getTodayStr(); // 'sv' locale = YYYY-MM-DD
   const dueStr   = nextDueDate.split('T')[0];
   if (dueStr >= todayStr) return null; // hari-H atau belum → tidak overdue
   const daysDiff = Math.floor((new Date(todayStr) - new Date(dueStr)) / (1000 * 60 * 60 * 24));
@@ -1707,7 +1715,7 @@ async function loadDashboard() {
   const activeLoans = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
   const now = new Date();
-  const todayStr = new Date().toLocaleDateString('sv');
+  const todayStr = getTodayStr();
   const tunggak = activeLoans.filter(l => l.next_due_date && l.next_due_date.split('T')[0] < todayStr);
 
   document.getElementById('stat-simpanan').textContent = fmt(totalSimpanan);
@@ -1881,7 +1889,7 @@ async function loadPinjaman() {
     <thead><tr><th>Anggota</th><th>Pokok</th><th>Total Tagihan</th><th>Sudah Dibayar</th><th>Sisa</th><th>Cicilan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
     <tbody>${data.map(l => {
       const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
-      const todayStr2 = new Date().toLocaleDateString('sv');
+      const todayStr2 = getTodayStr();
       const overdue = l.next_due_date && l.next_due_date.split('T')[0] < todayStr2 && l.status === 'active';
       const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
       const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
@@ -1958,7 +1966,7 @@ async function doAjukanPinjaman() {
   }
 
   // Rule 2: Tidak bisa pinjam jika ada tunggakan (overdue)
-  const todayForQuery = new Date().toLocaleDateString('sv');
+  const todayForQuery = getTodayStr();
   const overdueLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&next_due_date=lt.${todayForQuery}&select=id&limit=1`);
   if (overdueLoans && overdueLoans.length > 0) {
     showToast('❌ Tidak bisa mengajukan — masih ada cicilan yang menunggak');
@@ -2156,8 +2164,8 @@ async function loadCicilan() {
   if (!isAdmin()) cicQParams += `&member_id=eq.${currentUser.id}`;
   const activeLoans = await dbQuery('loans', cicQParams);
   const now = new Date();
-  const todayStr3 = now.toLocaleDateString('sv');
-  const sevenDaysStr = new Date(now.getTime() + 7*24*60*60*1000).toLocaleDateString('sv');
+  const todayStr3 = getTodayStr();
+  const sevenDaysStr = (() => { const d = new Date(now.getTime() + 7*24*60*60*1000); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
   const upcoming = (activeLoans || []).filter(l => l.next_due_date && l.next_due_date.split('T')[0] <= sevenDaysStr);
   const el = document.getElementById('cicilan-tunggak');
   if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan jatuh tempo</div><div class="empty-state-sub">Semua cicilan dalam kondisi baik</div></div>'; }

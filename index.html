@@ -2319,6 +2319,7 @@ async function openCatatCicilan(loanId) {
       <div><div style="color:var(--text3)">Jatuh tempo</div><div style="font-weight:600">${fmtDate(loan.next_due_date)}</div></div>
     </div>`;
   document.getElementById('cicilan-amount').value = loan.installment_amount;
+  document.getElementById('cicilan-amount').max = loan.remaining_amount;
   openModal('modal-cicilan');
 }
 
@@ -2326,8 +2327,12 @@ async function doCatatCicilan() {
   if (!currentCicilanLoan) return;
   const amount = parseInt(document.getElementById('cicilan-amount').value);
   const note = document.getElementById('cicilan-note').value;
-  if (!amount || amount < 1) { showToast('Isi jumlah pembayaran'); return; }
   const loan = currentCicilanLoan;
+  if (!amount || amount < 1) { showToast('Isi jumlah pembayaran'); return; }
+  if (amount > loan.remaining_amount) {
+    showToast(`❌ Nominal melebihi sisa tagihan. Maksimal: ${fmt(loan.remaining_amount)}`);
+    return;
+  }
   const totalPeriods = loan.installment_count;
   const interestPerPeriod = Math.round(loan.total_interest / totalPeriods);
   const principalPerPeriod = Math.round(amount - interestPerPeriod);

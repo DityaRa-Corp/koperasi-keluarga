@@ -856,7 +856,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-sub">Catat pembayaran cicilan pinjaman</div>
       </div>
       <div class="card" style="margin-bottom:14px" id="tunggak-card">
-        <div class="section-title">⚠️ Cicilan Jatuh Tempo</div>
+        <div class="section-title">⚡ Cicilan Aktif</div>
         <div id="cicilan-tunggak"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div class="card">
@@ -2271,12 +2271,11 @@ async function loadCicilan() {
   let cicQParams = 'select=*,profiles!loans_member_id_fkey(full_name)&status=eq.active&order=next_due_date.asc';
   if (!isAdmin()) cicQParams += `&member_id=eq.${currentUser.id}`;
   const activeLoans = await dbQuery('loans', cicQParams);
-  const now = new Date();
   const todayStr3 = getTodayStr();
-  const sevenDaysStr = (() => { const d = new Date(now.getTime() + 7*24*60*60*1000); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
-  const upcoming = (activeLoans || []).filter(l => l.next_due_date && l.next_due_date.split('T')[0] <= sevenDaysStr);
+  const sevenDaysStr = (() => { const d = new Date(new Date().getTime() + 7*24*60*60*1000); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+  const upcoming = activeLoans || []; // Tampilkan SEMUA pinjaman aktif
   const el = document.getElementById('cicilan-tunggak');
-  if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan jatuh tempo</div><div class="empty-state-sub">Semua cicilan dalam kondisi baik</div></div>'; }
+  if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan aktif</div><div class="empty-state-sub">Semua pinjaman sudah lunas</div></div>'; }
   else {
     el.innerHTML = `<table>
       <thead><tr><th>Anggota</th><th>Cicilan/Periode</th><th>Sisa Tagihan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>

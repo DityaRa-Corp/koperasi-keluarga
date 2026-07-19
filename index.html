@@ -543,6 +543,7 @@ tbody tr:hover { background: var(--surface2); }
   #dashboard-charts-row { grid-template-columns: 1fr; }
   .detail-grid { grid-template-columns: 1fr; }
 }
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2d3250">
@@ -4130,45 +4131,13 @@ async function loadDashboardCharts(savings, memberBalances) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// BATCH 1C: PWA - Service Worker Registration
+// BATCH 1C: PWA
 // ══════════════════════════════════════════════════════════════
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    // Inline service worker via blob URL (tidak butuh file terpisah)
-    const swCode = `
-const CACHE = 'koperasi-v1';
-const ASSETS = ['/'];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  self.skipWaiting();
-});
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ));
-  self.clients.claim();
-});
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  );
-});
-`;
-    const blob = new Blob([swCode], { type: 'application/javascript' });
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl).then(() => {
-      console.log('Service Worker registered ✅');
-    }).catch(e => console.warn('SW registration failed:', e));
-  }
-}
-
 // Tombol install PWA
 let _deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _deferredPrompt = e;
-  // Tampilkan tombol install jika belum terinstall
   const installBtn = document.getElementById('pwa-install-btn');
   if (installBtn) installBtn.style.display = 'flex';
 });
@@ -4182,17 +4151,14 @@ window.addEventListener('appinstalled', () => {
 
 async function installPWA() {
   if (!_deferredPrompt) {
-    showToast('Buka menu browser → "Tambahkan ke layar utama"');
+    showToast('Buka menu browser → "Tambahkan ke layar utama" / "Add to Home Screen"');
     return;
   }
   _deferredPrompt.prompt();
   const { outcome } = await _deferredPrompt.userChoice;
-  if (outcome === 'accepted') showToast('✅ Aplikasi diinstall!');
+  if (outcome === 'accepted') showToast('✅ Aplikasi berhasil diinstall!');
   _deferredPrompt = null;
 }
-
-// Init PWA saat halaman load
-registerServiceWorker();
 
 </script>
 </body>

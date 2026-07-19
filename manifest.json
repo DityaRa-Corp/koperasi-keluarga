@@ -1,0 +1,26 @@
+{
+  "name": "Koperasi Keluarga",
+  "short_name": "KopKel",
+  "description": "Aplikasi Simpan Pinjam Keluarga",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f4f9",
+  "theme_color": "#2d3250",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjQwIiBmaWxsPSIjMmQzMjUwIi8+PHJlY3QgeD0iMjQiIHk9Ijc0IiB3aWR0aD0iMTQ0IiBoZWlnaHQ9Ijk2IiByeD0iMTIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iOCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik02OCA3NFY2MGE4IDggMCAwIDEgOC04aDQwYTggOCAwIDAgMSA4IDh2MTQiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iOCIgZmlsbD0ibm9uZSIvPjxsaW5lIHgxPSIyNCIgeTE9IjEwNCIgeDI9IjE2OCIgeTI9IjEwNCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSI2Ii8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjEwNiIgZmlsbD0iIzJkMzI1MCIvPjxyZWN0IHg9IjY0IiB5PSIxOTgiIHdpZHRoPSIzODQiIGhlaWdodD0iMjU2IiByeD0iMzIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMjAiIGZpbGw9Im5vbmUiLz48cGF0aCBkPSJNMTgxIDE5OHYtMzhhMjAgMjAgMCAwIDEgMjAtMjBoMTEwYTIwIDIwIDAgMCAxIDIwIDIwdjM4IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIwIiBmaWxsPSJub25lIi8+PGxpbmUgeDE9IjY0IiB5MT0iMjc4IiB4Mj0iNDQ4IiB5Mj0iMjc4IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjE2Ii8+PC9zdmc+",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "lang": "id"
+}

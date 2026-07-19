@@ -207,6 +207,7 @@ nav { flex: 1; padding: 8px; }
 .card-value.blue { color: #2563eb; }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
 .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+#dashboard-charts-row { grid-template-columns: 1fr 1fr; }
 
 /* TABLE */
 .table-wrap { overflow-x: auto; }
@@ -539,9 +540,15 @@ tbody tr:hover { background: var(--surface2); }
   .page { padding: 20px 16px; }
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
+  #dashboard-charts-row { grid-template-columns: 1fr; }
   .detail-grid { grid-template-columns: 1fr; }
 }
-</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#2d3250">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KoperasiKeluarga">
 </head>
 <body>
 
@@ -716,6 +723,9 @@ tbody tr:hover { background: var(--surface2); }
       <div style="font-size:11px;color:var(--text3);text-align:center;padding:6px 0 8px;line-height:1.4">
         Developed by<br><span style="font-weight:600;color:var(--text2)">Aditya Agustian</span>
       </div>
+      <button id="pwa-install-btn" onclick="installPWA()" style="display:none;width:100%;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;margin-bottom:6px">
+        📱 Install Aplikasi
+      </button>
       <button class="btn btn-ghost btn-full btn-sm" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Keluar
@@ -799,6 +809,60 @@ tbody tr:hover { background: var(--surface2); }
       <div class="card" style="margin-top:14px">
         <div class="section-title">Transaksi Terbaru</div>
         <div id="recent-transactions"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+      </div>
+
+      <!-- Grafik Tren & Kalkulator -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px" id="dashboard-charts-row">
+        <!-- Grafik Tren Simpanan -->
+        <div class="card">
+          <div class="section-title">📈 Tren Simpanan & Cicilan (6 Bulan)</div>
+          <div style="position:relative;height:200px">
+            <canvas id="chart-tren"></canvas>
+          </div>
+        </div>
+        <!-- Kalkulator Simulasi Pinjaman -->
+        <div class="card">
+          <div class="section-title">🧮 Kalkulator Simulasi Pinjaman</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px">Pokok Pinjaman</label>
+              <input class="form-input" type="text" inputmode="numeric" id="kalk-pokok" placeholder="Rp 1.000.000" oninput="hitungKalkulator()">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px">Jumlah Cicilan</label>
+              <input class="form-input" type="text" inputmode="numeric" id="kalk-tenor" placeholder="Contoh: 12" oninput="hitungKalkulator()">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px">Jenis Cicilan</label>
+              <select class="form-input form-select" id="kalk-type" onchange="hitungKalkulator()" style="font-size:13px">
+                <option value="monthly">Bulanan</option>
+                <option value="weekly">Mingguan</option>
+                <option value="biweekly">2 Mingguan</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px">Bunga/Bln (%)</label>
+              <input class="form-input" type="text" inputmode="numeric" id="kalk-bunga" placeholder="Contoh: 2" oninput="hitungKalkulator()">
+            </div>
+          </div>
+          <div id="kalk-result" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;font-size:13px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div><div style="color:var(--text3);font-size:11px">Total Bunga</div><div id="kalk-total-bunga" style="font-weight:700;color:var(--red)">-</div></div>
+              <div><div style="color:var(--text3);font-size:11px">Total Tagihan</div><div id="kalk-total-tagihan" style="font-weight:700;color:var(--accent)">-</div></div>
+              <div><div style="color:var(--text3);font-size:11px">Cicilan/Periode</div><div id="kalk-cicilan" style="font-weight:700;color:var(--green);font-size:15px">-</div></div>
+              <div><div style="color:var(--text3);font-size:11px">Durasi</div><div id="kalk-durasi" style="font-weight:700">-</div></div>
+            </div>
+          </div>
+          <div id="kalk-empty" style="color:var(--text3);font-size:12px;text-align:center;padding:20px 0">Isi form di atas untuk melihat simulasi</div>
+        </div>
+      </div>
+
+      <!-- Grafik Per Anggota -->
+      <div class="card admin-only" style="margin-top:14px;display:none">
+        <div class="section-title">👥 Simpanan per Anggota</div>
+        <div style="position:relative;height:200px">
+          <canvas id="chart-per-anggota"></canvas>
+        </div>
       </div>
     </div>
 
@@ -1474,7 +1538,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.3-comprehensive-fix';
+const APP_VERSION = 'v4.8-batch1';
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -1850,6 +1914,9 @@ async function loadDashboard() {
   document.getElementById('stat-pinjaman') && (document.getElementById('stat-pinjaman').textContent = fmt(kasDiluar));
   document.getElementById('stat-tunggak').textContent = tunggak.length + ' pinjaman';
   document.getElementById('stat-anggota').textContent = (members || []).length + ' orang';
+
+  // Load grafik (async, tidak block UI)
+  loadDashboardCharts(savings, memberBalances);
 
   if (!isAdmin()) {
     const mySavings = memberBalances[currentUser.id] || 0;
@@ -3895,6 +3962,237 @@ async function tandaiSelesaiEvent(eventId) {
   showToast('Event ditandai Selesai ✓');
   showEventDetail(eventId);
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 1A: KALKULATOR SIMULASI PINJAMAN
+// ══════════════════════════════════════════════════════════════
+async function hitungKalkulator() {
+  const pokok  = parseInt((document.getElementById('kalk-pokok')?.value  || '').replace(/[^0-9]/g, '')) || 0;
+  const tenor  = parseInt((document.getElementById('kalk-tenor')?.value  || '').replace(/[^0-9]/g, '')) || 0;
+  const bunga  = parseFloat((document.getElementById('kalk-bunga')?.value || '').replace(/[^0-9.]/g, '')) || 0;
+  const type   = document.getElementById('kalk-type')?.value || 'monthly';
+  const result = document.getElementById('kalk-result');
+  const empty  = document.getElementById('kalk-empty');
+
+  if (!pokok || !tenor) {
+    if (result) result.style.display = 'none';
+    if (empty)  empty.style.display  = 'block';
+    return;
+  }
+
+  // Hitung
+  const periodPerMonth  = type === 'weekly' ? 4 : type === 'biweekly' ? 2 : 1;
+  const months          = tenor / periodPerMonth;
+  const totalBunga      = Math.round(pokok * (bunga / 100) * months);
+  const totalTagihan    = pokok + totalBunga;
+  const cicilanPerPeriod = Math.round(totalTagihan / tenor);
+
+  const durasiLabel = type === 'weekly'
+    ? `${tenor} minggu (~${(tenor/4).toFixed(1)} bln)`
+    : type === 'biweekly'
+      ? `${tenor} periode (~${(tenor/2).toFixed(1)} bln)`
+      : `${tenor} bulan`;
+
+  document.getElementById('kalk-total-bunga').textContent   = fmt(totalBunga);
+  document.getElementById('kalk-total-tagihan').textContent = fmt(totalTagihan);
+  document.getElementById('kalk-cicilan').textContent       = fmt(cicilanPerPeriod);
+  document.getElementById('kalk-durasi').textContent        = durasiLabel;
+
+  if (result) result.style.display = 'block';
+  if (empty)  empty.style.display  = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 1B: GRAFIK DASHBOARD
+// ══════════════════════════════════════════════════════════════
+let _chartTren = null;
+let _chartAnggota = null;
+
+async function loadDashboardCharts(savings, memberBalances) {
+  // Chart 1: Tren simpanan masuk & cicilan masuk per bulan (6 bulan terakhir)
+  const months6 = [];
+  const labels6 = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - i);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    months6.push(key);
+    labels6.push(d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' }));
+  }
+
+  // Simpanan deposit per bulan
+  const simpananPerBulan = months6.map(m =>
+    (savings || [])
+      .filter(s => s.type === 'deposit' && s.created_at?.startsWith(m))
+      .reduce((a, s) => a + Number(s.amount), 0)
+  );
+
+  // Fetch cicilan per bulan
+  const allPayments = await dbQuery('loan_payments', 'select=amount_paid,created_at&order=created_at.asc');
+  const cicilanPerBulan = months6.map(m =>
+    (allPayments || [])
+      .filter(p => p.created_at?.startsWith(m))
+      .reduce((a, p) => a + Number(p.amount_paid), 0)
+  );
+
+  const ctxTren = document.getElementById('chart-tren');
+  if (!ctxTren) return;
+
+  if (_chartTren) _chartTren.destroy();
+  _chartTren = new Chart(ctxTren, {
+    type: 'bar',
+    data: {
+      labels: labels6,
+      datasets: [
+        {
+          label: 'Simpanan Masuk',
+          data: simpananPerBulan,
+          backgroundColor: 'rgba(22, 163, 74, 0.7)',
+          borderRadius: 4,
+        },
+        {
+          label: 'Cicilan Masuk',
+          data: cicilanPerBulan,
+          backgroundColor: 'rgba(37, 99, 235, 0.7)',
+          borderRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(ctx.raw)
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: {
+          ticks: {
+            font: { size: 10 },
+            callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'rb' : v
+          }
+        }
+      }
+    }
+  });
+
+  // Chart 2: Saldo simpanan per anggota (admin only)
+  if (!isAdmin()) return;
+  const ctxAnggota = document.getElementById('chart-per-anggota');
+  if (!ctxAnggota) return;
+
+  const anggotaLabels = [];
+  const anggotaData   = [];
+  const anggotaColors = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be123c','#854d0e'];
+
+  // Ambil nama anggota
+  const profiles = await dbQuery('profiles', 'select=id,full_name&order=full_name.asc');
+  (profiles || []).forEach((p, i) => {
+    const saldo = memberBalances[p.id] || 0;
+    if (saldo > 0) {
+      anggotaLabels.push(p.full_name.split(' ')[0]); // nama depan saja
+      anggotaData.push(saldo);
+    }
+  });
+
+  if (_chartAnggota) _chartAnggota.destroy();
+  _chartAnggota = new Chart(ctxAnggota, {
+    type: 'doughnut',
+    data: {
+      labels: anggotaLabels,
+      datasets: [{
+        data: anggotaData,
+        backgroundColor: anggotaColors.slice(0, anggotaData.length),
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + ctx.label + ': ' + new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(ctx.raw)
+          }
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 1C: PWA - Service Worker Registration
+// ══════════════════════════════════════════════════════════════
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    // Inline service worker via blob URL (tidak butuh file terpisah)
+    const swCode = `
+const CACHE = 'koperasi-v1';
+const ASSETS = ['/'];
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+  ));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    fetch(e.request).catch(() => caches.match(e.request))
+  );
+});
+`;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).then(() => {
+      console.log('Service Worker registered ✅');
+    }).catch(e => console.warn('SW registration failed:', e));
+  }
+}
+
+// Tombol install PWA
+let _deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  // Tampilkan tombol install jika belum terinstall
+  const installBtn = document.getElementById('pwa-install-btn');
+  if (installBtn) installBtn.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  const installBtn = document.getElementById('pwa-install-btn');
+  if (installBtn) installBtn.style.display = 'none';
+  _deferredPrompt = null;
+  showToast('✅ Aplikasi berhasil diinstall!');
+});
+
+async function installPWA() {
+  if (!_deferredPrompt) {
+    showToast('Buka menu browser → "Tambahkan ke layar utama"');
+    return;
+  }
+  _deferredPrompt.prompt();
+  const { outcome } = await _deferredPrompt.userChoice;
+  if (outcome === 'accepted') showToast('✅ Aplikasi diinstall!');
+  _deferredPrompt = null;
+}
+
+// Init PWA saat halaman load
+registerServiceWorker();
 
 </script>
 </body>

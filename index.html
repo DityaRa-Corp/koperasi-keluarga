@@ -857,7 +857,14 @@ tbody tr:hover { background: var(--surface2); }
               </select>
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" style="font-size:11px">Bunga/Bln (%)</label>
+              <label class="form-label" style="font-size:11px">Jenis Bunga</label>
+              <select class="form-input form-select" id="kalk-bunga-type" onchange="hitungKalkulator()" style="font-size:13px">
+                <option value="persen">Persentase (%/bln)</option>
+                <option value="nominal">Nominal (Rp/cicilan)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label" style="font-size:11px" id="kalk-bunga-label">Bunga/Bln (%)</label>
               <input class="form-input" type="text" inputmode="numeric" id="kalk-bunga" placeholder="Contoh: 2" oninput="hitungKalkulator()">
             </div>
           </div>
@@ -4157,12 +4164,24 @@ async function tandaiSelesaiEvent(eventId) {
 // BATCH 1A: KALKULATOR SIMULASI PINJAMAN
 // ══════════════════════════════════════════════════════════════
 async function hitungKalkulator() {
-  const pokok  = parseInt((document.getElementById('kalk-pokok')?.value  || '').replace(/[^0-9]/g, '')) || 0;
-  const tenor  = parseInt((document.getElementById('kalk-tenor')?.value  || '').replace(/[^0-9]/g, '')) || 0;
-  const bunga  = parseFloat((document.getElementById('kalk-bunga')?.value || '').replace(/[^0-9.]/g, '')) || 0;
-  const type   = document.getElementById('kalk-type')?.value || 'monthly';
-  const result = document.getElementById('kalk-result');
-  const empty  = document.getElementById('kalk-empty');
+  const pokok      = parseInt((document.getElementById('kalk-pokok')?.value  || '').replace(/[^0-9]/g, '')) || 0;
+  const tenor      = parseInt((document.getElementById('kalk-tenor')?.value  || '').replace(/[^0-9]/g, '')) || 0;
+  const bungaVal   = parseFloat((document.getElementById('kalk-bunga')?.value || '').replace(/[^0-9.]/g, '')) || 0;
+  const bungaType  = document.getElementById('kalk-bunga-type')?.value || 'persen';
+  const type       = document.getElementById('kalk-type')?.value || 'monthly';
+  const result     = document.getElementById('kalk-result');
+  const empty      = document.getElementById('kalk-empty');
+  const labelEl    = document.getElementById('kalk-bunga-label');
+  const bungaInput = document.getElementById('kalk-bunga');
+
+  // Update label dan placeholder sesuai jenis bunga
+  if (bungaType === 'persen') {
+    if (labelEl) labelEl.textContent = 'Bunga/Bln (%)';
+    if (bungaInput) bungaInput.placeholder = 'Contoh: 2';
+  } else {
+    if (labelEl) labelEl.textContent = 'Bunga/Cicilan (Rp)';
+    if (bungaInput) bungaInput.placeholder = 'Contoh: 50000';
+  }
 
   if (!pokok || !tenor) {
     if (result) result.style.display = 'none';
@@ -4170,14 +4189,22 @@ async function hitungKalkulator() {
     return;
   }
 
-  // Hitung
-  const periodPerMonth  = type === 'weekly' ? 4 : type === 'biweekly' ? 2 : 1;
-  const months          = tenor / periodPerMonth;
-  const totalBunga      = Math.round(pokok * (bunga / 100) * months);
-  const totalTagihan    = pokok + totalBunga;
-  const cicilanPerPeriod = Math.round(totalTagihan / tenor);
+  // Hitung berdasarkan jenis bunga
+  const periodPerMonth = type === 'weekly' ? 4 : type === 'biweekly' ? 2 : 1;
+  const months         = tenor / periodPerMonth;
 
-  const durasiLabel = type === 'weekly'
+  let totalBunga, cicilanPerPeriod;
+  if (bungaType === 'persen') {
+    totalBunga      = Math.round(pokok * (bungaVal / 100) * months);
+    cicilanPerPeriod = Math.round((pokok + totalBunga) / tenor);
+  } else {
+    // Nominal per cicilan
+    totalBunga       = bungaVal * tenor;
+    cicilanPerPeriod = Math.round(pokok / tenor) + bungaVal;
+  }
+
+  const totalTagihan = pokok + totalBunga;
+  const durasiLabel  = type === 'weekly'
     ? `${tenor} minggu (~${(tenor/4).toFixed(1)} bln)`
     : type === 'biweekly'
       ? `${tenor} periode (~${(tenor/2).toFixed(1)} bln)`

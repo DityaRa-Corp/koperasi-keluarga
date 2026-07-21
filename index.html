@@ -1043,7 +1043,13 @@ tbody tr:hover { background: var(--surface2); }
         <div id="activity-log-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div id="anggota-tab-poin" class="card" style="display:none">
-        <div class="section-title">⭐ Papan Poin Anggota</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="section-title" style="margin-bottom:0">⭐ Papan Poin Anggota</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="poinAktifBulanan()">📅 Poin Aktif Bulanan</button>
+            <button class="btn btn-danger btn-sm" onclick="resetPoinTahunan()">🔄 Reset Tahunan</button>
+          </div>
+        </div>
         <div id="poin-leaderboard" style="margin-bottom:16px"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
         <div class="section-title">Riwayat Poin</div>
         <div id="poin-history"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
@@ -2218,6 +2224,10 @@ async function doSetor() {
   const bal = await getMemberBalance(memberId);
   const { error } = await dbInsert('savings', { member_id: memberId, type: 'deposit', amount, balance_after: bal + amount, recorded_by: currentUser.id, note });
   if (error) { showToast('Gagal menyimpan: ' + JSON.stringify(error)); return; }
+
+  // Auto-poin sesuai nominal setor
+  await autoPoinSetor(memberId, amount);
+
   showToast('Setoran berhasil dicatat ✓');
   closeModal('modal-setor');
   document.getElementById('setor-amount').value = '';
@@ -2617,6 +2627,10 @@ async function doCatatCicilan() {
   showToast('Cicilan berhasil dicatat ✓' + (isLastPayment ? ' 🎉 Pinjaman Lunas!' : ''));
   closeModal('modal-cicilan');
   document.getElementById('cicilan-note').value = '';
+
+  // Auto-poin cicilan
+  await autoPoinCicilan(loan.member_id, loan.next_due_date);
+
   loadCicilan(); loadDashboard();
 }
 
@@ -4845,6 +4859,117 @@ async function doRestore() {
   } finally {
     btn.disabled = false;
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SISTEM POIN - OTOMATIS
+// ══════════════════════════════════════════════════════════════
+
+// Helper: hitung poin berdasarkan nominal setor
+function hitungPoinSetor(amount) {
+  if (amount >= 1000000) return 200;
+  if (amount > 100000)   return 10;
+  if (amount === 100000) return 7;
+  if (amount >= 50000)   return 3;
+  if (amount >= 25000)   return 1;
+  return 0;
+}
+
+// Helper: simpan poin ke DB dan update total_points di profiles
+async function simpanPoin(memberId, poin, reason, type = 'credit') {
+  if (poin === 0) return;
+  try {
+    // Insert ke member_points
+    await dbInsert('member_points', {
+      member_id: memberId,
+      points: Math.abs(poin),
+      reason,
+      type
+    });
+    // Update total_points di profiles
+    const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
+    const currentPts = profileArr?.[0]?.total_points || 0;
+    const newPts = type === 'credit'
+      ? currentPts + Math.abs(poin)
+      : Math.max(0, currentPts - Math.abs(poin));
+    await dbUpdate('profiles', `id=eq.${memberId}`, { total_points: newPts });
+  } catch(e) {
+    console.warn('Auto-poin gagal (tidak kritikal):', e.message);
+  }
+}
+
+// Auto-poin saat setor simpanan
+async function autoPoinSetor(memberId, amount) {
+  const poin = hitungPoinSetor(amount);
+  if (poin === 0) return;
+  const label = amount >= 1000000 ? '≥ Rp 1jt' :
+                amount > 100000   ? `Rp ${(amount/1000).toFixed(0)}rb (>100rb)` :
+                amount === 100000 ? 'Rp 100rb (pas)' :
+                amount >= 50000   ? `Rp ${(amount/1000).toFixed(0)}rb (50-99rb)` :
+                                    `Rp ${(amount/1000).toFixed(0)}rb (25-49rb)`;
+  await simpanPoin(memberId, poin, `[AUTO] Setor simpanan ${label} → +${poin} poin`);
+  showToast(`⭐ +${poin} poin dari setoran!`, 2000);
+}
+
+// Auto-poin saat bayar cicilan
+async function autoPoinCicilan(memberId, nextDueDateBefore) {
+  const todayStr = getTodayStr();
+  const dueStr = nextDueDateBefore ? nextDueDateBefore.split('T')[0] : null;
+
+  if (!dueStr) {
+    // Tidak ada jatuh tempo (misal cicilan pertama atau data tidak ada) → tetap +5
+    await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan → +5 poin', 'credit');
+    showToast('⭐ +5 poin dari cicilan!', 2000);
+    return;
+  }
+
+  if (dueStr >= todayStr) {
+    // Tepat waktu atau lebih awal
+    await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan tepat waktu → +5 poin', 'credit');
+    showToast('⭐ +5 poin cicilan tepat waktu!', 2000);
+  } else {
+    // Terlambat — kurangi poin
+    await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan terlambat → -5 poin', 'debit');
+    showToast('⚠️ -5 poin karena cicilan terlambat', 2000);
+  }
+}
+
+// Tombol untuk admin: tambah poin aktif bulanan ke semua anggota
+async function poinAktifBulanan() {
+  if (!confirm('Tambah +2 poin "Aktif Bulanan" ke semua anggota aktif?\n\nLakukan ini sekali setiap awal bulan.')) return;
+  showToast('⏳ Memproses poin aktif bulanan...');
+  const members = await dbQuery('profiles', 'select=id,full_name,total_points&status=eq.active');
+  if (!members || !members.length) { showToast('Tidak ada anggota aktif'); return; }
+  const bulan = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  let berhasil = 0;
+  for (const m of members) {
+    await simpanPoin(m.id, 2, `[AUTO] Aktif bulanan ${bulan} → +2 poin`, 'credit');
+    berhasil++;
+  }
+  showToast(`✅ +2 poin aktif bulanan diberikan ke ${berhasil} anggota`);
+  loadPoinData();
+}
+
+// Reset poin semua anggota (awal tahun)
+async function resetPoinTahunan() {
+  if (!confirm('⚠️ RESET POIN TAHUNAN\n\nIni akan mengatur semua poin anggota ke 0.\nLakukan hanya di awal tahun setelah hadiah diberikan.\n\nLanjutkan?')) return;
+  const members = await dbQuery('profiles', 'select=id,full_name&status=eq.active');
+  if (!members || !members.length) return;
+  const tahun = new Date().getFullYear() - 1;
+  let berhasil = 0;
+  for (const m of members) {
+    // Catat history reset
+    await dbInsert('member_points', {
+      member_id: m.id, points: 0,
+      reason: `[RESET] Reset poin tahunan ${tahun}`, type: 'credit'
+    });
+    // Set total_points ke 0
+    await dbUpdate('profiles', `id=eq.${m.id}`, { total_points: 0 });
+    berhasil++;
+  }
+  showToast(`✅ Poin ${berhasil} anggota berhasil direset ke 0`);
+  loadPoinData();
 }
 
 </script>

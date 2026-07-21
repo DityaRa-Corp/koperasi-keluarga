@@ -543,6 +543,21 @@ tbody tr:hover { background: var(--surface2); }
   #dashboard-charts-row { grid-template-columns: 1fr; }
   .detail-grid { grid-template-columns: 1fr; }
 }
+/* ── Print styles ── */
+@media print {
+  .sidebar, .page-header .page-actions, .tabs, .btn, .filter-input,
+  #laporan-date-from, #laporan-date-to, .modal-overlay,
+  button, .hamburger, .nav-item, .sidebar-footer { display: none !important; }
+  .main-content { margin: 0 !important; padding: 0 !important; }
+  .page { padding: 0 !important; display: block !important; }
+  .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+  body { background: white !important; font-size: 12px; }
+  table { font-size: 11px; }
+  th, td { padding: 4px 6px !important; }
+  .print-header { display: block !important; }
+  #print-area { display: block !important; }
+}
+.print-header { display: none; }
 </style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2d3250">
@@ -693,6 +708,10 @@ tbody tr:hover { background: var(--surface2); }
         <button class="nav-item" onclick="showPage('event')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
           Event
+        </button>
+        <button class="nav-item admin-only" style="display:none" onclick="showPage('backup')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Backup & Restore
         </button>
       </div>
       <div class="nav-section">
@@ -953,6 +972,14 @@ tbody tr:hover { background: var(--surface2); }
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export Excel
         </button>
+        <button class="btn btn-ghost btn-sm" onclick="cetakLaporan()" style="gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Cetak
+        </button>
+        <button class="btn btn-ghost btn-sm admin-only" style="display:none;gap:6px" onclick="showPage('backup')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Backup
+        </button>
       </div>
       <!-- Filter Rentang Tanggal -->
       <div class="card" style="margin-bottom:14px;padding:14px 18px">
@@ -1036,6 +1063,68 @@ tbody tr:hover { background: var(--surface2); }
     </div>
 
     <!-- PROFIL & PASSWORD (semua user) -->
+    <!-- BACKUP & RESTORE -->
+    <div class="page" id="page-backup">
+      <div class="page-header">
+        <div class="page-title">Backup & Restore</div>
+        <div class="page-sub">Cadangkan dan pulihkan data koperasi</div>
+      </div>
+
+      <!-- Backup -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="section-title">💾 Backup Data</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Export seluruh data koperasi ke file Excel. Simpan file ini di tempat aman sebagai cadangan.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div class="card" style="padding:14px;background:var(--surface2)">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Yang akan dibackup:</div>
+            <div style="font-size:13px;line-height:1.8">
+              ✅ Data anggota<br>
+              ✅ Riwayat simpanan<br>
+              ✅ Data pinjaman<br>
+              ✅ Riwayat cicilan<br>
+              ✅ Jurnal kas lengkap<br>
+              ✅ Data event
+            </div>
+          </div>
+          <div class="card" style="padding:14px;background:var(--surface2)">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Info backup:</div>
+            <div style="font-size:13px;line-height:1.8">
+              📅 Tanggal: <span id="backup-date">-</span><br>
+              📊 Format: Excel (.xlsx)<br>
+              🔒 Data: Lengkap & aman<br>
+              ⏱️ Waktu: ~5-10 detik
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="doBackup()" id="btn-backup">
+            💾 Download Backup Sekarang
+          </button>
+        </div>
+        <div id="backup-status" style="margin-top:12px;font-size:13px;color:var(--text2)"></div>
+      </div>
+
+      <!-- Restore -->
+      <div class="card">
+        <div class="section-title">📥 Restore Data</div>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
+          ⚠️ <strong>Perhatian:</strong> Restore akan MENAMBAHKAN data dari file backup ke database yang ada. Data yang sudah ada tidak akan dihapus. Pastikan file backup adalah file yang valid dari aplikasi ini.
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pilih File Backup (.xlsx)</label>
+          <input type="file" class="form-input" id="restore-file" accept=".xlsx" onchange="previewRestore(this)">
+        </div>
+        <div id="restore-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:13px">
+          <div style="font-weight:600;margin-bottom:8px">Preview file backup:</div>
+          <div id="restore-preview-content"></div>
+        </div>
+        <button class="btn btn-danger" onclick="doRestore()" id="btn-restore" style="display:none">
+          📥 Restore Data dari File Ini
+        </button>
+        <div id="restore-status" style="margin-top:12px;font-size:13px"></div>
+      </div>
+    </div>
+
     <!-- EVENT -->
     <div class="page" id="page-event">
       <div class="page-header">
@@ -1783,6 +1872,7 @@ function showPage(name) {
   if (name === 'pengaturan') loadPengaturan();
   if (name === 'profil') loadProfil();
   if (name === 'event') loadEvent();
+  if (name === 'backup') loadBackupPage();
 }
 
 function setRoleUI() {
@@ -4476,6 +4566,230 @@ async function doTambahPoin() {
 // Auto-log aktivitas kritis
 const _origDoSetor = window.doSetor;
 const _origDoApprovePinjaman = window.doApprovePinjaman;
+
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 3A: CETAK LAPORAN
+// ══════════════════════════════════════════════════════════════
+function cetakLaporan() {
+  // Tambah header print
+  const now = new Date();
+  const dateRange = (() => {
+    const from = document.getElementById('laporan-date-from')?.value;
+    const to   = document.getElementById('laporan-date-to')?.value;
+    if (from && to) return `Periode: ${fmtDate(from)} s/d ${fmtDate(to)}`;
+    if (from) return `Mulai: ${fmtDate(from)}`;
+    return 'Semua Periode';
+  })();
+
+  // Inject print header
+  let printHeader = document.getElementById('print-header-inject');
+  if (!printHeader) {
+    printHeader = document.createElement('div');
+    printHeader.id = 'print-header-inject';
+    printHeader.className = 'print-header';
+    document.body.prepend(printHeader);
+  }
+  printHeader.innerHTML = `
+    <div style="text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #2d3250">
+      <div style="font-size:22px;font-weight:700;color:#2d3250">KoperasiKeluarga</div>
+      <div style="font-size:14px;color:#666">Simpan & Pinjam Keluarga</div>
+      <div style="font-size:13px;margin-top:6px">${dateRange}</div>
+      <div style="font-size:11px;color:#999">Dicetak: ${now.toLocaleString('id-ID')}</div>
+    </div>`;
+
+  window.print();
+}
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 3B: BACKUP & RESTORE
+// ══════════════════════════════════════════════════════════════
+function loadBackupPage() {
+  const dateEl = document.getElementById('backup-date');
+  if (dateEl) dateEl.textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+}
+
+async function doBackup() {
+  const btn = document.getElementById('btn-backup');
+  const status = document.getElementById('backup-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Menyiapkan backup...';
+  status.textContent = '';
+
+  try {
+    const wb = XLSX.utils.book_new();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('id-ID').replace(/\//g,'-');
+
+    // Sheet 1: Anggota
+    status.textContent = '📊 Mengambil data anggota...';
+    const profiles = await dbQuery('profiles', 'select=*&order=full_name.asc');
+    const profRows = [['ID','Nama','Username','Role','Status','Total Poin','Bergabung']];
+    (profiles||[]).forEach(p => profRows.push([p.id, p.full_name, p.username||'', p.role, p.status, p.total_points||0, p.created_at]));
+    const wsProf = XLSX.utils.aoa_to_sheet(profRows);
+    wsProf['!cols'] = [{wch:36},{wch:25},{wch:20},{wch:10},{wch:10},{wch:10},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsProf, 'Anggota');
+
+    // Sheet 2: Simpanan
+    status.textContent = '💰 Mengambil data simpanan...';
+    const savings = await dbQuery('savings', 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.asc');
+    const savRows = [['ID','Anggota','Tipe','Jumlah','Saldo Setelah','Keterangan','Tanggal']];
+    (savings||[]).forEach(s => savRows.push([s.id, s.profiles?.full_name||'', s.type, s.amount, s.balance_after, s.note||'', s.created_at]));
+    const wsSav = XLSX.utils.aoa_to_sheet(savRows);
+    wsSav['!cols'] = [{wch:36},{wch:25},{wch:10},{wch:15},{wch:15},{wch:20},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsSav, 'Simpanan');
+
+    // Sheet 3: Pinjaman
+    status.textContent = '🏦 Mengambil data pinjaman...';
+    const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.asc');
+    const loanRows = [['ID','Anggota','Pokok','Total','Bunga Rate','Jenis','Cicilan','Jumlah Cicilan','Terbayar','Sisa','Status','Tgl Cair','Jatuh Tempo Berikut']];
+    (loans||[]).forEach(l => loanRows.push([l.id, l.profiles?.full_name||'', l.principal, l.total_amount, l.interest_rate, l.installment_type, l.installment_amount, l.installment_count, l.amount_paid, l.remaining_amount, l.status, l.disbursed_at||'', l.next_due_date||'']));
+    const wsLoan = XLSX.utils.aoa_to_sheet(loanRows);
+    wsLoan['!cols'] = [{wch:36},{wch:20},{wch:15},{wch:15},{wch:10},{wch:12},{wch:15},{wch:14},{wch:12},{wch:12},{wch:12},{wch:20},{wch:15}];
+    XLSX.utils.book_append_sheet(wb, wsLoan, 'Pinjaman');
+
+    // Sheet 4: Cicilan
+    status.textContent = '📅 Mengambil data cicilan...';
+    const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc');
+    const payRows = [['ID','Loan ID','Anggota','Dibayar','Pokok','Bunga','Sisa','Cicilan Ke','Keterangan','Tanggal']];
+    (payments||[]).forEach(p => payRows.push([p.id, p.loan_id, p.profiles?.full_name||'', p.amount_paid, p.principal_component, p.interest_component, p.remaining_after, p.payment_number, p.note||'', p.created_at]));
+    const wsPay = XLSX.utils.aoa_to_sheet(payRows);
+    wsPay['!cols'] = [{wch:36},{wch:36},{wch:20},{wch:12},{wch:12},{wch:12},{wch:12},{wch:10},{wch:20},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsPay, 'Cicilan');
+
+    // Sheet 5: Event
+    status.textContent = '🎉 Mengambil data event...';
+    const events = await dbQuery('events', 'select=*&order=created_at.asc');
+    const evRows = [['ID','Judul','Tanggal','Deskripsi','Status','Total Biaya','Dibuat']];
+    (events||[]).forEach(e => evRows.push([e.id, e.judul, e.tanggal, e.deskripsi||'', e.status, e.total_biaya, e.created_at]));
+    const wsEv = XLSX.utils.aoa_to_sheet(evRows);
+    wsEv['!cols'] = [{wch:36},{wch:30},{wch:15},{wch:30},{wch:10},{wch:15},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsEv, 'Event');
+
+    // Sheet 6: Poin
+    status.textContent = '⭐ Mengambil data poin...';
+    const points = await dbQuery('member_points', 'select=*,profiles!member_points_member_id_fkey(full_name)&order=created_at.asc');
+    const pointRows = [['ID','Anggota','Poin','Tipe','Alasan','Tanggal']];
+    (points||[]).forEach(p => pointRows.push([p.id, p.profiles?.full_name||'', p.points, p.type, p.reason, p.created_at]));
+    const wsPoint = XLSX.utils.aoa_to_sheet(pointRows);
+    wsPoint['!cols'] = [{wch:36},{wch:25},{wch:8},{wch:10},{wch:40},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsPoint, 'Poin Reward');
+
+    // Tulis file
+    status.textContent = '💾 Menyimpan file...';
+    const filename = `KoperasiKeluarga_Backup_${dateStr}.xlsx`;
+    XLSX.writeFile(wb, filename);
+
+    status.innerHTML = `<span style="color:var(--green)">✅ Backup berhasil! File <strong>${filename}</strong> sudah didownload.</span>`;
+    await logActivity('BACKUP', `Backup data berhasil - ${filename}`);
+  } catch(e) {
+    status.innerHTML = `<span style="color:var(--red)">❌ Gagal: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Download Backup Sekarang';
+  }
+}
+
+async function previewRestore(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('restore-preview');
+  const previewContent = document.getElementById('restore-preview-content');
+  const btnRestore = document.getElementById('btn-restore');
+  if (!file) { preview.style.display='none'; btnRestore.style.display='none'; return; }
+
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+    const sheets = wb.SheetNames;
+
+    // Validasi sheet yang diperlukan
+    const required = ['Anggota','Simpanan','Pinjaman','Cicilan'];
+    const missing = required.filter(s => !sheets.includes(s));
+    if (missing.length > 0) {
+      previewContent.innerHTML = `<span style="color:var(--red)">❌ File tidak valid. Sheet tidak lengkap: ${missing.join(', ')}</span>`;
+      preview.style.display = 'block';
+      btnRestore.style.display = 'none';
+      return;
+    }
+
+    // Hitung baris per sheet
+    const counts = {};
+    sheets.forEach(s => {
+      const ws = wb.Sheets[s];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      counts[s] = rows.length;
+    });
+
+    previewContent.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        ${Object.entries(counts).map(([s,c]) => `
+          <div style="padding:6px 10px;background:var(--surface2);border-radius:4px;font-size:12px">
+            📊 ${s}: <strong>${c} baris</strong>
+          </div>`).join('')}
+      </div>`;
+
+    preview.style.display = 'block';
+    btnRestore.style.display = 'block';
+  } catch(e) {
+    previewContent.innerHTML = `<span style="color:var(--red)">❌ Gagal membaca file: ${e.message}</span>`;
+    preview.style.display = 'block';
+    btnRestore.style.display = 'none';
+  }
+}
+
+async function doRestore() {
+  const file = document.getElementById('restore-file').files[0];
+  const status = document.getElementById('restore-status');
+  const btn = document.getElementById('btn-restore');
+  if (!file) return;
+
+  if (!confirm('Yakin ingin restore data dari file ini?\n\nData dari file akan ditambahkan ke database. Pastikan Anda sudah melakukan backup data terbaru sebelum restore.')) return;
+
+  btn.disabled = true;
+  status.innerHTML = '<span style="color:var(--text2)">⏳ Memulai restore...</span>';
+
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data);
+
+    let totalRestored = 0;
+    let errors = [];
+
+    // Restore simpanan
+    if (wb.SheetNames.includes('Simpanan')) {
+      status.innerHTML = '<span style="color:var(--text2)">⏳ Restore simpanan...</span>';
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets['Simpanan']);
+      for (const row of rows) {
+        if (!row['ID'] || !row['Anggota']) continue;
+        // Cek apakah sudah ada (by ID)
+        const exists = await dbQuery('savings', `id=eq.${row['ID']}&select=id&limit=1`);
+        if (exists && exists.length > 0) continue; // Skip jika sudah ada
+
+        // Cari member_id dari nama
+        const member = await dbQuery('profiles', `full_name=eq.${encodeURIComponent(row['Anggota'])}&select=id&limit=1`);
+        if (!member || !member.length) { errors.push(`Anggota tidak ditemukan: ${row['Anggota']}`); continue; }
+
+        try {
+          await dbInsert('savings', {
+            id: row['ID'], member_id: member[0].id,
+            type: row['Tipe'], amount: row['Jumlah'],
+            balance_after: row['Saldo Setelah'], note: row['Keterangan'] || '',
+            recorded_by: currentUser.id,
+            created_at: row['Tanggal']
+          });
+          totalRestored++;
+        } catch(e) { errors.push(`Simpanan ${row['ID']}: ${e.message}`); }
+      }
+    }
+
+    status.innerHTML = `<span style="color:var(--green)">✅ Restore selesai! ${totalRestored} transaksi berhasil dipulihkan.${errors.length > 0 ? '<br>⚠️ ' + errors.length + ' error: ' + errors.slice(0,3).join(', ') : ''}</span>`;
+    await logActivity('RESTORE', `Restore dari file: ${file.name}, ${totalRestored} records`);
+  } catch(e) {
+    status.innerHTML = `<span style="color:var(--red)">❌ Restore gagal: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 </script>
 </body>

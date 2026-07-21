@@ -3536,6 +3536,24 @@ async function loadProfil() {
       .filter(m => m.id !== currentUser.id)
       .map(m => `<option value="${m.id}">${m.full_name}</option>`).join('');
   }
+
+  // Tampilkan avatar & poin di halaman profil
+  if (currentProfile) {
+    const myAvatarEl = document.getElementById('my-avatar');
+    if (myAvatarEl) {
+      if (currentProfile.avatar_url) {
+        myAvatarEl.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+        myAvatarEl.style.background = 'transparent';
+      } else {
+        myAvatarEl.textContent = (currentProfile.full_name || '?')[0].toUpperCase();
+        myAvatarEl.style.cssText = 'width:72px;height:72px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:700;overflow:hidden;border:3px solid var(--border)';
+      }
+    }
+    const usernameDisplay = document.getElementById('profil-username-display');
+    if (usernameDisplay) usernameDisplay.textContent = '@' + (currentProfile.username || '-');
+    const poinEl = document.getElementById('profil-poin');
+    if (poinEl) poinEl.textContent = '⭐ ' + (currentProfile.total_points || 0) + ' poin';
+  }
 }
 
 async function changeMyUsername() {
@@ -4454,25 +4472,6 @@ async function doTambahPoin() {
   loadPoinData();
 }
 
-// Override loadProfil untuk tampilkan avatar & poin
-const _origLoadProfilFn = window.loadProfil;
-async function loadProfil() {
-  if (_origLoadProfilFn) await _origLoadProfilFn();
-  // Tampilkan avatar
-  const myAvatarEl = document.getElementById('my-avatar');
-  if (myAvatarEl && currentProfile) {
-    if (currentProfile.avatar_url) {
-      myAvatarEl.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
-      myAvatarEl.style.background = 'transparent';
-    } else {
-      myAvatarEl.textContent = (currentProfile.full_name || '?')[0].toUpperCase();
-    }
-  }
-  const usernameDisplay = document.getElementById('profil-username-display');
-  if (usernameDisplay) usernameDisplay.textContent = '@' + (currentProfile?.username || '-');
-  const poinEl = document.getElementById('profil-poin');
-  if (poinEl) poinEl.textContent = '⭐ ' + (currentProfile?.total_points || 0) + ' poin';
-}
 
 // Auto-log aktivitas kritis
 const _origDoSetor = window.doSetor;

@@ -996,8 +996,26 @@ tbody tr:hover { background: var(--surface2); }
         </div>
         <div class="table-wrap"><div id="anggota-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
-      <div class="card" style="margin-top:14px">
-        <div class="section-title">Log Perubahan Data Anggota</div>
+
+      <!-- Tabs: Log Aktivitas & Poin -->
+      <div style="display:flex;gap:8px;margin-top:14px;margin-bottom:10px">
+        <button class="tab-btn active" onclick="switchAnggotaTab('log',this)">📋 Log Aktivitas</button>
+        <button class="tab-btn" onclick="switchAnggotaTab('poin',this)">⭐ Papan Poin</button>
+        <button class="tab-btn" onclick="switchAnggotaTab('edit',this)">✏️ Log Perubahan</button>
+      </div>
+
+      <div id="anggota-tab-log" class="card">
+        <div class="section-title">📋 Log Aktivitas Admin</div>
+        <div id="activity-log-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+      </div>
+      <div id="anggota-tab-poin" class="card" style="display:none">
+        <div class="section-title">⭐ Papan Poin Anggota</div>
+        <div id="poin-leaderboard" style="margin-bottom:16px"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+        <div class="section-title">Riwayat Poin</div>
+        <div id="poin-history"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+      </div>
+      <div id="anggota-tab-edit" class="card" style="display:none">
+        <div class="section-title">✏️ Log Perubahan Data Anggota</div>
         <div class="table-wrap"><div id="anggota-edit-log"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
@@ -1045,11 +1063,21 @@ tbody tr:hover { background: var(--surface2); }
       </div>
       <div class="card" style="max-width:480px;margin-bottom:14px">
         <div class="section-title">Informasi Akun</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+          <div style="position:relative;flex-shrink:0">
+            <div id="my-avatar" style="width:72px;height:72px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:700;overflow:hidden;border:3px solid var(--border)">?</div>
+            <button onclick="openMyAvatar()" style="position:absolute;bottom:0;right:0;width:22px;height:22px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:white" title="Ganti foto">✏️</button>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:16px" id="profil-nama">-</div>
+            <div style="color:var(--text2);font-size:13px" id="profil-username-display">-</div>
+          </div>
+        </div>
         <div class="detail-grid" style="margin-bottom:16px">
-          <div class="detail-item"><label>Nama</label><span id="profil-nama">-</span></div>
           <div class="detail-item"><label>Username</label><span id="profil-username" class="td-mono" style="color:var(--accent)">-</span></div>
           <div class="detail-item"><label>Role</label><span id="profil-role">-</span></div>
           <div class="detail-item"><label>Status</label><span id="profil-status">-</span></div>
+          <div class="detail-item"><label>Total Poin</label><span id="profil-poin" style="color:var(--amber);font-weight:700">⭐ -</span></div>
         </div>
       </div>
       <div class="card" style="max-width:480px;margin-bottom:14px">
@@ -1319,7 +1347,54 @@ tbody tr:hover { background: var(--surface2); }
   </div>
 </div>
 
-<!-- Catat Cicilan -->
+<!-- Modal Upload Foto Profil -->
+<div class="modal-overlay" id="modal-avatar">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">📸 Foto Profil</div>
+    <input type="hidden" id="avatar-member-id">
+    <div style="text-align:center;margin-bottom:16px">
+      <div id="avatar-preview" style="width:100px;height:100px;border-radius:50%;background:var(--surface2);margin:0 auto 12px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:40px;border:3px solid var(--border)">👤</div>
+      <div style="font-size:13px;color:var(--text2)" id="avatar-member-name">-</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Upload Foto (JPG/PNG, maks 1MB)</label>
+      <input type="file" class="form-input" id="avatar-file" accept="image/jpeg,image/png,image/webp" onchange="previewAvatar(this)">
+    </div>
+    <div id="avatar-alert" class="alert alert-error" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-avatar')">Batal</button>
+      <button class="btn btn-primary" onclick="uploadAvatar()">Simpan Foto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tambah Poin -->
+<div class="modal-overlay" id="modal-tambah-poin">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">⭐ Kelola Poin</div>
+    <input type="hidden" id="poin-member-id">
+    <div id="poin-member-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;text-align:center"></div>
+    <div class="form-group">
+      <label class="form-label">Aksi</label>
+      <select class="form-input form-select" id="poin-type">
+        <option value="credit">➕ Tambah Poin</option>
+        <option value="debit">➖ Kurangi Poin</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Jumlah Poin</label>
+      <input class="form-input" type="text" inputmode="numeric" id="poin-jumlah" placeholder="Contoh: 10">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alasan</label>
+      <input class="form-input" type="text" id="poin-alasan" placeholder="Contoh: Rajin setor simpanan bulan ini">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-tambah-poin')">Batal</button>
+      <button class="btn btn-primary" onclick="doTambahPoin()">Simpan</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-cicilan">
   <div class="modal">
     <div class="modal-title">Catat Pembayaran Cicilan</div>
@@ -2929,19 +3004,25 @@ function renderAnggotaTable(data) {
   const el = document.getElementById('anggota-list');
   if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada anggota ditemukan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>No</th><th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Bergabung</th><th>Aksi</th></tr></thead>
+    <thead><tr><th></th><th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Poin</th><th>Bergabung</th><th>Aksi</th></tr></thead>
     <tbody>${data.map((a, i) => `<tr>
-      <td>${i+1}</td>
+      <td>
+        ${a.avatar_url
+          ? `<img src="${a.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">`
+          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">${(a.full_name||'?')[0].toUpperCase()}</div>`}
+      </td>
       <td style="font-weight:500">${a.full_name}</td>
       <td><span class="td-mono" style="font-size:12px;color:var(--accent)">${a.username || '-'}</span></td>
       <td>${a.role === 'admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Anggota</span>'}</td>
       <td>${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
+      <td><span style="font-weight:600;color:var(--amber)">⭐ ${a.total_points || 0}</span></td>
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
       <td style="display:flex;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.role}','${a.username||''}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',false)" title="Reset Password">🔑</button>
           <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${a.full_name}')" title="Bypass Masa Tunggu Pinjaman">⏩</button>
+          <button class="btn btn-ghost btn-sm" onclick="openTambahPoin('${a.id}','${a.full_name}')" title="Tambah Poin">⭐</button>
           ${a.id !== currentUser.id ? `
             ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
             <button class="btn btn-danger btn-sm" onclick="hapusAnggota('${a.id}','${a.full_name}')">Hapus</button>
@@ -4113,6 +4194,289 @@ async function installPWA() {
   if (outcome === 'accepted') showToast('✅ Aplikasi berhasil diinstall!');
   _deferredPrompt = null;
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 2A: FOTO PROFIL
+// ══════════════════════════════════════════════════════════════
+function switchAnggotaTab(tab, btn) {
+  ['log','poin','edit'].forEach(t => {
+    const el = document.getElementById('anggota-tab-' + t);
+    if (el) el.style.display = 'none';
+  });
+  document.querySelectorAll('#page-anggota .tab-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('anggota-tab-' + tab);
+  if (el) el.style.display = 'block';
+  if (btn) btn.classList.add('active');
+  if (tab === 'log') loadActivityLog();
+  if (tab === 'poin') loadPoinData();
+  if (tab === 'edit') loadAnggotaEditLog();
+}
+
+function openMyAvatar() {
+  document.getElementById('avatar-member-id').value = currentUser.id;
+  document.getElementById('avatar-member-name').textContent = currentProfile?.full_name || '-';
+  const preview = document.getElementById('avatar-preview');
+  if (currentProfile?.avatar_url) {
+    preview.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    preview.textContent = (currentProfile?.full_name || '?')[0].toUpperCase();
+    preview.style.cssText = 'width:100px;height:100px;border-radius:50%;background:var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:36px;border:3px solid var(--border)';
+  }
+  document.getElementById('avatar-file').value = '';
+  document.getElementById('avatar-alert').style.display = 'none';
+  openModal('modal-avatar');
+}
+
+function openAvatarForMember(memberId, memberName, avatarUrl) {
+  document.getElementById('avatar-member-id').value = memberId;
+  document.getElementById('avatar-member-name').textContent = memberName;
+  const preview = document.getElementById('avatar-preview');
+  if (avatarUrl) {
+    preview.innerHTML = `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">`;
+    preview.style.cssText = 'width:100px;height:100px;border-radius:50%;margin:0 auto 12px;overflow:hidden;border:3px solid var(--border)';
+  } else {
+    preview.textContent = memberName[0].toUpperCase();
+    preview.style.cssText = 'width:100px;height:100px;border-radius:50%;background:var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:36px;border:3px solid var(--border)';
+  }
+  document.getElementById('avatar-file').value = '';
+  document.getElementById('avatar-alert').style.display = 'none';
+  openModal('modal-avatar');
+}
+
+function previewAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 1024 * 1024) {
+    document.getElementById('avatar-alert').textContent = 'Ukuran file maksimal 1MB';
+    document.getElementById('avatar-alert').style.display = 'block';
+    input.value = '';
+    return;
+  }
+  document.getElementById('avatar-alert').style.display = 'none';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('avatar-preview');
+    preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    preview.style.cssText = 'width:100px;height:100px;border-radius:50%;margin:0 auto 12px;overflow:hidden;border:3px solid var(--border)';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadAvatar() {
+  const memberId = document.getElementById('avatar-member-id').value;
+  const file = document.getElementById('avatar-file').files[0];
+  const alertEl = document.getElementById('avatar-alert');
+  if (!file) { alertEl.textContent = 'Pilih file foto terlebih dahulu'; alertEl.style.display = 'block'; return; }
+
+  // Convert to base64 dan simpan langsung ke profiles.avatar_url sebagai data URL
+  // Ini lebih sederhana dari Supabase Storage, tidak butuh bucket setup
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const dataUrl = e.target.result;
+    // Kompres dengan canvas
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 200;
+      const ratio = Math.min(maxSize/img.width, maxSize/img.height);
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      const compressed = canvas.toDataURL('image/jpeg', 0.8);
+
+      const { error } = await dbUpdate('profiles', `id=eq.${memberId}`, { avatar_url: compressed });
+      if (error) { alertEl.textContent = 'Gagal upload: ' + error.message; alertEl.style.display = 'block'; return; }
+
+      // Update UI
+      if (memberId === currentUser.id) {
+        if (currentProfile) currentProfile.avatar_url = compressed;
+        const myAvatar = document.getElementById('my-avatar');
+        if (myAvatar) myAvatar.innerHTML = `<img src="${compressed}" style="width:100%;height:100%;object-fit:cover">`;
+        // Update sidebar avatar jika ada
+        const sidebarAvatar = document.getElementById('sidebar-avatar');
+        if (sidebarAvatar) sidebarAvatar.innerHTML = `<img src="${compressed}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      }
+      showToast('✅ Foto profil berhasil diupdate');
+      closeModal('modal-avatar');
+      loadAnggota();
+    };
+    img.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Update loadProfil untuk tampilkan avatar
+const _origLoadProfil = window.loadProfil;
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 2B: ACTIVITY LOG
+// ══════════════════════════════════════════════════════════════
+async function logActivity(action, description, memberId = null, meta = null) {
+  try {
+    await dbInsert('activity_log', {
+      actor_id: currentUser.id,
+      member_id: memberId || currentUser.id,
+      action,
+      description,
+      meta: meta ? JSON.stringify(meta) : null
+    });
+  } catch(e) { /* silent fail - log tidak boleh ganggu fitur utama */ }
+}
+
+async function loadActivityLog() {
+  const el = document.getElementById('activity-log-content');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat...</div>';
+
+  const data = await dbQuery('activity_log',
+    'select=*,actor:profiles!activity_log_actor_id_fkey(full_name,avatar_url),member:profiles!activity_log_member_id_fkey(full_name)&order=created_at.desc&limit=200'
+  );
+
+  if (!data || !data.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada log aktivitas</div><div class="empty-state-sub">Log akan muncul setelah ada aktivitas admin</div></div>';
+    return;
+  }
+
+  const actionIcon = {
+    'LOGIN': '🔐', 'LOGOUT': '🚪', 'SETOR': '💰', 'TARIK': '💸',
+    'PINJAMAN_AJUKAN': '📝', 'PINJAMAN_APPROVE': '✅', 'PINJAMAN_TOLAK': '❌',
+    'CICILAN_BAYAR': '📅', 'ANGGOTA_TAMBAH': '👤', 'ANGGOTA_EDIT': '✏️',
+    'ANGGOTA_HAPUS': '🗑️', 'RESET_PASSWORD': '🔑', 'BYPASS_TUNGGU': '⏩',
+    'EVENT_BUAT': '🎉', 'EVENT_FINAL': '🏁', 'CAIRKAN': '💸', 'POIN_TAMBAH': '⭐',
+  };
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Waktu</th><th>Admin</th><th>Aksi</th><th>Keterangan</th><th>Anggota</th></tr></thead>
+    <tbody>${data.map(l => `<tr>
+      <td style="white-space:nowrap;font-size:12px;color:var(--text2)">${fmtDateTime(l.created_at)}</td>
+      <td style="font-size:13px;font-weight:500">${l.actor?.full_name || '-'}</td>
+      <td><span style="font-size:18px">${actionIcon[l.action] || '📌'}</span> <span style="font-size:12px;color:var(--text2)">${l.action}</span></td>
+      <td style="font-size:12px;color:var(--text2);max-width:200px">${l.description || '-'}</td>
+      <td style="font-size:12px;color:var(--text2)">${l.member?.full_name || '-'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// BATCH 2C: SISTEM POIN / REWARD
+// ══════════════════════════════════════════════════════════════
+async function loadPoinData() {
+  // Leaderboard
+  const elLb = document.getElementById('poin-leaderboard');
+  const elHist = document.getElementById('poin-history');
+  if (!elLb) return;
+
+  const profiles = await dbQuery('profiles', 'select=id,full_name,total_points,avatar_url&status=eq.active&order=total_points.desc');
+  const medals = ['🥇','🥈','🥉'];
+
+  if (!profiles || !profiles.length) {
+    elLb.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada data poin</div></div>';
+  } else {
+    elLb.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+      ${profiles.map((p, i) => {
+        const isMe = p.id === currentUser.id;
+        const avatarEl = p.avatar_url
+          ? `<img src="${p.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0">${p.full_name[0]}</div>`;
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isMe?'var(--accent-bg)':'var(--surface2)'};border-radius:var(--radius-sm);${isMe?'border:1px solid var(--accent)':''}">
+          <div style="width:28px;text-align:center;font-size:18px">${medals[i] || '#'+(i+1)}</div>
+          ${avatarEl}
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:14px">${p.full_name}${isMe?' <span style="font-size:11px;color:var(--accent)">(Kamu)</span>':''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:20px;font-weight:700;color:var(--amber)">⭐ ${p.total_points || 0}</div>
+            <div style="font-size:11px;color:var(--text3)">poin</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Riwayat poin semua anggota (admin) atau sendiri (anggota)
+  let pointsQ = 'select=*,profiles!member_points_member_id_fkey(full_name)&order=created_at.desc&limit=100';
+  if (!isAdmin()) pointsQ += `&member_id=eq.${currentUser.id}`;
+
+  const points = await dbQuery('member_points', pointsQ);
+  if (!elHist) return;
+  if (!points || !points.length) {
+    elHist.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat poin</div></div>';
+    return;
+  }
+  elHist.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Poin</th><th>Alasan</th></tr></thead>
+    <tbody>${points.map(p => `<tr>
+      <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
+      <td style="font-weight:500">${p.profiles?.full_name || '-'}</td>
+      <td>${p.type === 'credit' ? '<span class="badge badge-green">➕ Tambah</span>' : '<span class="badge badge-red">➖ Kurang</span>'}</td>
+      <td style="font-weight:700;color:${p.type==='credit'?'var(--green)':'var(--red)'}">${p.type==='credit'?'+':'-'}${p.points}</td>
+      <td style="font-size:12px;color:var(--text2)">${p.reason || '-'}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function openTambahPoin(memberId, memberName) {
+  document.getElementById('poin-member-id').value = memberId;
+  document.getElementById('poin-member-info').innerHTML = `<b>${memberName}</b>`;
+  document.getElementById('poin-jumlah').value = '';
+  document.getElementById('poin-alasan').value = '';
+  document.getElementById('poin-type').value = 'credit';
+  openModal('modal-tambah-poin');
+}
+
+async function doTambahPoin() {
+  const memberId = document.getElementById('poin-member-id').value;
+  const type     = document.getElementById('poin-type').value;
+  const jumlah   = parseInt(document.getElementById('poin-jumlah').value.replace(/[^0-9]/g,'')) || 0;
+  const alasan   = document.getElementById('poin-alasan').value.trim();
+
+  if (!jumlah || jumlah < 1) { showToast('Masukkan jumlah poin'); return; }
+  if (!alasan) { showToast('Alasan wajib diisi'); return; }
+
+  // Insert ke member_points
+  const { error } = await dbInsert('member_points', {
+    member_id: memberId, points: jumlah, reason: alasan, type
+  });
+  if (error) { showToast('Gagal: ' + error.message); return; }
+
+  // Update total_points di profiles
+  const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
+  const currentPts = profileArr?.[0]?.total_points || 0;
+  const newPts = type === 'credit' ? currentPts + jumlah : Math.max(0, currentPts - jumlah);
+  await dbUpdate('profiles', `id=eq.${memberId}`, { total_points: newPts });
+
+  await logActivity('POIN_TAMBAH', `${type==='credit'?'Tambah':'Kurangi'} ${jumlah} poin: ${alasan}`, memberId);
+
+  showToast(`✅ ${type==='credit'?'+':'‑'}${jumlah} poin berhasil dicatat`);
+  closeModal('modal-tambah-poin');
+  loadAnggota();
+  loadPoinData();
+}
+
+// Override loadProfil untuk tampilkan avatar & poin
+const _origLoadProfilFn = window.loadProfil;
+async function loadProfil() {
+  if (_origLoadProfilFn) await _origLoadProfilFn();
+  // Tampilkan avatar
+  const myAvatarEl = document.getElementById('my-avatar');
+  if (myAvatarEl && currentProfile) {
+    if (currentProfile.avatar_url) {
+      myAvatarEl.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+      myAvatarEl.style.background = 'transparent';
+    } else {
+      myAvatarEl.textContent = (currentProfile.full_name || '?')[0].toUpperCase();
+    }
+  }
+  const usernameDisplay = document.getElementById('profil-username-display');
+  if (usernameDisplay) usernameDisplay.textContent = '@' + (currentProfile?.username || '-');
+  const poinEl = document.getElementById('profil-poin');
+  if (poinEl) poinEl.textContent = '⭐ ' + (currentProfile?.total_points || 0) + ' poin';
+}
+
+// Auto-log aktivitas kritis
+const _origDoSetor = window.doSetor;
+const _origDoApprovePinjaman = window.doApprovePinjaman;
 
 </script>
 </body>

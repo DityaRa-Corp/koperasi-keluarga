@@ -2048,11 +2048,13 @@ async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const [savings, loans, members, allPayments] = await Promise.all([
-    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
+    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
-    dbQuery('profiles', 'select=id&status=eq.active'),
+    dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
     dbQuery('loan_payments', 'select=interest_component')
   ]);
+  // Alias profiles untuk dipakai di transaksi terbaru
+  const profiles = members;
 
   // Calculate balances per member
   const memberBalances = {};
@@ -2101,7 +2103,7 @@ async function loadDashboard() {
   // Recent transactions — filter by member jika bukan admin
   const recentFilter = isAdmin() ? '' : `&member_id=eq.${currentUser.id}`;
   const recent = isAdmin() ? (savings || []).slice(0, 8) : (savings || []).filter(s => s.member_id === currentUser.id).slice(0, 8);
-  const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=5${recentFilter}`);
+  const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name,avatar_url)&order=created_at.desc&limit=5${recentFilter}`);
   const combined = [
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
     ...((recentPayments || []).map(p => ({ ...p, kind: 'payment' })))
@@ -2109,21 +2111,33 @@ async function loadDashboard() {
 
   const el = document.getElementById('recent-transactions');
   if (!combined.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada transaksi</div></div>'; return; }
+  // Buat avatar map dari profiles yang sudah di-fetch
+  const avatarMap = {};
+  (profiles || []).forEach(p => { avatarMap[p.id] = { avatar_url: p.avatar_url, full_name: p.full_name }; });
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th></tr></thead>
-    <tbody>${combined.map(t => `<tr>
-      <td>${fmtDate(t.created_at)}</td>
-      <td>${t.profiles?.full_name || '-'}</td>
-      <td>${t.kind === 'saving' ? (t.type === 'deposit' ? '<span class="badge badge-green">Setor</span>' : '<span class="badge badge-red">Tarik</span>') : '<span class="badge badge-blue">Cicilan</span>'}</td>
-      <td class="td-mono">${fmt(t.amount || t.amount_paid)}</td>
-    </tr>`).join('')}</tbody>
+    <thead><tr><th>Tanggal</th><th></th><th>Anggota</th><th>Jenis</th><th>Jumlah</th></tr></thead>
+    <tbody>${combined.map(t => {
+      const pData = t.kind === 'saving' ? (avatarMap[t.member_id] || {}) : (t.profiles || {});
+      const name = pData.full_name || t.profiles?.full_name || '-';
+      const av = pData.avatar_url || t.profiles?.avatar_url;
+      const avatarEl = av
+        ? `<img src="${av}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
+        : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(name[0]||'?').toUpperCase()}</div>`;
+      return `<tr>
+        <td style="white-space:nowrap">${fmtDate(t.created_at)}</td>
+        <td style="padding:6px 4px;width:36px">${avatarEl}</td>
+        <td>${name}</td>
+        <td>${t.kind === 'saving' ? (t.type === 'deposit' ? '<span class="badge badge-green">Setor</span>' : '<span class="badge badge-red">Tarik</span>') : '<span class="badge badge-blue">Cicilan</span>'}</td>
+        <td class="td-mono">${fmt(t.amount || t.amount_paid)}</td>
+      </tr>`;
+    }).join('')}</tbody>
   </table></div>`;
 }
 
 // SIMPANAN
 async function loadSimpanan() {
   let savQ = 'select=member_id,type,amount';
-  let memQ = 'select=id,full_name&status=eq.active&order=full_name.asc';
+  let memQ = 'select=id,full_name,avatar_url&status=eq.active&order=full_name.asc';
   if (!isAdmin()) {
     savQ += `&member_id=eq.${currentUser.id}`;
     memQ += `&id=eq.${currentUser.id}`;
@@ -2133,11 +2147,11 @@ async function loadSimpanan() {
     dbQuery('profiles', memQ)
   ]);
   const memberMap = {};
-  (members || []).forEach(m => memberMap[m.id] = m.full_name);
+  (members || []).forEach(m => memberMap[m.id] = { name: m.full_name, avatar: m.avatar_url });
   const balances = {};
-  (members || []).forEach(m => balances[m.id] = { name: m.full_name, deposit: 0, withdraw: 0 });
+  (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, deposit: 0, withdraw: 0 });
   (savings || []).forEach(s => {
-    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id] || 'Unknown', deposit: 0, withdraw: 0 };
+    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Unknown', avatar: null, deposit: 0, withdraw: 0 };
     if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
     else balances[s.member_id].withdraw += Number(s.amount);
   });
@@ -2146,10 +2160,20 @@ async function loadSimpanan() {
   if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada anggota</div></div>'; }
   else {
     el.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>No</th><th>Nama Anggota</th><th>Total Setor</th><th>Total Tarik</th><th>Saldo</th></tr></thead>
+      <thead><tr><th>No</th><th></th><th>Nama Anggota</th><th>Total Setor</th><th>Total Tarik</th><th>Saldo</th></tr></thead>
       <tbody>${rows.map((r, i) => {
         const saldo = r.deposit - r.withdraw;
-        return `<tr><td>${i+1}</td><td>${r.name}</td><td class="td-mono">${fmt(r.deposit)}</td><td class="td-mono">${fmt(r.withdraw)}</td><td class="td-mono" style="font-weight:700;color:var(--green)">${fmt(saldo)}</td></tr>`;
+        const avatarEl = r.avatar
+          ? `<img src="${r.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
+          : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(r.name[0]||'?').toUpperCase()}</div>`;
+        return `<tr>
+          <td>${i+1}</td>
+          <td style="padding:6px 4px;width:36px">${avatarEl}</td>
+          <td>${r.name}</td>
+          <td class="td-mono">${fmt(r.deposit)}</td>
+          <td class="td-mono">${fmt(r.withdraw)}</td>
+          <td class="td-mono" style="font-weight:700;color:var(--green)">${fmt(saldo)}</td>
+        </tr>`;
       }).join('')}</tbody>
     </table></div>`;
   }
@@ -4284,19 +4308,24 @@ async function loadDashboardCharts(savings, memberBalances) {
   if (!elAnggota) return;
 
   const colors = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
-  const profiles = await dbQuery('profiles', 'select=id,full_name&order=full_name.asc');
-  const items = (profiles || []).map(p => ({ name: p.full_name.split(' ')[0], saldo: memberBalances[p.id] || 0 })).filter(x => x.saldo > 0);
+  const profiles = await dbQuery('profiles', 'select=id,full_name,avatar_url&order=full_name.asc');
+  const items = (profiles || []).map(p => ({ id: p.id, name: p.full_name.split(' ')[0], fullName: p.full_name, avatar: p.avatar_url, saldo: memberBalances[p.id] || 0 })).filter(x => x.saldo > 0);
   const maxSaldo = Math.max(...items.map(x => x.saldo), 1);
 
   elAnggota.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:4px 0;width:100%';
-  elAnggota.innerHTML = items.map((x, i) => `
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="width:70px;font-size:12px;color:var(--text2);text-align:right;flex-shrink:0">${x.name}</div>
+  elAnggota.innerHTML = items.map((x, i) => {
+    const avatarEl = x.avatar
+      ? `<img src="${x.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+      : `<div style="width:28px;height:28px;border-radius:50%;background:${colors[i%colors.length]};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;flex-shrink:0">${(x.name[0]||'?').toUpperCase()}</div>`;
+    return `<div style="display:flex;align-items:center;gap:8px">
+      ${avatarEl}
+      <div style="width:62px;font-size:12px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.name}</div>
       <div style="flex:1;background:var(--surface2);border-radius:4px;height:16px;overflow:hidden">
         <div style="width:${Math.round((x.saldo/maxSaldo)*100)}%;height:100%;background:${colors[i%colors.length]};border-radius:4px;transition:width .5s"></div>
       </div>
       <div style="font-size:11px;color:var(--text2);flex-shrink:0;min-width:60px">${fmtShort(x.saldo)}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 

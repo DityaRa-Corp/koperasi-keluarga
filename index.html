@@ -208,7 +208,7 @@ nav { flex: 1; padding: 8px; }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
 .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
 #dashboard-charts-row { grid-template-columns: 1fr 1fr; }
-#kalk-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#kalk-input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 10px; }
 
 /* TABLE */
 .table-wrap { overflow-x: auto; }
@@ -563,7 +563,7 @@ tbody tr:hover { background: var(--surface2); }
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   #dashboard-charts-row { grid-template-columns: 1fr; }
-  #kalk-input-grid { grid-template-columns: 1fr !important; }
+  #kalk-input-grid { grid-template-columns: 1fr 1fr !important; }
   .detail-grid { grid-template-columns: 1fr; }
   .modal { max-width: calc(100vw - 32px) !important; margin: 0 16px; max-height: 90vh; overflow-y: auto; }
   .modal-overlay { align-items: flex-end; padding-bottom: 0; }
@@ -878,54 +878,54 @@ tbody tr:hover { background: var(--surface2); }
             <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:4px"></span>Cicilan</span>
           </div>
         </div>
-        <!-- Kalkulator Simulasi Pinjaman -->
-        <div class="card">
-          <div class="section-title">🧮 Kalkulator Simulasi Pinjaman</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px" id="kalk-input-grid">
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" style="font-size:11px">Pokok Pinjaman</label>
-              <input class="form-input" type="text" inputmode="numeric" id="kalk-pokok" placeholder="Rp 1.000.000" oninput="hitungKalkulator()">
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" style="font-size:11px">Jumlah Cicilan</label>
-              <input class="form-input" type="text" inputmode="numeric" id="kalk-tenor" placeholder="Contoh: 12" oninput="hitungKalkulator()">
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" style="font-size:11px">Jenis Cicilan</label>
-              <select class="form-input form-select" id="kalk-type" onchange="hitungKalkulator()" style="font-size:13px">
-                <option value="monthly">Bulanan</option>
-                <option value="weekly">Mingguan</option>
-                <option value="biweekly">2 Mingguan</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" style="font-size:11px">Jenis Bunga</label>
-              <select class="form-input form-select" id="kalk-bunga-type" onchange="hitungKalkulator()" style="font-size:13px">
-                <option value="persen">Persentase (%/bln)</option>
-                <option value="nominal">Nominal (Rp/cicilan)</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label" style="font-size:11px" id="kalk-bunga-label">Bunga/Bln (%)</label>
-              <input class="form-input" type="text" inputmode="numeric" id="kalk-bunga" placeholder="Contoh: 2" oninput="hitungKalkulator()">
-            </div>
-          </div>
-          <div id="kalk-result" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;font-size:13px">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <div><div style="color:var(--text3);font-size:11px">Total Bunga</div><div id="kalk-total-bunga" style="font-weight:700;color:var(--red)">-</div></div>
-              <div><div style="color:var(--text3);font-size:11px">Total Tagihan</div><div id="kalk-total-tagihan" style="font-weight:700;color:var(--accent)">-</div></div>
-              <div><div style="color:var(--text3);font-size:11px">Cicilan/Periode</div><div id="kalk-cicilan" style="font-weight:700;color:var(--green);font-size:15px">-</div></div>
-              <div><div style="color:var(--text3);font-size:11px">Durasi</div><div id="kalk-durasi" style="font-weight:700">-</div></div>
-            </div>
-          </div>
-          <div id="kalk-empty" style="color:var(--text3);font-size:12px;text-align:center;padding:20px 0">Isi form di atas untuk melihat simulasi</div>
+        <!-- Grafik Per Anggota (admin only) -->
+        <div class="card admin-only" style="display:none">
+          <div class="section-title">👥 Simpanan per Anggota</div>
+          <div id="chart-per-anggota" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;min-height:120px;align-items:center"></div>
         </div>
       </div>
 
-      <!-- Grafik Per Anggota -->
-      <div class="card admin-only" style="margin-top:14px;display:none">
-        <div class="section-title">👥 Simpanan per Anggota</div>
-        <div id="chart-per-anggota" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;min-height:120px;align-items:center"></div>
+      <!-- Kalkulator Simulasi Pinjaman - full width di bawah grafik -->
+      <div class="card" style="margin-top:14px">
+        <div class="section-title">🧮 Kalkulator Simulasi Pinjaman</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px" id="kalk-input-grid">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px">Pokok Pinjaman</label>
+            <input class="form-input" type="text" inputmode="numeric" id="kalk-pokok" placeholder="Rp 1.000.000" oninput="hitungKalkulator()">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px">Jumlah Cicilan</label>
+            <input class="form-input" type="text" inputmode="numeric" id="kalk-tenor" placeholder="Contoh: 12" oninput="hitungKalkulator()">
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px">Jenis Cicilan</label>
+            <select class="form-input form-select" id="kalk-type" onchange="hitungKalkulator()" style="font-size:13px">
+              <option value="monthly">Bulanan</option>
+              <option value="weekly">Mingguan</option>
+              <option value="biweekly">2 Mingguan</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px">Jenis Bunga</label>
+            <select class="form-input form-select" id="kalk-bunga-type" onchange="hitungKalkulator()" style="font-size:13px">
+              <option value="persen">Persentase (%/bln)</option>
+              <option value="nominal">Nominal (Rp/cicilan)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label" style="font-size:11px" id="kalk-bunga-label">Bunga/Bln (%)</label>
+            <input class="form-input" type="text" inputmode="numeric" id="kalk-bunga" placeholder="Contoh: 2" oninput="hitungKalkulator()">
+          </div>
+        </div>
+        <div id="kalk-result" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;font-size:13px">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+            <div><div style="color:var(--text3);font-size:11px">Total Bunga</div><div id="kalk-total-bunga" style="font-weight:700;color:var(--red)">-</div></div>
+            <div><div style="color:var(--text3);font-size:11px">Total Tagihan</div><div id="kalk-total-tagihan" style="font-weight:700;color:var(--accent)">-</div></div>
+            <div><div style="color:var(--text3);font-size:11px">Cicilan/Periode</div><div id="kalk-cicilan" style="font-weight:700;color:var(--green);font-size:15px">-</div></div>
+            <div><div style="color:var(--text3);font-size:11px">Durasi</div><div id="kalk-durasi" style="font-weight:700">-</div></div>
+          </div>
+        </div>
+        <div id="kalk-empty" style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0">Isi form di atas untuk melihat simulasi</div>
       </div>
 
       <div class="card" style="margin-top:14px">
@@ -2286,28 +2286,66 @@ async function loadPinjaman() {
   const data = await dbQuery('loans', qParams);
   const el = document.getElementById('pinjaman-list');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada pinjaman</div></div>'; return; }
-  el.innerHTML = `<table>
-    <thead><tr><th>Anggota</th><th>Pokok</th><th>Total Tagihan</th><th>Sudah Dibayar</th><th>Sisa</th><th>Cicilan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
-    <tbody>${data.map(l => {
+  const isMobilePinjaman = window.innerWidth <= 768;
+  if (isMobilePinjaman) {
+    // Mobile: card layout
+    el.innerHTML = data.map(l => {
       const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
       const todayStr2 = getTodayStr();
       const overdue = l.next_due_date && l.next_due_date.split('T')[0] < todayStr2 && l.status === 'active';
       const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-      const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
+      const statusBadges = {
+        active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`,
+        pending: '<span class="badge badge-amber">Menunggu</span>',
+        completed: '<span class="badge badge-green">Lunas</span>',
+        rejected: '<span class="badge badge-gray">Ditolak</span>'
+      };
       const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
-      return `<tr>
-        <td style="font-weight:500">${l.profiles?.full_name || '-'}</td>
-        <td class="td-mono">${fmt(l.principal)}</td>
-        <td class="td-mono">${fmt(l.total_amount)}</td>
-        <td><div class="td-mono" style="margin-bottom:4px">${fmt(l.amount_paid)}</div><div class="progress-bar-wrap"><div class="progress-bar ${pct >= 100 ? 'green' : pct > 50 ? 'blue' : ''}" style="width:${pct}%"></div></div></td>
-        <td class="td-mono" style="color:var(--amber);font-weight:600">${fmt(l.remaining_amount)}</td>
-        <td><div style="font-size:12px">${typeLabel[l.installment_type]}</div><div class="td-mono" style="font-size:12px">${fmt(l.installment_amount)}/periode</div></td>
-        <td style="font-size:12px;color:${overdue ? 'var(--red)' : 'var(--text2)'}">${fmtDate(l.next_due_date)}</td>
-        <td>${statusBadge[l.status] || ''}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="showDetailPinjaman('${l.id}')">Detail</button></td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+      const pctColor = pct >= 100 ? 'var(--green)' : pct > 50 ? 'var(--accent)' : 'var(--amber)';
+      return `<div class="card" style="margin-bottom:10px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+          <div style="font-weight:700;font-size:15px">${l.profiles?.full_name || '-'}</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${statusBadges[l.status] || ''}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:10px">
+          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Pokok Pinjaman</div><div style="font-weight:600">${fmt(l.principal)}</div></div>
+          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Total Tagihan</div><div style="font-weight:600">${fmt(l.total_amount)}</div></div>
+          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Sisa Tagihan</div><div style="font-weight:600;color:var(--amber)">${fmt(l.remaining_amount)}</div></div>
+          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Cicilan/${typeLabel[l.installment_type]||'Periode'}</div><div style="font-weight:600">${fmt(l.installment_amount)}</div></div>
+          ${l.next_due_date ? `<div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Jatuh Tempo</div><div style="font-weight:600;color:${overdue?'var(--red)':'var(--text2)'}">${fmtDate(l.next_due_date)}</div></div>` : ''}
+          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Progress</div><div style="font-weight:600;color:${pctColor}">${pct}% lunas</div></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px">
+          <div style="width:${pct}%;height:100%;background:${pctColor};border-radius:4px;transition:width .5s"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="showDetailPinjaman('${l.id}')">Lihat Detail</button>
+      </div>`;
+    }).join('');
+  } else {
+    // Desktop: tabel normal
+    el.innerHTML = `<table>
+      <thead><tr><th>Anggota</th><th>Pokok</th><th>Total Tagihan</th><th>Sudah Dibayar</th><th>Sisa</th><th>Cicilan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
+      <tbody>${data.map(l => {
+        const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
+        const todayStr2 = getTodayStr();
+        const overdue = l.next_due_date && l.next_due_date.split('T')[0] < todayStr2 && l.status === 'active';
+        const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
+        const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
+        const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
+        return `<tr>
+          <td style="font-weight:500">${l.profiles?.full_name || '-'}</td>
+          <td class="td-mono">${fmt(l.principal)}</td>
+          <td class="td-mono">${fmt(l.total_amount)}</td>
+          <td><div class="td-mono" style="margin-bottom:4px">${fmt(l.amount_paid)}</div><div class="progress-bar-wrap"><div class="progress-bar ${pct >= 100 ? 'green' : pct > 50 ? 'blue' : ''}" style="width:${pct}%"></div></div></td>
+          <td class="td-mono" style="color:var(--amber);font-weight:600">${fmt(l.remaining_amount)}</td>
+          <td><div style="font-size:12px">${typeLabel[l.installment_type]}</div><div class="td-mono" style="font-size:12px">${fmt(l.installment_amount)}/periode</div></td>
+          <td style="font-size:12px;color:${overdue ? 'var(--red)' : 'var(--text2)'}">${fmtDate(l.next_due_date)}</td>
+          <td>${statusBadge[l.status] || ''}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="showDetailPinjaman('${l.id}')">Detail</button></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  }
 }
 
 function switchPinjamanTab(tab, btn) {

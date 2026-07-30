@@ -563,22 +563,27 @@ tbody tr:hover { background: var(--surface2); }
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   #dashboard-charts-row { grid-template-columns: 1fr; }
-  #kalk-input-grid { grid-template-columns: 1fr; }
+  #kalk-input-grid { grid-template-columns: 1fr !important; }
   .detail-grid { grid-template-columns: 1fr; }
   .modal { max-width: calc(100vw - 32px) !important; margin: 0 16px; max-height: 90vh; overflow-y: auto; }
   .modal-overlay { align-items: flex-end; padding-bottom: 0; }
   .modal { border-radius: 16px 16px 0 0 !important; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .page-actions { width: 100%; }
-  .page-actions .btn { flex: 1; justify-content: center; }
+  .page-actions .btn { justify-content: center; }
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .table-wrap table { min-width: 600px; }
+  .table-wrap table { min-width: 500px; }
   .table-wrap table td, .table-wrap table th { font-size: 12px; padding: 8px 10px; }
   .card { padding: 14px; }
   .tab-btn { font-size: 12px; padding: 6px 10px; }
   .btn-sm { font-size: 11px; padding: 4px 8px; }
   .form-group { margin-bottom: 12px; }
   .section-title { font-size: 14px; }
+  /* Card kas koperasi - stack vertikal */
+  #stat-kas { font-size: 1.5rem !important; }
+  .kas-breakdown { flex-direction: column !important; gap: 6px !important; }
+  /* Kalkulator - full width 1 kolom */
+  #kalk-result > div { grid-template-columns: 1fr 1fr !important; }
 }
 /* ── Print styles ── */
 @media print {
@@ -817,7 +822,7 @@ tbody tr:hover { background: var(--surface2); }
             <div>
               <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px">Total Kas Koperasi</div>
               <div class="card-value blue" id="stat-kas" style="font-size:2rem;margin-bottom:14px">-</div>
-              <div style="display:flex;gap:20px;flex-wrap:wrap">
+              <div style="display:flex;gap:20px;flex-wrap:wrap" class="kas-breakdown">
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="width:12px;height:12px;border-radius:3px;background:#2563eb;flex-shrink:0"></div>
                   <span style="font-size:13px;color:var(--text2)">Di dalam koperasi:</span>
@@ -2587,30 +2592,61 @@ async function loadCicilan() {
   const el = document.getElementById('cicilan-tunggak');
   if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan aktif</div><div class="empty-state-sub">Semua pinjaman sudah lunas</div></div>'; }
   else {
-    el.innerHTML = `<table>
-      <thead><tr><th>Anggota</th><th>Cicilan/Periode</th><th>Sisa Tagihan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
-      <tbody>${upcoming.map(l => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      // Mobile: card layout
+      el.innerHTML = upcoming.map(l => {
         const dueDateStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
         const overdue  = dueDateStr && dueDateStr < todayStr3;
         const todayDue = dueDateStr && dueDateStr === todayStr3;
-        const tdColor = overdue ? 'color:var(--red);font-weight:600' : todayDue ? 'color:var(--amber);font-weight:600' : 'color:var(--text2)';
+        const statusBadge = overdue
+          ? '<span class="badge badge-red">Menunggak</span>'
+          : todayDue ? '<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>'
+          : '<span class="badge badge-blue">Aktif</span>';
         const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-        const statusBadge2 = overdue
-          ? `<span class="badge badge-red">Menunggak</span>${overdueLvlBadge}`
-          : todayDue
-            ? `<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>`
-            : `<span class="badge badge-blue">Aktif</span>`;
-        const catatBtn = isAdmin() ? '<button class="btn btn-success btn-sm" onclick="openCatatCicilan(\'' + l.id + '\')">Catat Bayar</button>' : '';
-        return '<tr>' +
-          '<td style="font-weight:500">' + l.profiles?.full_name + '</td>' +
-          '<td class="td-mono">' + fmt(l.installment_amount) + '</td>' +
-          '<td class="td-mono">' + fmt(l.remaining_amount) + '</td>' +
-          '<td style="' + tdColor + '">' + fmtDate(l.next_due_date) + '</td>' +
-          '<td>' + statusBadge2 + '</td>' +
-          '<td>' + catatBtn + '</td>' +
-          '</tr>';
-      }).join('')}</tbody>
-    </table>`;
+        const catatBtn = isAdmin() ? `<button class="btn btn-success btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>` : '';
+        const dueDateColor = overdue ? 'var(--red)' : todayDue ? 'var(--amber)' : 'var(--text2)';
+        return `<div class="card" style="margin-bottom:10px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+            <div style="font-weight:700;font-size:15px">${l.profiles?.full_name}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${statusBadge}${overdueLvlBadge}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
+            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Cicilan/Periode</div><div style="font-weight:600">${fmt(l.installment_amount)}</div></div>
+            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Sisa Tagihan</div><div style="font-weight:600;color:var(--accent)">${fmt(l.remaining_amount)}</div></div>
+            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Jatuh Tempo</div><div style="font-weight:600;color:${dueDateColor}">${fmtDate(l.next_due_date)}</div></div>
+            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Cicilan ke-</div><div style="font-weight:600">${l.paid_count+1} / ${l.installment_count}</div></div>
+          </div>
+          ${catatBtn}
+        </div>`;
+      }).join('');
+    } else {
+      // Desktop: tabel normal
+      el.innerHTML = `<table>
+        <thead><tr><th>Anggota</th><th>Cicilan/Periode</th><th>Sisa Tagihan</th><th>Jatuh Tempo</th><th>Status</th><th></th></tr></thead>
+        <tbody>${upcoming.map(l => {
+          const dueDateStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
+          const overdue  = dueDateStr && dueDateStr < todayStr3;
+          const todayDue = dueDateStr && dueDateStr === todayStr3;
+          const tdColor = overdue ? 'color:var(--red);font-weight:600' : todayDue ? 'color:var(--amber);font-weight:600' : 'color:var(--text2)';
+          const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
+          const statusBadge2 = overdue
+            ? `<span class="badge badge-red">Menunggak</span>${overdueLvlBadge}`
+            : todayDue
+              ? `<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>`
+              : `<span class="badge badge-blue">Aktif</span>`;
+          const catatBtn = isAdmin() ? '<button class="btn btn-success btn-sm" onclick="openCatatCicilan(\'' + l.id + '\')">Catat Bayar</button>' : '';
+          return '<tr>' +
+            '<td style="font-weight:500">' + l.profiles?.full_name + '</td>' +
+            '<td class="td-mono">' + fmt(l.installment_amount) + '</td>' +
+            '<td class="td-mono">' + fmt(l.remaining_amount) + '</td>' +
+            '<td style="' + tdColor + '">' + fmtDate(l.next_due_date) + '</td>' +
+            '<td>' + statusBadge2 + '</td>' +
+            '<td>' + catatBtn + '</td>' +
+            '</tr>';
+        }).join('')}</tbody>
+      </table>`;
+    }
   }
   await loadCicilanHistory();
 }

@@ -1800,7 +1800,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.10.2';
+const APP_VERSION = 'v4.10.3';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -1957,7 +1957,7 @@ function getTodayStr() {
 
 function getOverdueLevel(nextDueDate, status) {
   if (status !== 'active' || !nextDueDate) return null;
-  const todayStr = getTodayStr(); // 'sv' locale = YYYY-MM-DD
+  const todayStr = getTodayStr(); // YYYY-MM-DD dari komponen tanggal lokal
   const dueStr   = nextDueDate.split('T')[0];
   if (dueStr >= todayStr) return null; // hari-H atau belum → tidak overdue
   const daysDiff = Math.floor((new Date(todayStr) - new Date(dueStr)) / (1000 * 60 * 60 * 24));
@@ -3803,42 +3803,64 @@ async function doEditAnggota() {
 }
 
 async function hapusAnggota(id, nama) {
-  // Cek apakah punya pinjaman aktif
-  const activeLoan = await dbQuery('loans', `member_id=eq.${id}&status=eq.active&select=id&limit=1`);
-  if (activeLoan && activeLoan.length > 0) {
-    showToast(`❌ ${nama} masih punya pinjaman aktif. Lunasi dulu sebelum menghapus.`);
+  // ── Hapus permanen HANYA untuk akun tanpa riwayat keuangan ──
+  //
+  // Menghapus baris savings / loans / loan_payments akan menghilangkan uang
+  // dari pembukuan padahal tidak ada uang yang benar-benar keluar: simpanan
+  // anggota hilang dari Total Kas walau uangnya masih di kas, dan bunga yang
+  // pernah diterima koperasi ikut terhapus padahal itu pendapatan sah.
+  //
+  // Karena itu riwayat keuangan tidak pernah dihapus. Anggota yang berhenti
+  // dicairkan simpanannya lalu dinonaktifkan — datanya tetap utuh di laporan.
+  // Hapus permanen hanya untuk akun yang salah dibuat dan belum dipakai.
+
+  showToast('Memeriksa riwayat anggota...');
+  const [aktif, pending, savings, loans, payments] = await Promise.all([
+    dbQuery('loans',         `member_id=eq.${id}&status=eq.active&select=id&limit=1`),
+    dbQuery('loans',         `member_id=eq.${id}&status=eq.pending&select=id&limit=1`),
+    dbQuery('savings',       `member_id=eq.${id}&select=type,amount`),
+    dbQuery('loans',         `member_id=eq.${id}&select=id&limit=1`),
+    dbQuery('loan_payments', `member_id=eq.${id}&select=id&limit=1`)
+  ]);
+
+  if ([aktif, pending, savings, loans, payments].some(x => x === null)) {
+    showToast('❌ Gagal memeriksa data anggota. Periksa koneksi lalu coba lagi.');
     return;
   }
-  // Cek apakah punya pinjaman belum diproses (pending)
-  const pendingLoan = await dbQuery('loans', `member_id=eq.${id}&status=eq.pending&select=id&limit=1`);
-  if (pendingLoan && pendingLoan.length > 0) {
-    showToast(`❌ ${nama} masih punya pengajuan pinjaman yang belum diproses.`);
+
+  if (aktif.length)   { showToast(`❌ ${nama} masih punya pinjaman aktif. Lunasi dulu.`); return; }
+  if (pending.length) { showToast(`❌ ${nama} masih punya pengajuan pinjaman yang belum diproses.`); return; }
+
+  const saldo = savings.reduce((a, s) => a + (s.type === 'deposit' ? Number(s.amount) : -Number(s.amount)), 0);
+  if (saldo > 0) {
+    showToast(`❌ ${nama} masih punya simpanan ${fmt(saldo)}. Cairkan dulu lewat menu Simpanan → Cairkan Simpanan, lalu Nonaktifkan.`, 6000);
     return;
   }
-  // Konfirmasi hapus
-  if (!confirm(`Hapus anggota "${nama}"?\n\nSemua data simpanan dan riwayat transaksinya juga akan dihapus.\nTindakan ini TIDAK BISA dibatalkan.`)) return;
+
+  const punyaRiwayat = savings.length > 0 || loans.length > 0 || payments.length > 0;
+  if (punyaRiwayat) {
+    showToast(`❌ ${nama} sudah punya riwayat transaksi, jadi tidak bisa dihapus permanen — riwayat keuangan koperasi harus tetap utuh. Gunakan tombol Nonaktifkan.`, 7000);
+    return;
+  }
+
+  if (!confirm(`Hapus permanen akun "${nama}"?\n\nAkun ini belum punya riwayat transaksi apa pun, jadi aman dihapus.\nTindakan ini TIDAK BISA dibatalkan.`)) return;
 
   try {
-    // Hapus data di tabel-tabel terkait dulu
-    await fetch(`${SUPABASE_URL}/rest/v1/adjustments?member_id=eq.${id}`, {
+    // Hanya log perubahan profil yang perlu dibersihkan; tidak ada data keuangan.
+    const delAdj = await fetch(`${SUPABASE_URL}/rest/v1/adjustments?member_id=eq.${id}`, {
       method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
     });
-    await fetch(`${SUPABASE_URL}/rest/v1/savings?member_id=eq.${id}`, {
-      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/loan_payments?member_id=eq.${id}`, {
-      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
-    });
-    await fetch(`${SUPABASE_URL}/rest/v1/loans?member_id=eq.${id}`, {
-      method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
-    });
-    // Hapus dari auth.users via Admin API
-    await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
+    if (!delAdj.ok) { showToast(`❌ Gagal menghapus log anggota (kode ${delAdj.status})`); return; }
+
+    const delUser = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, {
       method: 'DELETE',
       headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY }
     });
-    // profiles akan terhapus otomatis karena CASCADE dari auth.users
-    showToast(`✅ Anggota "${nama}" berhasil dihapus`);
+    if (!delUser.ok) { showToast(`❌ Gagal menghapus akun login (kode ${delUser.status})`); return; }
+
+    // profiles terhapus otomatis karena CASCADE dari auth.users
+    showToast(`✅ Akun "${nama}" berhasil dihapus`);
+    await logActivity('ANGGOTA_HAPUS', `Hapus akun tanpa riwayat: ${nama}`, null);
     await loadAllMembers();
     loadAnggota();
   } catch(e) {

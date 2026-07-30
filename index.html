@@ -797,7 +797,7 @@ tbody tr:hover { background: var(--surface2); }
         </button>
         <button class="nav-item" onclick="showPage('adjustment')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41 1.41M20 12h2M2 12h2M19.07 19.07l-1.41-1.41M5.34 5.34l-1.41-1.41M12 20v2M12 2v2"/></svg>
-          Adjustment
+          Log Perubahan
         </button>
         <button class="nav-item" onclick="showPage('pengaturan')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1146,14 +1146,20 @@ tbody tr:hover { background: var(--surface2); }
     <!-- ADJUSTMENT (admin) -->
     <div class="page" id="page-adjustment">
       <div class="page-header">
-        <div class="page-title">Adjustment</div>
-        <div class="page-sub">Koreksi saldo manual dengan alasan yang tercatat</div>
-        <div class="page-actions">
-          <button class="btn btn-primary" onclick="openModal('modal-adjustment')">+ Buat Koreksi</button>
+        <div class="page-title">Log Perubahan</div>
+        <div class="page-sub">Catatan setiap koreksi dan perubahan data, beserta alasannya</div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          Halaman ini hanya <strong>menampilkan riwayat</strong>. Untuk memperbaiki kesalahan input,
+          gunakan tombol ✏️ pada baris transaksinya:
+          <br>• Setoran salah nominal → <strong>Simpanan → Riwayat Simpanan</strong>
+          <br>• Cicilan salah nominal → <strong>Cicilan → Riwayat Cicilan</strong>
+          <br>Dengan cara itu koreksinya menempel pada transaksi yang bersangkutan dan saldo terhitung otomatis.
         </div>
       </div>
       <div class="card">
-        <div class="section-title">Log Koreksi Saldo</div>
+        <div class="section-title">Riwayat Koreksi & Perubahan</div>
         <div class="table-wrap"><div id="adjustment-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
@@ -1747,47 +1753,7 @@ tbody tr:hover { background: var(--surface2); }
   </div>
 </div>
 
-<!-- Adjustment -->
-<div class="modal-overlay" id="modal-adjustment">
-  <div class="modal">
-    <div class="modal-title">Koreksi Saldo</div>
-    <div class="modal-sub">Adjustment manual — semua perubahan tercatat di log</div>
-    <div class="form-group">
-      <label class="form-label">Anggota</label>
-      <select class="form-input form-select" id="adj-member" onchange="autoFillAdjBefore()"></select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Jenis Koreksi</label>
-      <select class="form-input form-select" id="adj-type" onchange="autoFillAdjBefore()">
-        <option value="savings">Simpanan</option>
-        <option value="loan">Pinjaman</option>
-        <option value="installment">Cicilan</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Nilai Sebelum (Rp)</label>
-        <div style="position:relative">
-          <input class="form-input" type="number" id="adj-before" placeholder="0">
-          <div id="adj-before-loading" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">memuat...</div>
-        </div>
-        <div class="form-hint" id="adj-before-hint" style="color:var(--accent)"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Nilai Sesudah (Rp)</label>
-        <input class="form-input" type="number" id="adj-after" placeholder="0">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Alasan Koreksi <span style="color:var(--red)">*</span></label>
-      <input class="form-input" type="text" id="adj-reason" placeholder="Wajib diisi — jelaskan alasan koreksi">
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal('modal-adjustment')">Batal</button>
-      <button class="btn btn-primary" onclick="doAdjustment()">Simpan Koreksi</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- Approve Pinjaman dengan penyesuaian nominal -->
 <div class="modal-overlay" id="modal-approve-pinjaman">
@@ -1848,7 +1814,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.12.1';
+const APP_VERSION = 'v4.13.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2213,7 +2179,7 @@ async function loadAllMembers() {
 }
 
 function populateMemberSelects() {
-  const selects = ['setor-member', 'tarik-member', 'ajukan-member', 'adj-member', 'filter-simpanan-member', 'filter-cicilan-member'];
+  const selects = ['setor-member', 'tarik-member', 'ajukan-member', 'filter-simpanan-member', 'filter-cicilan-member'];
   selects.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -4336,76 +4302,9 @@ async function loadAdjustment() {
   </table>`;
 }
 
-async function autoFillAdjBefore() {
-  const memberId = document.getElementById('adj-member').value;
-  const type = document.getElementById('adj-type').value;
-  if (!memberId) return;
 
-  const loadEl = document.getElementById('adj-before-loading');
-  const hintEl = document.getElementById('adj-before-hint');
-  const beforeInput = document.getElementById('adj-before');
 
-  loadEl.style.display = 'block';
-  hintEl.textContent = '';
-  beforeInput.value = '';
 
-  try {
-    if (type === 'savings') {
-      // Get current savings balance
-      const savings = await dbQuery('savings', `member_id=eq.${memberId}&select=type,amount`);
-      let saldo = 0;
-      (savings || []).forEach(s => { saldo += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount); });
-      beforeInput.value = saldo;
-      hintEl.textContent = `Saldo simpanan terkini: ${fmt(saldo)}`;
-
-    } else if (type === 'loan') {
-      // Get active loan remaining amount
-      const loans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=remaining_amount,total_amount,principal&order=created_at.desc&limit=1`);
-      if (loans && loans.length > 0) {
-        const loan = loans[0];
-        beforeInput.value = loan.remaining_amount;
-        hintEl.textContent = `Sisa tagihan pinjaman aktif: ${fmt(loan.remaining_amount)} (dari ${fmt(loan.total_amount)})`;
-      } else {
-        beforeInput.value = 0;
-        hintEl.textContent = 'Tidak ada pinjaman aktif';
-      }
-
-    } else if (type === 'installment') {
-      // Get total paid amount from active loan
-      const loans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=amount_paid,installment_count,paid_count&order=created_at.desc&limit=1`);
-      if (loans && loans.length > 0) {
-        const loan = loans[0];
-        beforeInput.value = loan.amount_paid;
-        hintEl.textContent = `Total sudah dibayar: ${fmt(loan.amount_paid)} (${loan.paid_count} dari ${loan.installment_count} cicilan)`;
-      } else {
-        beforeInput.value = 0;
-        hintEl.textContent = 'Tidak ada pinjaman aktif';
-      }
-    }
-  } catch(e) {
-    hintEl.textContent = 'Gagal memuat data otomatis';
-  } finally {
-    loadEl.style.display = 'none';
-  }
-}
-
-async function doAdjustment() {
-  const memberId = document.getElementById('adj-member').value;
-  const type = document.getElementById('adj-type').value;
-  const before = parseInt(document.getElementById('adj-before').value) || 0;
-  const after = parseInt(document.getElementById('adj-after').value) || 0;
-  const reason = document.getElementById('adj-reason').value.trim();
-  if (!memberId || !reason) { showToast('Anggota dan alasan wajib diisi'); return; }
-  const { error } = await dbInsert('adjustments', {
-    member_id: memberId, type, value_before: before, value_after: after,
-    difference: after - before, reason, admin_id: currentUser.id
-  });
-  if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
-  showToast('Koreksi berhasil disimpan ✓');
-  closeModal('modal-adjustment');
-  document.getElementById('adj-reason').value = '';
-  loadAdjustment();
-}
 
 // PENGATURAN
 async function loadPengaturan() {

@@ -1799,7 +1799,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.9.17';
+const APP_VERSION = 'v4.9.18';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -1884,6 +1884,24 @@ async function dbQuery(table, params = '') {
   });
   if (!res.ok) return null;
   return await res.json();
+}
+
+// Memanggil Postgres function (RPC). Dipakai untuk operasi yang tidak boleh
+// dikerjakan lewat akses tabel langsung — misalnya proses login, di mana
+// pengguna belum punya token sehingga tabel `profiles` tidak boleh terbuka.
+async function dbRpc(fnName, args = {}, useAnon = false) {
+  const token = useAnon ? SUPABASE_ANON_KEY : (authToken || SUPABASE_ANON_KEY);
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(args)
+  });
+  if (!res.ok) { let e; try { e = await res.json(); } catch(_) { e = { message: 'HTTP ' + res.status }; } return { error: e }; }
+  return { data: await res.json(), error: null };
 }
 
 async function dbInsert(table, data) {
@@ -2035,12 +2053,17 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Memuat...';
 
   try {
-    // Step 1: Look up profile by username
-    const profileRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id,status,email_ref,failed_attempts,pending_password&limit=1`, {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
-    });
-    const profiles = await profileRes.json();
+    // Step 1: cari akun lewat fungsi login_lookup.
+    // Sebelumnya ini membaca tabel `profiles` secara anonim, yang memaksa
+    // tabel itu dibuka untuk publik. Fungsi RPC hanya mengembalikan kolom
+    // yang benar-benar dibutuhkan untuk login.
+    const { data: profiles, error: lookupErr } = await dbRpc('login_lookup', { p_username: username }, true);
     btn.disabled = false; btn.textContent = 'Masuk';
+
+    if (lookupErr) {
+      alertEl.textContent = 'Tidak bisa menghubungi server. Periksa koneksi lalu coba lagi.';
+      alertEl.style.display = 'block'; return;
+    }
 
     if (!profiles || profiles.length === 0) {
       alertEl.textContent = 'Username atau password salah.';
@@ -2066,12 +2089,8 @@ async function doLogin() {
       authToken = loginResult.access_token;
       const user = loginResult.user || jwtDecode(loginResult.access_token);
       if (user && user.id) {
-        // Reset failed attempts in DB
-        await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
-          method: 'PATCH',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ failed_attempts: 0, pending_password: null })
-        });
+        // Reset hitungan percobaan gagal lewat RPC (bukan PATCH tabel langsung)
+        await dbRpc('record_login_attempt', { p_username: username, p_success: true }, true);
         clearFailedAttempts(username);
         localStorage.setItem('kk_auth_token', authToken);
         localStorage.setItem('kk_auth_user', JSON.stringify(user));
@@ -2080,16 +2099,11 @@ async function doLogin() {
         await initApp(user);
       }
     } else {
-      // Wrong password - increment in DB
-      const newCount = (profile.failed_attempts || 0) + 1;
-      const updateData = { failed_attempts: newCount };
-      if (newCount >= 5) updateData.status = 'locked';
-      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${profile.id}`, {
-        method: 'PATCH',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify(updateData)
-      });
-      const sisa = 5 - newCount;
+      // Password salah — pencatatan dan penguncian dilakukan di sisi database,
+      // sehingga aplikasi tidak perlu izin menulis ke tabel `profiles`.
+      const { data: attemptRes } = await dbRpc('record_login_attempt', { p_username: username, p_success: false }, true);
+      const newCount = Number(attemptRes) || ((profile.failed_attempts || 0) + 1);
+      const sisa = Math.max(0, 5 - newCount);
       if (newCount >= 5) {
         alertEl.textContent = '🔒 Akun terkunci setelah 5x percobaan gagal. Hubungi Admin untuk membuka kunci dan reset password.';
       } else {

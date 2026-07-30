@@ -1799,7 +1799,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.9.14';
+const APP_VERSION = 'v4.9.15';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -1810,6 +1810,21 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
+}
+
+// Untuk teks yang disisipkan sebagai argumen string JS di dalam atribut HTML,
+// contoh: onclick="hapusAnggota('<id>','<nama>')".
+// Browser meng-decode entity HTML dulu, lalu baru mem-parse JS-nya —
+// jadi kutip tunggal & backslash perlu di-escape untuk JS, sisanya untuk HTML.
+function escapeAttr(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
@@ -2299,11 +2314,11 @@ async function loadSimpananHistory() {
     <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th></tr></thead>
     <tbody>${data.map(s => `<tr>
       <td>${fmtDate(s.created_at)}</td>
-      <td>${s.profiles?.full_name || '-'}</td>
+      <td>${escapeHtml(s.profiles?.full_name || '-')}</td>
       <td>${s.type === 'deposit' ? '<span class="badge badge-green">Setor</span>' : '<span class="badge badge-red">Tarik</span>'}</td>
       <td class="td-mono">${fmt(s.amount)}</td>
       <td class="td-mono">${fmt(s.balance_after)}</td>
-      <td style="color:var(--text2)">${s.note || '-'}</td>
+      <td style="color:var(--text2)">${escapeHtml(s.note || '-')}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -2369,7 +2384,7 @@ async function loadPinjaman() {
       const pctColor = pct >= 100 ? 'var(--green)' : pct > 50 ? 'var(--accent)' : 'var(--amber)';
       return `<div class="card" style="margin-bottom:10px;padding:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-          <div style="font-weight:700;font-size:15px">${l.profiles?.full_name || '-'}</div>
+          <div style="font-weight:700;font-size:15px">${escapeHtml(l.profiles?.full_name || '-')}</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap">${statusBadges[l.status] || ''}</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:10px">
@@ -2398,7 +2413,7 @@ async function loadPinjaman() {
         const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
         const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
         return `<tr>
-          <td style="font-weight:500">${l.profiles?.full_name || '-'}</td>
+          <td style="font-weight:500">${escapeHtml(l.profiles?.full_name || '-')}</td>
           <td class="td-mono">${fmt(l.principal)}</td>
           <td class="td-mono">${fmt(l.total_amount)}</td>
           <td><div class="td-mono" style="margin-bottom:4px">${fmt(l.amount_paid)}</div><div class="progress-bar-wrap"><div class="progress-bar ${pct >= 100 ? 'green' : pct > 50 ? 'blue' : ''}" style="width:${pct}%"></div></div></td>
@@ -2577,7 +2592,7 @@ async function showDetailPinjaman(loanId) {
   const content = document.getElementById('detail-pinjaman-content');
   content.innerHTML = `
     <div class="detail-grid" style="margin-bottom:16px">
-      <div class="detail-item"><label>Anggota</label><span style="font-weight:600">${loan.profiles?.full_name}</span></div>
+      <div class="detail-item"><label>Anggota</label><span style="font-weight:600">${escapeHtml(loan.profiles?.full_name)}</span></div>
       <div class="detail-item"><label>Status</label><span>${loan.status === 'active' ? '<span class="badge badge-blue">Aktif</span>' : loan.status === 'pending' ? '<span class="badge badge-amber">Menunggu</span>' : loan.status === 'completed' ? '<span class="badge badge-green">Lunas</span>' : '<span class="badge badge-gray">Ditolak</span>'}${isAdmin() ? renderOverdueBadge(loan.next_due_date, loan.status) : ''}</span></div>
       <div class="detail-item"><label>Pokok Pinjaman</label><span class="td-mono">${fmt(loan.principal)}</span></div>
       <div class="detail-item"><label>Bunga Flat</label><span>${loan.interest_rate}%/bulan</span></div>
@@ -2594,7 +2609,7 @@ async function showDetailPinjaman(loanId) {
       <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px"><span>Progress Pembayaran</span><span>${pct}%</span></div>
       <div class="progress-bar-wrap" style="height:8px"><div class="progress-bar ${pct >= 100 ? 'green' : ''}" style="width:${pct}%"></div></div>
     </div>
-    ${loan.note ? `<div style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">Catatan: ${loan.note}</div>` : ''}
+    ${loan.note ? `<div style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">Catatan: ${escapeHtml(loan.note)}</div>` : ''}
     ${payments?.length ? `<div class="section-title" style="margin-top:8px">Riwayat Cicilan (${payments.length}/${loan.installment_count})</div>
     <div class="table-wrap"><table>
       <thead><tr><th>Ke-</th><th>Tanggal</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th></tr></thead>
@@ -2623,7 +2638,7 @@ function openApproveForm() {
     if (!l) return;
     const info = document.getElementById('approve-pinjaman-info');
     info.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Peminjam</div><div style="font-weight:600">${l.profiles?.full_name}</div></div>
+      <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Peminjam</div><div style="font-weight:600">${escapeHtml(l.profiles?.full_name)}</div></div>
       <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Pengajuan</div><div style="font-weight:600;color:var(--accent)">${fmt(l.principal)}</div></div>
       <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Total Tagihan</div><div style="font-weight:600">${fmt(l.total_amount)}</div></div>
       <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Tenor</div><div style="font-weight:600">${l.installment_count}x</div></div>
@@ -2726,7 +2741,7 @@ async function loadCicilan() {
         const dueDateColor = overdue ? 'var(--red)' : todayDue ? 'var(--amber)' : 'var(--text2)';
         return `<div class="card" style="margin-bottom:10px;padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-            <div style="font-weight:700;font-size:15px">${l.profiles?.full_name}</div>
+            <div style="font-weight:700;font-size:15px">${escapeHtml(l.profiles?.full_name)}</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap">${statusBadge}${overdueLvlBadge}</div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
@@ -2868,13 +2883,13 @@ async function loadCicilanHistory() {
     <thead><tr><th>Tanggal</th><th>Anggota</th><th>Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th></tr></thead>
     <tbody>${data.map(p => `<tr>
       <td>${fmtDate(p.created_at)}</td>
-      <td>${p.profiles?.full_name || '-'}</td>
+      <td>${escapeHtml(p.profiles?.full_name || '-')}</td>
       <td style="text-align:center">${p.payment_number}</td>
       <td class="td-mono" style="font-weight:600">${fmt(p.amount_paid)}</td>
       <td class="td-mono">${fmt(p.principal_component)}</td>
       <td class="td-mono">${fmt(p.interest_component)}</td>
       <td class="td-mono" style="color:var(--amber)">${fmt(p.remaining_after)}</td>
-      <td style="color:var(--text2)">${p.note || '-'}</td>
+      <td style="color:var(--text2)">${escapeHtml(p.note || '-')}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -3130,7 +3145,7 @@ async function renderLaporanPinjaman() {
       <thead><tr><th>No. Pinjaman</th><th>Anggota</th><th>Tgl Cair</th><th>Pokok</th><th>Bunga%</th><th>Total Bunga</th><th>Total Tagihan</th><th>Jenis Cicilan</th><th>Cicilan/Periode</th><th>Dibayar</th><th>Sisa</th><th>Jatuh Tempo</th><th>Status</th></tr></thead>
       <tbody>${(loans || []).map((l, i) => `<tr>
         <td class="td-mono" style="font-size:11px">${l.id.substring(0,8)}...</td>
-        <td style="font-weight:500">${l.profiles?.full_name}</td>
+        <td style="font-weight:500">${escapeHtml(l.profiles?.full_name)}</td>
         <td>${fmtDate(l.disbursed_at)}</td>
         <td class="td-mono">${fmt(l.principal)}</td>
         <td>${l.interest_rate}%</td>
@@ -3161,13 +3176,13 @@ async function renderLaporanCicilan() {
       <thead><tr><th>Tanggal</th><th>Anggota</th><th>Cicilan Ke-</th><th>Dibayar</th><th>Komponen Pokok</th><th>Komponen Bunga</th><th>Sisa Tagihan</th><th>Keterangan</th></tr></thead>
       <tbody>${(data||[]).map(p => `<tr>
         <td>${fmtDate(p.created_at)}</td>
-        <td style="font-weight:500">${p.profiles?.full_name || '-'}</td>
+        <td style="font-weight:500">${escapeHtml(p.profiles?.full_name || '-')}</td>
         <td style="text-align:center">${p.payment_number}</td>
         <td class="td-mono" style="font-weight:600">${fmt(p.amount_paid)}</td>
         <td class="td-mono">${fmt(p.principal_component)}</td>
         <td class="td-mono">${fmt(p.interest_component)}</td>
         <td class="td-mono" style="color:var(--amber)">${fmt(p.remaining_after)}</td>
-        <td style="color:var(--text2)">${p.note || '-'}</td>
+        <td style="color:var(--text2)">${escapeHtml(p.note || '-')}</td>
       </tr>`).join('')}</tbody>
     </table></div>`;
 }
@@ -3181,13 +3196,13 @@ async function renderLaporanAdjustment() {
       <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis Koreksi</th><th>Nilai Sebelum</th><th>Nilai Sesudah</th><th>Selisih</th><th>Alasan</th><th>Admin</th></tr></thead>
       <tbody>${(data||[]).length ? (data||[]).map(a => `<tr>
         <td>${fmtDateTime(a.created_at)}</td>
-        <td style="font-weight:500">${a.profiles?.full_name || '-'}</td>
+        <td style="font-weight:500">${escapeHtml(a.profiles?.full_name || '-')}</td>
         <td><span class="badge badge-purple">${typeLabel[a.type]}</span></td>
         <td class="td-mono">${fmt(a.value_before)}</td>
         <td class="td-mono">${fmt(a.value_after)}</td>
         <td class="td-mono" style="color:${a.difference >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">${a.difference >= 0 ? '+' : ''}${fmt(a.difference)}</td>
-        <td style="color:var(--text2)">${a.reason}</td>
-        <td style="color:var(--text2)">${a.admin?.full_name || '-'}</td>
+        <td style="color:var(--text2)">${escapeHtml(a.reason)}</td>
+        <td style="color:var(--text2)">${escapeHtml(a.admin?.full_name || '-')}</td>
       </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:32px">Belum ada log adjustment</td></tr>'}</tbody>
     </table></div>`;
 }
@@ -3212,7 +3227,7 @@ async function renderLaporanJurnal() {
   (savings || []).forEach(s => {
     entries.push({
       date: new Date(s.created_at),
-      keterangan: `${s.type === 'deposit' ? 'Setoran Simpanan' : 'Penarikan Simpanan'} — ${s.profiles?.full_name || '-'}${s.note ? ' (' + s.note + ')' : ''}`,
+      keterangan: `${s.type === 'deposit' ? 'Setoran Simpanan' : 'Penarikan Simpanan'} — ${escapeHtml(s.profiles?.full_name || '-')}${escapeHtml(s.note ? ' (' + s.note + ')' : '')}`,
       masuk:  s.type === 'deposit'  ? Number(s.amount) : 0,
       keluar: s.type === 'withdraw' ? Number(s.amount) : 0,
       ikon: s.type === 'deposit' ? '💰' : '💸',
@@ -3223,7 +3238,7 @@ async function renderLaporanJurnal() {
   (payments || []).forEach(p => {
     entries.push({
       date: new Date(p.created_at),
-      keterangan: `Pembayaran Cicilan — ${p.profiles?.full_name || '-'}${Number(p.interest_component) > 0 ? ' (Pokok: ' + fmtShort(p.principal_component) + ' + Bunga: ' + fmtShort(p.interest_component) + ')' : ''}${p.note ? ' · ' + p.note : ''}`,
+      keterangan: `Pembayaran Cicilan — ${escapeHtml(p.profiles?.full_name || '-')}${Number(p.interest_component) > 0 ? ' (Pokok: ' + fmtShort(p.principal_component) + ' + Bunga: ' + fmtShort(p.interest_component) + ')' : ''}${escapeHtml(p.note ? ' · ' + p.note : '')}`,
       masuk:  Number(p.amount_paid),
       keluar: 0,
       ikon: '✅',
@@ -3235,7 +3250,7 @@ async function renderLaporanJurnal() {
     if (!l.disbursed_at) return;
     entries.push({
       date: new Date(l.disbursed_at),
-      keterangan: `Pencairan Pinjaman — ${l.profiles?.full_name || '-'}`,
+      keterangan: `Pencairan Pinjaman — ${escapeHtml(l.profiles?.full_name || '-')}`,
       masuk:  0,
       keluar: Number(l.principal),
       ikon: '🏦',
@@ -3330,7 +3345,7 @@ async function renderLaporanJurnal() {
         </tr>` : ''}
         ${rows.map(r => `<tr>
           <td style="white-space:nowrap;color:var(--text2);font-size:13px">${fmtDate(r.date.toISOString())}</td>
-          <td style="font-size:13px">${r.ikon} ${r.keterangan}</td>
+          <td style="font-size:13px">${r.ikon} ${escapeHtml(r.keterangan)}</td>
           <td style="text-align:right;font-weight:600;color:var(--green)">${r.masuk > 0 ? fmt(r.masuk) : '<span style="color:var(--text3)">—</span>'}</td>
           <td style="text-align:right;font-weight:600;color:var(--red)">${r.keluar > 0 ? fmt(r.keluar) : '<span style="color:var(--text3)">—</span>'}</td>
           <td style="text-align:right;font-weight:700;color:${r.saldo >= 0 ? 'var(--text1)' : 'var(--red)'}">${fmt(r.saldo)}</td>
@@ -3381,23 +3396,23 @@ function renderAnggotaTable(data) {
       <td>
         ${a.avatar_url
           ? `<img src="${a.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">`
-          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">${(a.full_name||'?')[0].toUpperCase()}</div>`}
+          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">${escapeHtml((a.full_name||'?')[0].toUpperCase())}</div>`}
       </td>
-      <td style="font-weight:500">${a.full_name}</td>
-      <td><span class="td-mono" style="font-size:12px;color:var(--accent)">${a.username || '-'}</span></td>
+      <td style="font-weight:500">${escapeHtml(a.full_name)}</td>
+      <td><span class="td-mono" style="font-size:12px;color:var(--accent)">${escapeHtml(a.username || '-')}</span></td>
       <td>${a.role === 'admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Anggota</span>'}</td>
       <td>${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
       <td><span style="font-weight:600;color:var(--amber)">⭐ ${a.total_points || 0}</span></td>
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
       <td style="display:flex;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${a.full_name}','${a.role}','${a.username||''}')">Edit</button>
-          <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',false)" title="Reset Password">🔑</button>
-          <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${a.full_name}')" title="Bypass Masa Tunggu Pinjaman">⏩</button>
-          <button class="btn btn-ghost btn-sm" onclick="openTambahPoin('${a.id}','${a.full_name}')" title="Tambah Poin">⭐</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${escapeAttr(a.full_name)}','${a.role}','${escapeAttr(a.username||'')}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${escapeAttr(a.full_name)}',false)" title="Reset Password">🔑</button>
+          <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${escapeAttr(a.full_name)}')" title="Bypass Masa Tunggu Pinjaman">⏩</button>
+          <button class="btn btn-ghost btn-sm" onclick="openTambahPoin('${a.id}','${escapeAttr(a.full_name)}')" title="Tambah Poin">⭐</button>
           ${a.id !== currentUser.id ? `
-            ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${a.full_name}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
-            <button class="btn btn-danger btn-sm" onclick="hapusAnggota('${a.id}','${a.full_name}')">Hapus</button>
+            ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${escapeAttr(a.full_name)}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
+            <button class="btn btn-danger btn-sm" onclick="hapusAnggota('${a.id}','${escapeAttr(a.full_name)}')">Hapus</button>
           ` : '<span style="color:var(--text3);font-size:12px">Akun ini</span>'}
         </div>
       </td>
@@ -3693,9 +3708,9 @@ async function loadAnggotaEditLog() {
       const detail = l.reason.replace('[EDIT ANGGOTA] ', '').split(' | Alasan: ');
       return `<tr>
         <td>${fmtDateTime(l.created_at)}</td>
-        <td style="font-weight:500">${l.profiles?.full_name || '-'}</td>
+        <td style="font-weight:500">${escapeHtml(l.profiles?.full_name || '-')}</td>
         <td style="font-size:12px;color:var(--text2)">${detail[0] || '-'}<br><span style="color:var(--text3);font-style:italic">Alasan: ${detail[1] || '-'}</span></td>
-        <td style="color:var(--text2)">${l.admin?.full_name || '-'}</td>
+        <td style="color:var(--text2)">${escapeHtml(l.admin?.full_name || '-')}</td>
       </tr>`;
     }).join('')}</tbody>
   </table>`;
@@ -3779,13 +3794,13 @@ async function loadAdjustment() {
     <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Sebelum</th><th>Sesudah</th><th>Selisih</th><th>Alasan</th><th>Admin</th></tr></thead>
     <tbody>${data.map(a => `<tr>
       <td>${fmtDateTime(a.created_at)}</td>
-      <td style="font-weight:500">${a.profiles?.full_name || '-'}</td>
+      <td style="font-weight:500">${escapeHtml(a.profiles?.full_name || '-')}</td>
       <td><span class="badge badge-purple">${typeLabel[a.type]}</span></td>
       <td class="td-mono">${fmt(a.value_before)}</td>
       <td class="td-mono">${fmt(a.value_after)}</td>
       <td class="td-mono" style="color:${a.difference >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600">${a.difference >= 0 ? '+' : ''}${fmt(a.difference)}</td>
-      <td style="color:var(--text2)">${a.reason}</td>
-      <td style="color:var(--text2)">${a.admin?.full_name || '-'}</td>
+      <td style="color:var(--text2)">${escapeHtml(a.reason)}</td>
+      <td style="color:var(--text2)">${escapeHtml(a.admin?.full_name || '-')}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -4242,8 +4257,8 @@ async function loadEvent() {
     events.map(e => `<div class="card" style="cursor:pointer" onclick="showEventDetail('${e.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
         <div style="flex:1">
-          <div style="font-size:16px;font-weight:700;margin-bottom:4px">${e.judul}</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${e.deskripsi || ''}</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:4px">${escapeHtml(e.judul)}</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${escapeHtml(e.deskripsi || '')}</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
             <span>📅 ${fmtDate(e.tanggal)}</span>
             <span>💰 ${fmt(e.total_biaya || 0)}</span>
@@ -4273,8 +4288,8 @@ async function showEventDetail(eventId) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
       <div>
-        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">${ev.judul}</h2>
-        <div style="color:var(--text2);font-size:13px">${ev.deskripsi || ''}</div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:4px">${escapeHtml(ev.judul)}</h2>
+        <div style="color:var(--text2);font-size:13px">${escapeHtml(ev.deskripsi || '')}</div>
         <div style="color:var(--text2);font-size:13px;margin-top:4px">📅 ${fmtDate(ev.tanggal)}</div>
       </div>
       <span class="badge ${statusBadge[ev.status] || 'badge-gray'}" style="font-size:13px;padding:4px 14px">${statusLabel[ev.status] || ev.status}</span>
@@ -4293,9 +4308,9 @@ async function showEventDetail(eventId) {
         : `<div class="table-wrap"><table>
           <thead><tr><th>Nama Item</th><th>Keterangan</th><th style="text-align:right">Biaya</th>${isDraft && isAdmin() ? '<th></th>' : ''}</tr></thead>
           <tbody>${(items||[]).map(it =>
-            `<tr><td style="font-weight:500">${it.nama_item}</td><td style="color:var(--text2);font-size:12px">${it.keterangan || '-'}</td>
+            `<tr><td style="font-weight:500">${escapeHtml(it.nama_item)}</td><td style="color:var(--text2);font-size:12px">${escapeHtml(it.keterangan || '-')}</td>
             <td class="td-mono" style="text-align:right">${fmt(it.biaya)}</td>
-            ${isDraft && isAdmin() ? `<td><button class="btn btn-ghost btn-sm" onclick="hapusItemEvent('${it.id}','${it.nama_item.replace(/'/g,"\\'")}')">Hapus</button></td>` : ''}</tr>`
+            ${isDraft && isAdmin() ? `<td><button class="btn btn-ghost btn-sm" onclick="hapusItemEvent('${it.id}','${escapeAttr(it.nama_item)}')">Hapus</button></td>` : ''}</tr>`
           ).join('')}
           <tr style="background:var(--surface2);font-weight:700">
             <td colspan="2">Total</td>
@@ -4377,30 +4392,64 @@ async function doSimpanItemEvent() {
   alertEl.style.display = 'none';
   if (!nama) { alertEl.textContent = 'Nama item wajib diisi'; alertEl.style.display = 'block'; return; }
   if (!biaya || biaya < 1000) { alertEl.textContent = 'Biaya minimal Rp 1.000'; alertEl.style.display = 'block'; return; }
+
+  // Rincian hanya boleh diubah selama event masih Draft.
+  // Tombolnya memang disembunyikan setelah difinalkan, tetapi halaman yang
+  // sudah lama terbuka masih memegang tombol lama — jadi status wajib
+  // diperiksa ulang di sini, bukan hanya mengandalkan tampilan.
+  const evChk = await dbQuery('events', `id=eq.${eventId}&select=status&limit=1`);
+  if (!evChk || !evChk.length) {
+    alertEl.textContent = 'Event tidak ditemukan.'; alertEl.style.display = 'block'; return;
+  }
+  if (evChk[0].status !== 'draft') {
+    alertEl.textContent = 'Event sudah difinalkan — rincian tidak bisa ditambah lagi.';
+    alertEl.style.display = 'block';
+    setTimeout(() => { closeModal('modal-item-event'); showEventDetail(eventId); }, 1800);
+    return;
+  }
+
   const { error } = await dbInsert('event_items', { event_id: eventId, nama_item: nama, biaya, keterangan: ket });
   if (error) { alertEl.textContent = 'Gagal: ' + error.message; alertEl.style.display = 'block'; return; }
   const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
-  await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
-  showToast('Rincian berhasil ditambahkan ✓');
+  const { error: upErr2 } = await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
+  if (upErr2) { showToast('⚠️ Rincian tersimpan, tetapi total biaya event gagal diperbarui'); }
+  else { showToast('Rincian berhasil ditambahkan ✓'); }
   closeModal('modal-item-event');
   showEventDetail(eventId);
 }
 
 async function hapusItemEvent(itemId, namaItem) {
   if (!confirm('Hapus item "' + namaItem + '"?')) return;
+
   const item = await dbQuery('event_items', `id=eq.${itemId}&select=event_id&limit=1`);
   const eventId = item?.[0]?.event_id;
-  await fetch(`${SUPABASE_URL}/rest/v1/event_items?id=eq.${itemId}`, {
+  if (!eventId) { showToast('Item tidak ditemukan'); return; }
+
+  // Sama seperti saat menambah: status wajib diperiksa ulang di sini supaya
+  // event yang sudah difinalkan tidak bisa diubah dari halaman yang usang.
+  const evChk = await dbQuery('events', `id=eq.${eventId}&select=status&limit=1`);
+  if (evChk?.[0]?.status !== 'draft') {
+    showToast('⚠️ Event sudah difinalkan — rincian tidak bisa dihapus lagi');
+    showEventDetail(eventId);
+    return;
+  }
+
+  // fetch mentah tidak melempar exception pada status 4xx/5xx, jadi wajib dicek
+  const delRes = await fetch(`${SUPABASE_URL}/rest/v1/event_items?id=eq.${itemId}`, {
     method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
   });
-  if (eventId) {
-    const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
-    const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
-    await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
-    showEventDetail(eventId);
+  if (!delRes.ok) {
+    showToast('❌ Gagal menghapus item (kode ' + delRes.status + ')');
+    return;
   }
-  showToast('Item berhasil dihapus');
+
+  const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
+  const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+  const { error: upErr } = await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
+  if (upErr) { showToast('⚠️ Item terhapus, tetapi total biaya event gagal diperbarui'); }
+  else { showToast('Item berhasil dihapus'); }
+  showEventDetail(eventId);
 }
 
 async function konfirmasiFinalisasiEvent(eventId) {
@@ -4809,10 +4858,10 @@ async function loadActivityLog() {
     <thead><tr><th>Waktu</th><th>Admin</th><th>Aksi</th><th>Keterangan</th><th>Anggota</th></tr></thead>
     <tbody>${data.map(l => `<tr>
       <td style="white-space:nowrap;font-size:12px;color:var(--text2)">${fmtDateTime(l.created_at)}</td>
-      <td style="font-size:13px;font-weight:500">${l.actor?.full_name || '-'}</td>
+      <td style="font-size:13px;font-weight:500">${escapeHtml(l.actor?.full_name || '-')}</td>
       <td><span style="font-size:18px">${actionIcon[l.action] || '📌'}</span> <span style="font-size:12px;color:var(--text2)">${l.action}</span></td>
-      <td style="font-size:12px;color:var(--text2);max-width:200px">${l.description || '-'}</td>
-      <td style="font-size:12px;color:var(--text2)">${l.member?.full_name || '-'}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:200px">${escapeHtml(l.description || '-')}</td>
+      <td style="font-size:12px;color:var(--text2)">${escapeHtml(l.member?.full_name || '-')}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
@@ -4837,12 +4886,12 @@ async function loadPoinData() {
         const isMe = p.id === currentUser.id;
         const avatarEl = p.avatar_url
           ? `<img src="${p.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">`
-          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0">${p.full_name[0]}</div>`;
+          : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0">${escapeHtml(p.full_name[0])}</div>`;
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isMe?'var(--accent-bg)':'var(--surface2)'};border-radius:var(--radius-sm);${isMe?'border:1px solid var(--accent)':''}">
           <div style="width:28px;text-align:center;font-size:18px">${medals[i] || '#'+(i+1)}</div>
           ${avatarEl}
           <div style="flex:1">
-            <div style="font-weight:600;font-size:14px">${p.full_name}${isMe?' <span style="font-size:11px;color:var(--accent)">(Kamu)</span>':''}</div>
+            <div style="font-weight:600;font-size:14px">${escapeHtml(p.full_name)}${isMe?' <span style="font-size:11px;color:var(--accent)">(Kamu)</span>':''}</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:20px;font-weight:700;color:var(--amber)">⭐ ${p.total_points || 0}</div>
@@ -4867,10 +4916,10 @@ async function loadPoinData() {
     <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Poin</th><th>Alasan</th></tr></thead>
     <tbody>${points.map(p => `<tr>
       <td style="font-size:12px;color:var(--text2)">${fmtDate(p.created_at)}</td>
-      <td style="font-weight:500">${p.profiles?.full_name || '-'}</td>
+      <td style="font-weight:500">${escapeHtml(p.profiles?.full_name || '-')}</td>
       <td>${p.type === 'credit' ? '<span class="badge badge-green">➕ Tambah</span>' : '<span class="badge badge-red">➖ Kurang</span>'}</td>
       <td style="font-weight:700;color:${p.type==='credit'?'var(--green)':'var(--red)'}">${p.type==='credit'?'+':'-'}${p.points}</td>
-      <td style="font-size:12px;color:var(--text2)">${p.reason || '-'}</td>
+      <td style="font-size:12px;color:var(--text2)">${escapeHtml(p.reason || '-')}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }

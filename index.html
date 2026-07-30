@@ -1587,8 +1587,9 @@ tbody tr:hover { background: var(--surface2); }
     <div id="cicilan-detail-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:18px;font-size:13px"></div>
     <div class="form-group">
       <label class="form-label">Jumlah Dibayar (Rp)</label>
-      <input class="form-input" type="number" id="cicilan-amount" placeholder="Nominal pembayaran" min="1">
+      <input class="form-input" type="number" id="cicilan-amount" placeholder="Nominal pembayaran" min="1" oninput="previewCicilan()">
     </div>
+    <div id="cicilan-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
     <div class="form-group">
       <label class="form-label">Keterangan (opsional)</label>
       <input class="form-input" type="text" id="cicilan-note" placeholder="Catatan">
@@ -1799,7 +1800,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.9.18';
+const APP_VERSION = 'v4.10.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2800,10 +2801,18 @@ async function loadCicilan() {
 }
 
 let currentCicilanLoan = null;
+let _cicilanInterestPaid = 0;
+
 async function openCatatCicilan(loanId) {
   const loanArr3 = await dbQuery('loans', `select=*,profiles!loans_member_id_fkey(full_name)&id=eq.${loanId}&limit=1`);
   const loan = loanArr3?.[0];
+  if (!loan) { showToast('Gagal memuat data pinjaman, coba lagi'); return; }
   currentCicilanLoan = loan;
+
+  // Dipakai pratinjau agar alokasi yang ditampilkan sama dengan yang dicatat
+  const riw = await dbQuery('loan_payments', `loan_id=eq.${loanId}&select=interest_component`);
+  _cicilanInterestPaid = (riw || []).reduce((a, p) => a + Number(p.interest_component || 0), 0);
+
   const info = document.getElementById('cicilan-detail-info');
   info.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${escapeHtml(loan.profiles?.full_name)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
@@ -2814,7 +2823,112 @@ async function openCatatCicilan(loanId) {
     </div>`;
   document.getElementById('cicilan-amount').value = loan.installment_amount;
   document.getElementById('cicilan-amount').max = loan.remaining_amount;
+  previewCicilan();
   openModal('modal-cicilan');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Perhitungan alokasi pembayaran cicilan
+//
+// Dipisah sebagai fungsi murni supaya perilakunya bisa diuji dan
+// dipakai bersama antara pratinjau di modal dan pencatatan sebenarnya.
+//
+// Dua hal yang diselesaikan di sini:
+//
+// 1) Alokasi pokok & bunga.
+//    Sebelumnya bunga selalu dicatat sebesar satu periode penuh
+//    berapa pun nominal yang dibayar, sehingga bayar Rp 30.000 pada
+//    cicilan berbunga Rp 50.000 menghasilkan komponen pokok MINUS
+//    Rp 20.000 — dan Keuntungan Bunga di dashboard ikut membengkak.
+//    Sekarang bunga dialokasikan proporsional terhadap komposisi
+//    tagihan, dibatasi bunga yang belum terbayar, dan pada pelunasan
+//    terakhir diambil sisa persisnya agar totalnya pas.
+//
+// 2) Jumlah periode yang terlunasi.
+//    Sebelumnya paid_count selalu +1 sekali bayar, sehingga membayar
+//    tiga cicilan sekaligus tetap dihitung satu. Sekarang dihitung
+//    dari total pembayaran kumulatif, sehingga membayar tiga cicilan
+//    memajukan tiga periode, dan pembayaran sebagian tidak memajukan
+//    apa pun sampai satu periode penuh terkumpul.
+// ══════════════════════════════════════════════════════════════
+function hitungAlokasiCicilan(loan, amount, interestPaidSoFar) {
+  const totalAmount   = Number(loan.total_amount)       || 0;
+  const totalInterest = Number(loan.total_interest)     || 0;
+  const cicilan       = Number(loan.installment_amount) || 0;
+  const tenor         = Number(loan.installment_count)  || 1;
+  const paidBefore    = Number(loan.amount_paid)        || 0;
+  const paidCountOld  = Number(loan.paid_count)         || 0;
+  const sisaSebelum   = Number(loan.remaining_amount)   || 0;
+
+  const paidTotal      = paidBefore + amount;
+  const remainingAfter = Math.max(0, sisaSebelum - amount);
+  const isLastPayment  = remainingAfter <= 0;
+
+  // ── Alokasi bunga ──
+  const ratio        = totalAmount > 0 ? totalInterest / totalAmount : 0;
+  const remainingInt = Math.max(0, totalInterest - interestPaidSoFar);
+  let interest = isLastPayment
+    ? remainingInt                                        // pelunasan: ambil sisa bunga persis
+    : Math.min(Math.round(amount * ratio), remainingInt);
+  interest = Math.max(0, Math.min(interest, amount));     // tak pernah melebihi nominal bayar
+  const principal = amount - interest;                    // karena itu tak pernah negatif
+
+  // ── Jumlah periode terlunasi ──
+  let newPaidCount = cicilan > 0 ? Math.floor(paidTotal / cicilan) : paidCountOld;
+  if (isLastPayment) newPaidCount = tenor;
+  newPaidCount = Math.max(paidCountOld, Math.min(tenor, newPaidCount));
+  const periodsAdvanced = newPaidCount - paidCountOld;
+
+  return { interest, principal, remainingAfter, isLastPayment,
+           newPaidCount, periodsAdvanced, paidTotal };
+}
+
+// Memajukan tanggal jatuh tempo sebanyak periode yang benar-benar terlunasi.
+// Kalau tidak ada periode yang selesai, tanggalnya tidak bergerak — sehingga
+// yang menunggak tetap menunggak.
+function majukanJatuhTempo(type, dariTanggal, jumlahPeriode) {
+  let d = dariTanggal;
+  for (let k = 0; k < jumlahPeriode; k++) d = getNextDueDate(type, d);
+  return d;
+}
+
+// Pratinjau di modal: memakai fungsi perhitungan yang sama dengan pencatatan,
+// jadi angka yang dilihat admin persis sama dengan yang akan tersimpan.
+function previewCicilan() {
+  const el = document.getElementById('cicilan-preview');
+  const loan = currentCicilanLoan;
+  if (!el || !loan) return;
+
+  const amount = parseInt(document.getElementById('cicilan-amount').value) || 0;
+  if (!amount) { el.style.display = 'none'; return; }
+
+  el.style.display = 'block';
+  if (amount > Number(loan.remaining_amount)) {
+    el.innerHTML = `<span style="color:var(--red);font-weight:600">❌ Melebihi sisa tagihan — maksimal ${fmt(loan.remaining_amount)}</span>`;
+    return;
+  }
+
+  const a = hitungAlokasiCicilan(loan, amount, _cicilanInterestPaid);
+  const nextDue = a.isLastPayment
+    ? null
+    : (a.periodsAdvanced > 0
+        ? majukanJatuhTempo(loan.installment_type, loan.next_due_date, a.periodsAdvanced)
+        : loan.next_due_date);
+
+  const ringkas = a.isLastPayment
+    ? '<span style="color:var(--green);font-weight:700">🎉 Pembayaran ini MELUNASI pinjaman</span>'
+    : a.periodsAdvanced === 0
+      ? '<span style="color:var(--amber);font-weight:600">⚠️ Pembayaran sebagian — belum menyelesaikan satu cicilan, jatuh tempo tidak bergeser</span>'
+      : `<span style="font-weight:600">Melunasi <b>${a.periodsAdvanced}</b> cicilan</span>`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:8px">${ringkas}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div style="color:var(--text3)">Komponen Pokok</div><div style="font-weight:600">${fmt(a.principal)}</div></div>
+      <div><div style="color:var(--text3)">Komponen Bunga</div><div style="font-weight:600">${fmt(a.interest)}</div></div>
+      <div><div style="color:var(--text3)">Sisa setelah bayar</div><div style="font-weight:600;color:var(--amber)">${fmt(a.remainingAfter)}</div></div>
+      <div><div style="color:var(--text3)">Jatuh tempo berikutnya</div><div style="font-weight:600">${nextDue ? fmtDate(nextDue) : '—'}</div></div>
+    </div>`;
 }
 
 async function doCatatCicilan() {
@@ -2832,28 +2946,34 @@ async function doCatatCicilan() {
       return;
     }
 
-    const totalPeriods       = loan.installment_count;
-    const interestPerPeriod  = Math.round(loan.total_interest / totalPeriods);
-    const principalPerPeriod = Math.round(amount - interestPerPeriod);
-    const remainingAfter     = Math.max(0, loan.remaining_amount - amount);
-    const newPaidCount       = loan.paid_count + 1;
+    // Riwayat pembayaran dibaca langsung dari database agar alokasi bunga
+    // akurat dan tidak bergantung pada angka yang mungkin sudah usang di layar.
+    const riwayat = await dbQuery('loan_payments', `loan_id=eq.${loan.id}&select=interest_component`);
+    if (riwayat === null) {
+      showToast('❌ Gagal membaca riwayat pembayaran. Periksa koneksi lalu coba lagi.');
+      return;
+    }
+    const interestPaidSoFar = riwayat.reduce((a, p) => a + Number(p.interest_component || 0), 0);
+    const paymentSeq        = riwayat.length + 1;
 
-    // Pelunasan HANYA ditentukan oleh sisa tagihan.
-    // Kalau ada pembayaran sebagian, paid_count bisa mencapai jumlah cicilan
-    // sementara sisa tagihan masih ada — pinjaman wajib tetap aktif.
-    const isLastPayment = remainingAfter <= 0;
+    const alok = hitungAlokasiCicilan(loan, amount, interestPaidSoFar);
+    const { interest, principal, remainingAfter, isLastPayment,
+            newPaidCount, periodsAdvanced } = alok;
 
-    // next_due_date maju 1 periode dari due date SEBELUMNYA (bukan dari hari bayar),
-    // supaya yang menunggak tetap menunggak sampai seluruh tunggakan terbayar.
-    const nextDue = isLastPayment ? null : getNextDueDate(loan.installment_type, loan.next_due_date);
+    // Jatuh tempo hanya maju sebanyak periode yang benar-benar terlunasi.
+    const nextDue = isLastPayment
+      ? null
+      : (periodsAdvanced > 0
+          ? majukanJatuhTempo(loan.installment_type, loan.next_due_date, periodsAdvanced)
+          : loan.next_due_date);
 
     // ── Langkah 1: catat pembayaran dulu ──
     // dbInsert TIDAK melempar exception, jadi error wajib diperiksa manual.
     // Kalau langkah ini gagal, saldo pinjaman tidak boleh disentuh sama sekali.
     const { error: payErr } = await dbInsert('loan_payments', {
       loan_id: loan.id, member_id: loan.member_id,
-      payment_number: newPaidCount, amount_paid: amount,
-      principal_component: principalPerPeriod, interest_component: interestPerPeriod,
+      payment_number: paymentSeq, amount_paid: amount,
+      principal_component: principal, interest_component: interest,
       remaining_after: remainingAfter, recorded_by: currentUser.id, note
     });
     if (payErr) {
@@ -2872,12 +2992,20 @@ async function doCatatCicilan() {
       return;
     }
 
-    showToast('Cicilan berhasil dicatat ✓' + (isLastPayment ? ' 🎉 Pinjaman Lunas!' : ''));
+    const ket = isLastPayment ? ' 🎉 Pinjaman Lunas!'
+              : periodsAdvanced > 1 ? ` (melunasi ${periodsAdvanced} cicilan)`
+              : periodsAdvanced === 0 ? ' (pembayaran sebagian, periode belum selesai)'
+              : '';
+    showToast('Cicilan berhasil dicatat ✓' + ket);
     closeModal('modal-cicilan');
     document.getElementById('cicilan-note').value = '';
 
-    // Auto-poin memakai due date LAMA untuk menilai tepat waktu / terlambat
-    await autoPoinCicilan(loan.member_id, loan.next_due_date);
+    // Poin hanya diberikan bila ada periode yang benar-benar terlunasi.
+    // Tanpa syarat ini, pembayaran sebagian berulang bisa dipakai untuk
+    // memanen poin tanpa benar-benar melunasi cicilan.
+    if (periodsAdvanced > 0) {
+      await autoPoinCicilan(loan.member_id, loan.next_due_date, periodsAdvanced);
+    }
     loadCicilan(); loadDashboard();
   } finally {
     if (btnC) { btnC.disabled = false; btnC.style.opacity = ''; }
@@ -5274,23 +5402,20 @@ async function autoPoinSetor(memberId, amount) {
 }
 
 // Auto-poin saat bayar cicilan
-async function autoPoinCicilan(memberId, nextDueDateBefore) {
+async function autoPoinCicilan(memberId, nextDueDateBefore, periods = 1) {
   const todayStr = getTodayStr();
-  const dueStr = nextDueDateBefore ? nextDueDateBefore.split('T')[0] : null;
+  const dueStr   = nextDueDateBefore ? nextDueDateBefore.split('T')[0] : null;
+  const n        = Math.max(1, Number(periods) || 1);
 
-  if (!dueStr) {
-    // Tidak ada jatuh tempo (misal cicilan pertama atau data tidak ada) → tetap +5
-    await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan → +5 poin', 'credit');
-    showToast('⭐ +5 poin dari cicilan!', 2000);
-    return;
-  }
-
-  if (dueStr >= todayStr) {
-    // Tepat waktu atau lebih awal
-    await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan tepat waktu → +5 poin', 'credit');
-    showToast('⭐ +5 poin cicilan tepat waktu!', 2000);
+  // Tepat waktu (atau belum ada jatuh tempo) → +5 per periode yang terlunasi.
+  // Terlambat → -5 sekali saja, tidak dikalikan, supaya melunasi banyak
+  // tunggakan sekaligus tidak menghukum lebih berat daripada membiarkannya.
+  if (!dueStr || dueStr >= todayStr) {
+    const poin = 5 * n;
+    const label = n > 1 ? `Bayar ${n} cicilan tepat waktu` : 'Bayar cicilan tepat waktu';
+    await simpanPoin(memberId, poin, `[AUTO] ${label} → +${poin} poin`, 'credit');
+    showToast(`⭐ +${poin} poin cicilan tepat waktu!`, 2000);
   } else {
-    // Terlambat — kurangi poin
     await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan terlambat → -5 poin', 'debit');
     showToast('⚠️ -5 poin karena cicilan terlambat', 2000);
   }

@@ -1824,7 +1824,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.11.0';
+const APP_VERSION = 'v4.11.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2204,7 +2204,7 @@ async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const [savings, loans, members, allPayments, orgExpenses] = await Promise.all([
-    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
+    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
     dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
     dbQuery('loan_payments', 'select=interest_component'),
@@ -2305,7 +2305,7 @@ async function loadDashboard() {
 
 // SIMPANAN
 async function loadSimpanan() {
-  let savQ = 'select=member_id,type,amount';
+  let savQ = 'select=member_id,type,amount,is_reversed,corrects_id';
   let memQ = 'select=id,full_name,avatar_url&status=eq.active&order=full_name.asc';
   if (!isAdmin()) {
     savQ += `&member_id=eq.${currentUser.id}`;
@@ -2320,6 +2320,7 @@ async function loadSimpanan() {
   const balances = {};
   (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, deposit: 0, withdraw: 0 });
   (savings || []).forEach(s => {
+    if (!isBarisSimpananEfektif(s)) return;   // abaikan setoran terkoreksi & pembatalannya
     if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Unknown', avatar: null, deposit: 0, withdraw: 0 };
     if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
     else balances[s.member_id].withdraw += Number(s.amount);
@@ -2489,6 +2490,20 @@ async function loadSimpananHistory() {
       </tr>`;
     }).join('')}</tbody>
   </table>`;
+}
+
+// Baris simpanan yang dihitung untuk pelaporan bruto (Total Setor / Total
+// Tarik / grafik tren). Dua jenis baris dikecualikan:
+//   - setoran yang sudah dikoreksi (nominalnya tidak pernah benar)
+//   - baris pembatalan pasangannya (bukan penarikan sungguhan)
+// Yang tersisa hanya setoran pengganti dengan nominal yang benar.
+//
+// Saldo tetap sama baik dihitung dengan maupun tanpa penyaringan ini,
+// karena pembatalan selalu mengimbangi setoran yang dibatalkan.
+function isBarisSimpananEfektif(s) {
+  if (s.is_reversed) return false;
+  if (s.corrects_id && s.type === 'withdraw') return false;
+  return true;
 }
 
 async function getMemberBalance(memberId) {
@@ -3384,7 +3399,7 @@ async function switchLaporanTab(tab, btn) {
 
 async function renderLaporanSimpanan() {
   const dateFilter = getLaporanDateFilter();
-  let savingsQ = `select=member_id,type,amount,balance_after,created_at,note,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`;
+  let savingsQ = `select=member_id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`;
   let membersQ = 'select=id,full_name&order=full_name.asc';
   if (!isAdmin()) {
     savingsQ += `&member_id=eq.${currentUser.id}`;
@@ -3401,6 +3416,7 @@ async function renderLaporanSimpanan() {
     if (!balances[s.member_id]) balances[s.member_id] = { name: s.profiles?.full_name || s.member_id, deposit: 0, withdraw: 0, last: null };
   });
   (savings || []).forEach(s => {
+    if (!isBarisSimpananEfektif(s)) return;   // abaikan setoran terkoreksi & pembatalannya
     if (balances[s.member_id]) {
       if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
       else balances[s.member_id].withdraw += Number(s.amount);
@@ -4989,7 +5005,7 @@ async function loadDashboardCharts(savings, memberBalances) {
   }
 
   const simpananPerBulan = months6.map(m =>
-    (savings || []).filter(s => s.type === 'deposit' && s.created_at?.startsWith(m))
+    (savings || []).filter(s => s.type === 'deposit' && isBarisSimpananEfektif(s) && s.created_at?.startsWith(m))
       .reduce((a, s) => a + Number(s.amount), 0)
   );
 

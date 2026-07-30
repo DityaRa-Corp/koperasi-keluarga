@@ -1359,6 +1359,23 @@ tbody tr:hover { background: var(--surface2); }
         <button class="btn btn-primary" onclick="savePlafon()">Simpan Batas Pinjaman</button>
       </div>
       <div class="card" style="max-width:480px;margin-top:14px">
+        <div class="section-title">Denda Keterlambatan</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Denda dikenakan sekali untuk setiap pembayaran cicilan yang melewati jatuh tempo. Uangnya masuk ke kas koperasi sebagai pemasukan tersendiri.</p>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="denda-aktif" onchange="ubahAktifDenda()">
+            <span style="font-weight:600;font-size:13px">Aktifkan denda keterlambatan</span>
+          </label>
+        </div>
+        <div class="form-group" id="denda-nominal-group" style="display:none">
+          <label class="form-label">Nominal Denda (Rp)</label>
+          <input class="form-input" type="number" id="denda-nominal" min="0" step="1000" placeholder="Contoh: 10000">
+          <div class="form-hint">Dikenakan sekali per pembayaran yang telat, bukan per hari.</div>
+        </div>
+        <div id="denda-contoh" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
+        <button class="btn btn-primary" onclick="saveDenda()">Simpan Pengaturan Denda</button>
+      </div>
+      <div class="card" style="max-width:480px;margin-top:14px">
         <div class="section-title">Ubah Password Admin</div>
         <div class="form-group">
           <label class="form-label">Password Baru</label>
@@ -1642,6 +1659,15 @@ tbody tr:hover { background: var(--surface2); }
       <input class="form-input" type="number" id="cicilan-amount" placeholder="Nominal pembayaran" min="1" oninput="previewCicilan()">
     </div>
     <div id="cicilan-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
+    <div id="cicilan-denda-box" style="display:none;background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px">
+      <div style="font-weight:600;color:var(--amber-text);margin-bottom:6px">⚠️ Pembayaran ini melewati jatuh tempo</div>
+      <div id="cicilan-denda-teks" style="margin-bottom:8px"></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="cicilan-denda-terima" checked>
+        <span>Denda sudah diterima bersama pembayaran ini</span>
+      </label>
+      <div style="color:var(--text2);margin-top:6px;font-size:11px">Hilangkan centang bila dendanya dibebaskan atau belum dibayar.</div>
+    </div>
     <div class="form-group">
       <label class="form-label">Keterangan (opsional)</label>
       <input class="form-input" type="text" id="cicilan-note" placeholder="Catatan">
@@ -1812,7 +1838,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.16.0';
+const APP_VERSION = 'v4.17.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2191,12 +2217,13 @@ function populateMemberSelects() {
 async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const [savings, loans, members, allPayments, orgExpenses] = await Promise.all([
+  const [savings, loans, members, allPayments, orgExpenses, pendapatanLain] = await Promise.all([
     dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
     dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
     dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
-    dbQuery('org_expenses', 'select=amount,category')
+    dbQuery('org_expenses', 'select=amount,category'),
+    dbQuery('pendapatan_lain', 'select=amount')
   ]);
   // Alias profiles untuk dipakai di transaksi terbaru
   const profiles = members;
@@ -2212,7 +2239,9 @@ async function loadDashboard() {
   // Pengeluaran kas organisasi (biaya event) mengurangi kas koperasi.
   // Nilainya TIDAK memotong simpanan anggota mana pun.
   const totalOrgExpense = (orgExpenses || []).reduce((a, e) => a + Number(e.amount || 0), 0);
-  const totalKas = totalSimpanan + totalBungaMasuk - totalOrgExpense;
+  // Pemasukan lain (denda keterlambatan) juga menambah kas koperasi
+  const totalLain = (pendapatanLain || []).reduce((a, p) => a + Number(p.amount || 0), 0);
+  const totalKas = totalSimpanan + totalBungaMasuk + totalLain - totalOrgExpense;
 
   // Untuk kartu "Keuntungan Bunga": yang ditampilkan adalah keuntungan yang
   // MASIH ADA, yaitu bunga masuk dikurangi yang sudah dibagikan ke anggota
@@ -3186,6 +3215,26 @@ async function openCatatCicilan(loanId) {
     </div>`;
   document.getElementById('cicilan-amount').value = loan.installment_amount;
   document.getElementById('cicilan-amount').max = loan.remaining_amount;
+
+  // Kotak denda hanya muncul bila dendanya aktif DAN pembayaran ini
+  // memang melewati jatuh tempo.
+  const kotakDenda = document.getElementById('cicilan-denda-box');
+  const nDenda = nominalDenda();
+  const dueStr = loan.next_due_date ? loan.next_due_date.split('T')[0] : null;
+  const telat  = dueStr && dueStr < getTodayStr();
+  if (kotakDenda) {
+    if (nDenda > 0 && telat) {
+      const hari = Math.floor((new Date(getTodayStr()) - new Date(dueStr)) / 86400000);
+      document.getElementById('cicilan-denda-teks').innerHTML =
+        `Jatuh tempo <strong>${fmtDate(loan.next_due_date)}</strong> — telat ${hari} hari.<br>`
+        + `Denda: <strong>${fmt(nDenda)}</strong>`;
+      document.getElementById('cicilan-denda-terima').checked = true;
+      kotakDenda.style.display = 'block';
+    } else {
+      kotakDenda.style.display = 'none';
+    }
+  }
+
   previewCicilan();
   openModal('modal-cicilan');
 }
@@ -3376,9 +3425,34 @@ async function doCatatCicilan() {
               : periodsAdvanced > 1 ? ` (melunasi ${periodsAdvanced} cicilan)`
               : periodsAdvanced === 0 ? ' (pembayaran sebagian, periode belum selesai)'
               : '';
-    showToast('Cicilan berhasil dicatat ✓' + ket);
+    showToast('Cicilan berhasil dicatat ✓' + ket
+      + (dendaTercatat > 0 ? ` · denda ${fmt(dendaTercatat)} diterima` : ''));
     closeModal('modal-cicilan');
     document.getElementById('cicilan-note').value = '';
+
+    // Denda keterlambatan dicatat sebagai pemasukan kas tersendiri.
+    // Tidak menambah tagihan pinjaman, karena total tagihan sudah
+    // disepakati saat persetujuan.
+    const nDenda   = nominalDenda();
+    const dueLama  = loan.next_due_date ? loan.next_due_date.split('T')[0] : null;
+    const telatBayar = dueLama && dueLama < getTodayStr();
+    const terimaDenda = document.getElementById('cicilan-denda-terima')?.checked;
+    let dendaTercatat = 0;
+    if (nDenda > 0 && telatBayar && terimaDenda) {
+      const { error: eDenda } = await dbInsert('pendapatan_lain', {
+        member_id: loan.member_id,
+        loan_id: loan.id,
+        jenis: 'denda',
+        amount: nDenda,
+        note: `Terlambat dari jatuh tempo ${fmtDate(loan.next_due_date)}`,
+        recorded_by: currentUser.id
+      });
+      if (eDenda) {
+        showToast('⚠️ Cicilan tercatat, tetapi denda ' + fmt(nDenda) + ' GAGAL dicatat. Catat angka ini.', 7000);
+      } else {
+        dendaTercatat = nDenda;
+      }
+    }
 
     // Poin hanya diberikan bila ada periode yang benar-benar terlunasi.
     // Tanpa syarat ini, pembayaran sebagian berulang bisa dipakai untuk
@@ -3784,11 +3858,12 @@ async function renderLaporanJurnal() {
   const dateFilter = getLaporanDateFilter();
 
   // Ambil semua sumber transaksi secara paralel
-  const [savings, payments, loans, orgExp] = await Promise.all([
+  const [savings, payments, loans, orgExp, lainJ] = await Promise.all([
     dbQuery('savings', `select=id,type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
     dbQuery('loan_payments', `select=id,amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.asc${dateFilter}`),
     dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`),
-    dbQuery('org_expenses', `select=id,description,amount,created_at&order=created_at.asc${dateFilter}`)
+    dbQuery('org_expenses', `select=id,description,amount,created_at&order=created_at.asc${dateFilter}`),
+    dbQuery('pendapatan_lain', `select=id,jenis,amount,note,created_at,profiles!pendapatan_lain_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`)
   ]);
 
   // Susun semua transaksi jadi satu array
@@ -3828,6 +3903,18 @@ async function renderLaporanJurnal() {
     });
   });
 
+  // Pemasukan lain (denda keterlambatan)
+  (lainJ || []).forEach(p => {
+    entries.push({
+      date: new Date(p.created_at),
+      keterangan: `Denda Keterlambatan — ${escapeHtml(p.profiles?.full_name || '-')}${p.note ? ' (' + escapeHtml(p.note) + ')' : ''}`,
+      masuk:  Number(p.amount),
+      keluar: 0,
+      ikon: '⚠️',
+      warna: 'var(--green)'
+    });
+  });
+
   // Pengeluaran kas organisasi (biaya event) — tidak terkait simpanan anggota
   (orgExp || []).forEach(e => {
     entries.push({
@@ -3855,16 +3942,18 @@ async function renderLaporanJurnal() {
   const dateFrom = document.getElementById('laporan-date-from')?.value;
   if (dateFrom) {
     // Ambil semua transaksi sebelum dateFrom untuk hitung saldo awal
-    const [savBefore, payBefore, loanBefore, expBefore] = await Promise.all([
+    const [savBefore, payBefore, loanBefore, expBefore, lainBefore] = await Promise.all([
       dbQuery('savings', `select=type,amount&created_at=lt.${dateFrom}T00:00:00`),
       dbQuery('loan_payments', `select=amount_paid&is_reversed=is.false&created_at=lt.${dateFrom}T00:00:00`),
       dbQuery('loans', `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('org_expenses', `select=amount&created_at=lt.${dateFrom}T00:00:00`)
+      dbQuery('org_expenses', `select=amount&created_at=lt.${dateFrom}T00:00:00`),
+      dbQuery('pendapatan_lain', `select=amount&created_at=lt.${dateFrom}T00:00:00`)
     ]);
     (savBefore||[]).forEach(s => { saldoAwal += s.type==='deposit' ? Number(s.amount) : -Number(s.amount); });
     (payBefore||[]).forEach(p => { saldoAwal += Number(p.amount_paid); });
     (loanBefore||[]).forEach(l => { saldoAwal -= Number(l.principal); });
     (expBefore||[]).forEach(e => { saldoAwal -= Number(e.amount); });
+    (lainBefore||[]).forEach(p => { saldoAwal += Number(p.amount); });
   }
 
   // Hitung running balance
@@ -4401,6 +4490,7 @@ async function loadPengaturan() {
   document.getElementById('setting-bunga').value = bunga;
   await muatPengaturan();
   tampilkanPengaturanPlafon();
+  tampilkanPengaturanDenda();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4506,6 +4596,53 @@ function ubahModePlafon() {
     contoh.innerHTML = 'Contoh dengan nilai <strong>40%</strong> dan total simpanan '
       + fmt(10000000) + ': satu anggota boleh meminjam sampai <strong>' + fmt(4000000) + '</strong>.';
   }
+}
+
+// ── Denda keterlambatan ──
+//
+// Dikenakan sekali per pembayaran yang melewati jatuh tempo, bukan per
+// hari. Pilihan ini disengaja: denda harian menumpuk cepat dan terasa
+// menghukum untuk telat beberapa hari, sesuatu yang kurang cocok untuk
+// koperasi keluarga.
+function nominalDenda() {
+  const d = appSettings.denda_keterlambatan || { aktif: false, nominal: 0 };
+  if (!d.aktif) return 0;
+  return Math.max(0, Number(d.nominal) || 0);
+}
+
+function ubahAktifDenda() {
+  const aktif  = document.getElementById('denda-aktif').checked;
+  const grup   = document.getElementById('denda-nominal-group');
+  const contoh = document.getElementById('denda-contoh');
+  grup.style.display = aktif ? 'block' : 'none';
+  contoh.innerHTML = aktif
+    ? 'Saat admin mencatat cicilan yang sudah lewat jatuh tempo, dendanya muncul di layar dan bisa dicatat bersamaan.'
+    : 'Denda mati. Cicilan telat hanya dikurangi 5 poin, tanpa denda uang.';
+}
+
+async function saveDenda() {
+  const aktif   = document.getElementById('denda-aktif').checked;
+  const nominal = parseInt(document.getElementById('denda-nominal').value) || 0;
+  if (aktif && nominal <= 0) { showToast('Isi nominal dendanya dulu'); return; }
+
+  const { error } = await simpanPengaturan('denda_keterlambatan', { aktif, nominal });
+  if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error))); return; }
+
+  await logActivity('PENGATURAN',
+    aktif ? `Denda keterlambatan diaktifkan: ${fmt(nominal)} per pembayaran telat`
+          : 'Denda keterlambatan dimatikan', null);
+  showToast(aktif ? `✅ Denda ${fmt(nominal)} per pembayaran telat` : '✅ Denda keterlambatan dimatikan');
+  tampilkanPengaturanDenda();
+}
+
+function tampilkanPengaturanDenda() {
+  const d = appSettings.denda_keterlambatan || { aktif: false, nominal: 0 };
+  const cek = document.getElementById('denda-aktif');
+  const inp = document.getElementById('denda-nominal');
+  if (!cek || !inp) return;
+  cek.checked = !!d.aktif;
+  inp.value = Number(d.nominal) || '';
+  ubahAktifDenda();
 }
 
 async function savePlafon() {
@@ -4838,13 +4975,14 @@ async function bypassMasaTunggu(memberId, memberName) {
 // bunga yang belum diterima bukan uang yang keluar dari kas.
 // ══════════════════════════════════════════════════════════════
 async function hitungKasTersedia() {
-  const [savings, loans, payments, orgExp] = await Promise.all([
-    dbQuery('savings',       'select=type,amount'),
-    dbQuery('loans',         'select=principal&disbursed_at=not.is.null'),
-    dbQuery('loan_payments', 'select=principal_component,interest_component&is_reversed=is.false'),
-    dbQuery('org_expenses',  'select=amount')
+  const [savings, loans, payments, orgExp, lain] = await Promise.all([
+    dbQuery('savings',         'select=type,amount'),
+    dbQuery('loans',           'select=principal&disbursed_at=not.is.null'),
+    dbQuery('loan_payments',   'select=principal_component,interest_component&is_reversed=is.false'),
+    dbQuery('org_expenses',    'select=amount'),
+    dbQuery('pendapatan_lain', 'select=amount')
   ]);
-  if ([savings, loans, payments, orgExp].some(x => x === null)) return null;
+  if ([savings, loans, payments, orgExp, lain].some(x => x === null)) return null;
 
   const simpananNeto = savings.reduce((a, s) =>
     a + (s.type === 'deposit' ? Number(s.amount || 0) : -Number(s.amount || 0)), 0);
@@ -4852,11 +4990,12 @@ async function hitungKasTersedia() {
   const pokokKembali = payments.reduce((a, p) => a + Number(p.principal_component || 0), 0);
   const bungaTerima  = payments.reduce((a, p) => a + Number(p.interest_component  || 0), 0);
   const pengeluaran  = orgExp.reduce((a, e) => a + Number(e.amount || 0), 0);
+  const lainTerima   = lain.reduce((a, p) => a + Number(p.amount || 0), 0);
 
   return {
-    tersedia:     simpananNeto - pokokCair + pokokKembali + bungaTerima - pengeluaran,
+    tersedia:     simpananNeto - pokokCair + pokokKembali + bungaTerima + lainTerima - pengeluaran,
     piutangPokok: pokokCair - pokokKembali,
-    totalAset:    simpananNeto + bungaTerima - pengeluaran
+    totalAset:    simpananNeto + bungaTerima + lainTerima - pengeluaran
   };
 }
 

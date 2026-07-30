@@ -1848,7 +1848,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.12.0';
+const APP_VERSION = 'v4.12.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2963,14 +2963,27 @@ async function showDetailPinjaman(loanId) {
     ${loan.note ? `<div style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">Catatan: ${escapeHtml(loan.note)}</div>` : ''}
     ${payments?.length ? `<div class="section-title" style="margin-top:8px">Riwayat Pembayaran (${payments.length}x, cicilan terlunasi ${loan.paid_count}/${loan.installment_count})</div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Bayar Ke-</th><th>Tanggal</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th></tr></thead>
-      <tbody>${payments.map(p => `<tr>
-        <td>${p.payment_number}</td><td>${fmtDate(p.created_at)}</td>
-        <td class="td-mono">${fmt(p.amount_paid)}</td>
-        <td class="td-mono">${fmt(p.principal_component)}</td>
-        <td class="td-mono">${fmt(p.interest_component)}</td>
-        <td class="td-mono">${fmt(p.remaining_after)}</td>
-      </tr>`).join('')}</tbody>
+      <thead><tr><th>Bayar Ke-</th><th>Tanggal</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th>${isAdmin() ? '<th></th>' : ''}</tr></thead>
+      <tbody>${payments.map(p => {
+        // Tanpa penanda, pembayaran yang dikoreksi tampak seperti dua
+        // pembayaran terpisah — bisa disalahpahami sebagai bayar dua kali.
+        const tandaP = p.is_reversed
+          ? ' <span class="badge badge-gray" title="Nominalnya sudah diperbaiki">Dikoreksi</span>'
+          : (p.corrects_id ? ' <span class="badge badge-amber" title="Baris hasil koreksi">Koreksi</span>' : '');
+        const tombolP = isAdmin()
+          ? `<td>${!p.is_reversed
+              ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal pembayaran ini" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(loan.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${loan.id}')">✏️</button>`
+              : ''}</td>`
+          : '';
+        return `<tr${p.is_reversed ? ' style="opacity:0.55"' : ''}>
+          <td>${p.payment_number}${tandaP}</td><td>${fmtDate(p.created_at)}</td>
+          <td class="td-mono"${p.is_reversed ? ' style="text-decoration:line-through"' : ''}>${fmt(p.amount_paid)}</td>
+          <td class="td-mono">${fmt(p.principal_component)}</td>
+          <td class="td-mono">${fmt(p.interest_component)}</td>
+          <td class="td-mono">${fmt(p.remaining_after)}</td>
+          ${tombolP}
+        </tr>`;
+      }).join('')}</tbody>
     </table></div>` : ''}
   `;
   const btnApprove = document.getElementById('btn-approve-pinjaman');
@@ -3459,7 +3472,7 @@ async function exportLaporan() {
     XLSX.utils.book_append_sheet(wb, wsPinjaman, 'Pinjaman');
 
     // ── Sheet 4: Cicilan ──
-    const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc');
+    const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.desc');
     const cicilanRows = [['Tanggal','Anggota','Pembayaran Ke-','Dibayar (Rp)','Komponen Pokok (Rp)','Komponen Bunga (Rp)','Sisa Tagihan (Rp)','Keterangan']];
     (payments||[]).forEach(p => {
       cicilanRows.push([
@@ -3656,7 +3669,10 @@ async function renderLaporanPinjaman() {
 
 async function renderLaporanCicilan() {
   const dateFilter = getLaporanDateFilter();
-  let cicQ = `select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`;
+  // Laporan menampilkan angka final: baris yang sudah dikoreksi dikecualikan
+  // supaya ringkasan "Total Cicilan Diterima" tidak terhitung dua kali.
+  // Jejak koreksi yang lengkap ada di menu Cicilan → Riwayat Cicilan.
+  let cicQ = `select=*,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.desc${dateFilter}`;
   if (!isAdmin()) cicQ += `&member_id=eq.${currentUser.id}`;
   const data = await dbQuery('loan_payments', cicQ);
   const totalDibayar = (data || []).reduce((a, p) => a + Number(p.amount_paid), 0);

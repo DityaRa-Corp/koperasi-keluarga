@@ -1799,7 +1799,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.9.15';
+const APP_VERSION = 'v4.9.16';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3503,13 +3503,13 @@ async function openResetPassword(memberId, memberName, isUnlock) {
     sub.textContent = 'Buka kunci akun dan buat password baru';
     btn.textContent = 'Unlock & Reset Password';
     btn.className = 'btn btn-success';
-    info.innerHTML = `<span style="color:var(--red-text);font-weight:600">⚠ Akun ${memberName} terkunci.</span> Masukkan password baru untuk membuka kunci.`;
+    info.innerHTML = `<span style="color:var(--red-text);font-weight:600">⚠ Akun ${escapeHtml(memberName)} terkunci.</span> Masukkan password baru untuk membuka kunci.`;
   } else {
     title.textContent = 'Reset Password Anggota';
     sub.textContent = 'Buat password baru untuk anggota ini';
     btn.textContent = 'Reset Password';
     btn.className = 'btn btn-primary';
-    info.innerHTML = `Reset password untuk: <strong>${memberName}</strong>`;
+    info.innerHTML = `Reset password untuk: <strong>${escapeHtml(memberName)}</strong>`;
   }
 
   openModal('modal-reset-password');
@@ -3936,7 +3936,7 @@ async function loadProfil() {
     const myAvatarEl = document.getElementById('my-avatar');
     if (myAvatarEl) {
       if (currentProfile.avatar_url) {
-        myAvatarEl.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+        myAvatarEl.innerHTML = `<img src="${escapeHtml(currentProfile.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`;
         myAvatarEl.style.background = 'transparent';
       } else {
         myAvatarEl.textContent = (currentProfile.full_name || '?')[0].toUpperCase();
@@ -4726,7 +4726,7 @@ function openMyAvatar() {
   document.getElementById('avatar-member-name').textContent = currentProfile?.full_name || '-';
   const preview = document.getElementById('avatar-preview');
   if (currentProfile?.avatar_url) {
-    preview.innerHTML = `<img src="${currentProfile.avatar_url}" style="width:100%;height:100%;object-fit:cover">`;
+    preview.innerHTML = `<img src="${escapeHtml(currentProfile.avatar_url)}" style="width:100%;height:100%;object-fit:cover">`;
   } else {
     preview.textContent = (currentProfile?.full_name || '?')[0].toUpperCase();
     preview.style.cssText = 'width:100px;height:100px;border-radius:50%;background:var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:36px;border:3px solid var(--border)';
@@ -4741,7 +4741,7 @@ function openAvatarForMember(memberId, memberName, avatarUrl) {
   document.getElementById('avatar-member-name').textContent = memberName;
   const preview = document.getElementById('avatar-preview');
   if (avatarUrl) {
-    preview.innerHTML = `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">`;
+    preview.innerHTML = `<img src="${escapeHtml(avatarUrl)}" style="width:100%;height:100%;object-fit:cover">`;
     preview.style.cssText = 'width:100px;height:100px;border-radius:50%;margin:0 auto 12px;overflow:hidden;border:3px solid var(--border)';
   } else {
     preview.textContent = memberName[0].toUpperCase();
@@ -4926,7 +4926,7 @@ async function loadPoinData() {
 
 function openTambahPoin(memberId, memberName) {
   document.getElementById('poin-member-id').value = memberId;
-  document.getElementById('poin-member-info').innerHTML = `<b>${memberName}</b>`;
+  document.getElementById('poin-member-info').innerHTML = `<b>${escapeHtml(memberName)}</b>`;
   document.getElementById('poin-jumlah').value = '';
   document.getElementById('poin-alasan').value = '';
   document.getElementById('poin-type').value = 'credit';
@@ -5092,7 +5092,7 @@ async function doBackup() {
     status.innerHTML = `<span style="color:var(--green)">✅ Backup berhasil! File <strong>${filename}</strong> sudah didownload.</span>`;
     await logActivity('BACKUP', `Backup data berhasil - ${filename}`);
   } catch(e) {
-    status.innerHTML = `<span style="color:var(--red)">❌ Gagal: ${e.message}</span>`;
+    status.innerHTML = `<span style="color:var(--red)">❌ Gagal: ${escapeHtml(e.message)}</span>`;
   } finally {
     btn.disabled = false;
     btn.textContent = '💾 Download Backup Sekarang';
@@ -5115,7 +5115,7 @@ async function previewRestore(input) {
     const required = ['Anggota','Simpanan','Pinjaman','Cicilan'];
     const missing = required.filter(s => !sheets.includes(s));
     if (missing.length > 0) {
-      previewContent.innerHTML = `<span style="color:var(--red)">❌ File tidak valid. Sheet tidak lengkap: ${missing.join(', ')}</span>`;
+      previewContent.innerHTML = `<span style="color:var(--red)">❌ File tidak valid. Sheet tidak lengkap: ${escapeHtml(missing.join(', '))}</span>`;
       preview.style.display = 'block';
       btnRestore.style.display = 'none';
       return;
@@ -5140,7 +5140,7 @@ async function previewRestore(input) {
     preview.style.display = 'block';
     btnRestore.style.display = 'block';
   } catch(e) {
-    previewContent.innerHTML = `<span style="color:var(--red)">❌ Gagal membaca file: ${e.message}</span>`;
+    previewContent.innerHTML = `<span style="color:var(--red)">❌ Gagal membaca file: ${escapeHtml(e.message)}</span>`;
     preview.style.display = 'block';
     btnRestore.style.display = 'none';
   }
@@ -5194,7 +5194,7 @@ async function doRestore() {
     status.innerHTML = `<span style="color:var(--green)">✅ Restore selesai! ${totalRestored} transaksi berhasil dipulihkan.${errors.length > 0 ? '<br>⚠️ ' + errors.length + ' error: ' + errors.slice(0,3).join(', ') : ''}</span>`;
     await logActivity('RESTORE', `Restore dari file: ${file.name}, ${totalRestored} records`);
   } catch(e) {
-    status.innerHTML = `<span style="color:var(--red)">❌ Restore gagal: ${e.message}</span>`;
+    status.innerHTML = `<span style="color:var(--red)">❌ Restore gagal: ${escapeHtml(e.message)}</span>`;
   } finally {
     btn.disabled = false;
   }

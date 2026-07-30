@@ -1814,7 +1814,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.13.2';
+const APP_VERSION = 'v4.14.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2166,13 +2166,25 @@ async function loadAllMembers() {
 }
 
 function populateMemberSelects() {
+  // Anggota nonaktif tidak boleh menerima transaksi BARU (setor, ajukan
+  // pinjaman), tetapi HARUS tetap bisa dipilih untuk pencairan simpanan —
+  // justru itulah cara mereka mengambil uangnya saat berhenti. Filter
+  // laporan juga menampilkan semua, supaya riwayatnya tetap bisa dilihat.
+  const hanyaAktif = ['setor-member', 'ajukan-member'];
   const selects = ['setor-member', 'tarik-member', 'ajukan-member', 'filter-simpanan-member', 'filter-cicilan-member'];
   selects.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     const isFilter = id.startsWith('filter-');
     const opts = isFilter ? '<option value="">Semua anggota</option>' : '';
-    el.innerHTML = opts + allMembers.map(m => `<option value="${m.id}">${escapeHtml(m.full_name)}</option>`).join('');
+    const daftar = hanyaAktif.includes(id)
+      ? allMembers.filter(m => m.status === 'active')
+      : allMembers;
+    el.innerHTML = opts + daftar.map(m => {
+      const nonaktif = m.status !== 'active';
+      const label = escapeHtml(m.full_name) + (nonaktif ? ' (nonaktif)' : '');
+      return `<option value="${m.id}">${label}</option>`;
+    }).join('');
   });
 }
 
@@ -2213,6 +2225,15 @@ async function loadDashboard() {
   const bungaTersedia = Math.max(0, totalBungaMasuk - bungaSudahDibagi);
   const activeLoans = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
+
+  // Rincian "Di dalam koperasi" vs "Sedang dipinjam" memakai POKOK yang
+  // masih tertanam, bukan remaining_amount. remaining_amount berisi pokok
+  // tersisa DITAMBAH bunga yang belum dibayar, dan bunga yang belum
+  // diterima bukan uang yang keluar dari kas — memakainya membuat uang
+  // di tangan tampak lebih kecil dari kenyataan.
+  const kasInfo      = await hitungKasTersedia();
+  const kasDiluarRil = kasInfo ? kasInfo.piutangPokok : totalPinjaman;
+  const kasDalamRil  = kasInfo ? kasInfo.tersedia     : Math.max(0, totalKas - totalPinjaman);
   const now = new Date();
   const todayStr = getTodayStr();
   const tunggak = activeLoans.filter(l => l.next_due_date && l.next_due_date.split('T')[0] < todayStr);
@@ -2221,10 +2242,10 @@ async function loadDashboard() {
   document.getElementById('stat-kas').textContent = fmt(totalKas);
   document.getElementById('stat-bunga-masuk').textContent = fmt(bungaTersedia);
   document.getElementById('stat-peminjam-aktif').textContent = activeLoans.length + ' orang';
-  // Kas dalam vs luar
-  const kasDiluar = activeLoans.reduce((a, l) => a + Number(l.remaining_amount), 0);
-  const kasDalam = Math.max(0, totalKas - kasDiluar);
-  const pctLuar = totalKas > 0 ? Math.min(100, Math.round((kasDiluar / totalKas) * 100)) : 0;
+  // Kas dalam vs luar — memakai pokok yang masih tertanam (lihat catatan di atas)
+  const kasDiluar = kasDiluarRil;
+  const kasDalam  = Math.max(0, kasDalamRil);
+  const pctLuar   = totalKas > 0 ? Math.min(100, Math.round((kasDiluar / totalKas) * 100)) : 0;
   document.getElementById('kas-dalam').textContent = fmt(kasDalam);
   document.getElementById('kas-luar').textContent = fmt(kasDiluar);
   const pctLuarEl = document.getElementById('kas-pct-luar');
@@ -2986,6 +3007,15 @@ async function doApprovePinjaman() {
   const loanArr2 = await dbQuery('loans', `select=*&id=eq.${currentLoanId}&limit=1`);
   const loan = loanArr2?.[0];
   if (!loan) return;
+
+  // Kas tidak boleh tercatat negatif: koperasi hanya bisa mencairkan
+  // uang yang benar-benar ada di tangan.
+  const kas1 = await hitungKasTersedia();
+  if (!kas1) { showToast('Gagal memeriksa ketersediaan kas. Coba lagi.'); return; }
+  if (approvedNominal > kas1.tersedia) {
+    showToast(`❌ Kas koperasi tidak cukup. Uang tersedia hanya ${fmt(kas1.tersedia)}, sedangkan yang akan dicairkan ${fmt(approvedNominal)}.`, 7000);
+    return;
+  }
 
   const totalBunga     = bungaPerCicilan * loan.installment_count;
   const totalTagihan   = approvedNominal + totalBunga;
@@ -4584,6 +4614,47 @@ let _cairanTotalBunga = 0;
 //
 // Tanpa pengurangan ini, kolam keuntungan tidak pernah menyusut sehingga
 // total yang dibagikan bisa melebihi keuntungan yang sebenarnya ada.
+// ══════════════════════════════════════════════════════════════
+// KETERSEDIAAN KAS
+//
+// Diturunkan langsung dari seluruh histori transaksi, sehingga angkanya
+// selalu bisa dipertanggungjawabkan:
+//
+//   uang di tangan = setoran − pencairan simpanan − pokok dicairkan
+//                    + pokok dikembalikan + bunga diterima − pengeluaran kas
+//
+// Dipakai untuk menahan tiga jalur uang keluar agar kas tidak pernah
+// tercatat negatif: pencairan pinjaman, pencairan simpanan, dan
+// finalisasi event. Tanpa penahan ini aplikasi bisa mencatat pembayaran
+// yang uangnya tidak ada.
+//
+// Catatan: `remaining_amount` pada pinjaman TIDAK dipakai untuk ini,
+// karena isinya pokok tersisa DITAMBAH bunga yang belum dibayar —
+// bunga yang belum diterima bukan uang yang keluar dari kas.
+// ══════════════════════════════════════════════════════════════
+async function hitungKasTersedia() {
+  const [savings, loans, payments, orgExp] = await Promise.all([
+    dbQuery('savings',       'select=type,amount'),
+    dbQuery('loans',         'select=principal&disbursed_at=not.is.null'),
+    dbQuery('loan_payments', 'select=principal_component,interest_component&is_reversed=is.false'),
+    dbQuery('org_expenses',  'select=amount')
+  ]);
+  if ([savings, loans, payments, orgExp].some(x => x === null)) return null;
+
+  const simpananNeto = savings.reduce((a, s) =>
+    a + (s.type === 'deposit' ? Number(s.amount || 0) : -Number(s.amount || 0)), 0);
+  const pokokCair    = loans.reduce((a, l) => a + Number(l.principal || 0), 0);
+  const pokokKembali = payments.reduce((a, p) => a + Number(p.principal_component || 0), 0);
+  const bungaTerima  = payments.reduce((a, p) => a + Number(p.interest_component  || 0), 0);
+  const pengeluaran  = orgExp.reduce((a, e) => a + Number(e.amount || 0), 0);
+
+  return {
+    tersedia:     simpananNeto - pokokCair + pokokKembali + bungaTerima - pengeluaran,
+    piutangPokok: pokokCair - pokokKembali,
+    totalAset:    simpananNeto + bungaTerima - pengeluaran
+  };
+}
+
 async function hitungKeuntunganTersedia() {
   const [payments, orgExp] = await Promise.all([
     dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
@@ -4675,6 +4746,23 @@ async function doCairanSimpanan() {
   }
   const porsi = _cairanTotalSimpanan > 0 ? saldo / _cairanTotalSimpanan : 0;
   const totalCairan = saldo + bagianBunga;
+
+  // Kas tidak boleh tercatat negatif. Kalau uang koperasi sedang banyak
+  // tertanam di pinjaman, pencairan harus menunggu cicilan masuk dulu —
+  // kalau dipaksakan, buku menyatakan lunas padahal anggotanya belum
+  // menerima uangnya.
+  const kas2 = await hitungKasTersedia();
+  if (!kas2) {
+    alertEl.textContent = 'Gagal memeriksa ketersediaan kas. Coba lagi.';
+    alertEl.style.display = 'block'; return;
+  }
+  if (totalCairan > kas2.tersedia) {
+    alertEl.innerHTML = `❌ Kas koperasi tidak cukup untuk pencairan ini.<br>`
+      + `Uang tersedia: <strong>${fmt(kas2.tersedia)}</strong><br>`
+      + `Yang perlu dibayar: <strong>${fmt(totalCairan)}</strong><br>`
+      + `<span style="font-size:12px">Sebagian uang koperasi sedang dipinjam (${fmt(kas2.piutangPokok)}). Tunggu cicilan masuk lalu coba lagi.</span>`;
+    alertEl.style.display = 'block'; return;
+  }
   const konfirmasi = opsi === 'dengan'
     ? `Cairkan simpanan ${fmt(saldo)} + keuntungan ${fmt(bagianBunga)} = ${fmt(totalCairan)}?`
     : `Cairkan simpanan ${fmt(saldo)}?`;
@@ -4970,6 +5058,14 @@ async function doFinalEvent() {
   }
   const judul = ev.judul || 'Event';
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+
+  // Kas tidak boleh tercatat negatif.
+  const kas3 = await hitungKasTersedia();
+  if (!kas3) { showToast('Gagal memeriksa ketersediaan kas. Coba lagi.'); return; }
+  if (total > kas3.tersedia) {
+    showToast(`❌ Kas koperasi tidak cukup. Uang tersedia ${fmt(kas3.tersedia)}, biaya event ${fmt(total)}. Kurangi rincian biaya atau tunggu cicilan masuk.`, 8000);
+    return;
+  }
 
   const { error } = await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'final', total_biaya: total });
   if (error) { showToast('Gagal finalisasi: ' + (error.message || JSON.stringify(error))); return; }

@@ -1799,7 +1799,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.9.16';
+const APP_VERSION = 'v4.9.17';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2112,7 +2112,8 @@ async function doLogout() {
   localStorage.removeItem('kk_auth_user');
   localStorage.removeItem('kk_refresh_token');
   localStorage.removeItem('kk_auth_username');
-  try { await db.auth.signOut(); } catch(e) {}
+  // Catatan: SDK Supabase tidak dipakai untuk auth di aplikasi ini,
+  // sesi dibersihkan cukup dengan menghapus token di localStorage.
   // Clear semua form agar tidak ada data draft saat ganti akun
   ['ajukan-pokok','ajukan-tenor',
    'setor-amount','setor-note',
@@ -4099,7 +4100,14 @@ function resetIdleTimer() {
       });
       if (testRes.ok) {
         authToken = savedToken;
-        const user = JSON.parse(savedUser);
+        // PENTING: pakai identitas dari respons server, JANGAN dari localStorage.
+        // Token memang sudah diverifikasi Supabase di atas, tetapi objek user di
+        // localStorage bisa diubah pengguna. Kalau `id`-nya ditukar dengan id admin,
+        // initApp() akan mengambil profil admin dan membuka seluruh menu admin.
+        const verifiedUser = await testRes.json();
+        const user = (verifiedUser && verifiedUser.id) ? verifiedUser : JSON.parse(savedUser);
+        // Selaraskan kembali salinan lokal agar tidak menyimpan data yang keliru
+        localStorage.setItem('kk_auth_user', JSON.stringify(user));
         await initApp(user);
       } else {
         // Token expired - try to refresh

@@ -1581,6 +1581,30 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
+<!-- Koreksi Cicilan -->
+<div class="modal-overlay" id="modal-koreksi-cicilan">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title">✏️ Perbaiki Pembayaran Cicilan</div>
+    <div class="modal-sub">Pembayaran yang salah ditandai dikoreksi, lalu dicatat ulang dengan nominal benar. Keadaan pinjaman dihitung ulang dari seluruh pembayaran.</div>
+    <input type="hidden" id="kc-payment-id">
+    <div id="kc-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px"></div>
+    <div class="form-group">
+      <label class="form-label">Nominal yang Benar (Rp)</label>
+      <input class="form-input" type="number" id="kc-amount" placeholder="Contoh: 500000" min="1" oninput="previewKoreksiCicilan()">
+    </div>
+    <div id="kc-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
+    <div class="form-group">
+      <label class="form-label">Alasan Koreksi <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="text" id="kc-alasan" placeholder="Contoh: salah ketik nominal">
+    </div>
+    <div id="kc-alert" class="alert alert-error" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-koreksi-cicilan')">Batal</button>
+      <button class="btn btn-primary" id="btn-do-kc" onclick="doKoreksiCicilan()">Simpan Koreksi</button>
+    </div>
+  </div>
+</div>
+
 <!-- Koreksi Setoran -->
 <div class="modal-overlay" id="modal-koreksi-setoran">
   <div class="modal" style="max-width:440px">
@@ -1824,7 +1848,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.11.2';
+const APP_VERSION = 'v4.12.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2207,7 +2231,7 @@ async function loadDashboard() {
     dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
     dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
-    dbQuery('loan_payments', 'select=interest_component'),
+    dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
     dbQuery('org_expenses', 'select=amount,category')
   ]);
   // Alias profiles untuk dipakai di transaksi terbaru
@@ -2272,7 +2296,7 @@ async function loadDashboard() {
   // Recent transactions — filter by member jika bukan admin
   const recentFilter = isAdmin() ? '' : `&member_id=eq.${currentUser.id}`;
   const recent = isAdmin() ? (savings || []).slice(0, 8) : (savings || []).filter(s => s.member_id === currentUser.id).slice(0, 8);
-  const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name,avatar_url)&order=created_at.desc&limit=5${recentFilter}`);
+  const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name,avatar_url)&is_reversed=is.false&order=created_at.desc&limit=5${recentFilter}`);
   const combined = [
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
     ...((recentPayments || []).map(p => ({ ...p, kind: 'payment' })))
@@ -2348,6 +2372,150 @@ async function loadSimpanan() {
     </table></div>`;
   }
   await loadSimpananHistory();
+}
+
+// ══════════════════════════════════════════════════════════════
+// KOREKSI PEMBAYARAN CICILAN
+//
+// Berbeda dari setoran, mengubah satu pembayaran cicilan berdampak
+// berantai: sisa tagihan, jumlah cicilan terlunasi, tanggal jatuh
+// tempo, dan status lunas. Karena itu keadaan pinjaman dihitung ULANG
+// dari seluruh baris pembayaran yang berlaku — bukan disesuaikan
+// selangkah-selangkah — dan seluruhnya dikerjakan di dalam satu
+// fungsi database agar bersifat semua-atau-tidak-sama-sekali.
+// ══════════════════════════════════════════════════════════════
+let _kcCtx = null;
+
+async function openKoreksiCicilan(paymentId, nama, amountLama, tanggal, loanId) {
+  const [loanArr, riwayat] = await Promise.all([
+    dbQuery('loans', `select=*&id=eq.${loanId}&limit=1`),
+    dbQuery('loan_payments', `loan_id=eq.${loanId}&select=id,amount_paid,interest_component&is_reversed=is.false`)
+  ]);
+  const loan = loanArr?.[0];
+  if (!loan || riwayat === null) { showToast('Gagal memuat data pinjaman, coba lagi'); return; }
+
+  // Pembayaran lain pada pinjaman ini, selain baris yang akan dikoreksi
+  const lain       = riwayat.filter(p => p.id !== paymentId);
+  const bayarLain  = lain.reduce((a, p) => a + Number(p.amount_paid || 0), 0);
+  const bungaLain  = lain.reduce((a, p) => a + Number(p.interest_component || 0), 0);
+
+  _kcCtx = { id: paymentId, nama, amountLama: Number(amountLama), tanggal, loan, bayarLain, bungaLain };
+
+  const maksimal = Number(loan.total_amount) - bayarLain;
+  document.getElementById('kc-payment-id').value = paymentId;
+  document.getElementById('kc-info').innerHTML =
+    `<div style="font-weight:600;margin-bottom:6px">${escapeHtml(nama)}</div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+       <div><div style="color:var(--text3)">Tanggal bayar</div><div style="font-weight:600">${fmtDate(tanggal)}</div></div>
+       <div><div style="color:var(--text3)">Nominal tercatat</div><div style="font-weight:700;color:var(--red)">${fmt(amountLama)}</div></div>
+       <div><div style="color:var(--text3)">Nominal cicilan</div><div style="font-weight:600">${fmt(loan.installment_amount)}</div></div>
+       <div><div style="color:var(--text3)">Maksimal boleh diisi</div><div style="font-weight:600">${fmt(maksimal)}</div></div>
+     </div>`;
+  document.getElementById('kc-amount').value = '';
+  document.getElementById('kc-alasan').value = '';
+  document.getElementById('kc-preview').style.display = 'none';
+  document.getElementById('kc-alert').style.display = 'none';
+  openModal('modal-koreksi-cicilan');
+}
+
+// Pratinjau memakai aturan yang sama dengan fungsi database, supaya angka
+// yang dilihat admin cocok dengan yang akan tersimpan. Tanggal jatuh tempo
+// sengaja tidak ditampilkan di sini karena nilai pastinya dihitung database.
+function previewKoreksiCicilan() {
+  const el = document.getElementById('kc-preview');
+  if (!el || !_kcCtx) return;
+  const baru = parseInt(document.getElementById('kc-amount').value) || 0;
+  if (!baru) { el.style.display = 'none'; return; }
+
+  const L        = _kcCtx.loan;
+  const total    = Number(L.total_amount) || 0;
+  const cicilan  = Number(L.installment_amount) || 0;
+  const tenor    = Number(L.installment_count) || 1;
+  const maksimal = total - _kcCtx.bayarLain;
+
+  el.style.display = 'block';
+  if (baru > maksimal) {
+    el.innerHTML = `<span style="color:var(--red);font-weight:600">❌ Melebihi total tagihan — maksimal ${fmt(maksimal)}</span>`;
+    return;
+  }
+
+  const bayarTotal   = _kcCtx.bayarLain + baru;
+  const sisa         = Math.max(0, total - bayarTotal);
+  const lunas        = sisa <= 0;
+  const paidBaru     = Math.min(tenor, cicilan > 0 ? Math.floor(bayarTotal / cicilan) : Number(L.paid_count) || 0);
+  const paidLama     = Number(L.paid_count) || 0;
+  const dPeriode     = paidBaru - paidLama;
+  const dPoin        = 5 * dPeriode;
+
+  const ringkas = lunas
+    ? '<span style="color:var(--green);font-weight:700">🎉 Setelah koreksi, pinjaman menjadi LUNAS</span>'
+    : `<span style="font-weight:600">Cicilan terlunasi menjadi <b>${paidBaru}</b> dari ${tenor}</span>`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:8px">${ringkas}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div style="color:var(--text3)">Sisa tagihan menjadi</div><div style="font-weight:700;color:var(--amber)">${fmt(sisa)}</div></div>
+      <div><div style="color:var(--text3)">Perubahan periode</div><div style="font-weight:700">${dPeriode >= 0 ? '+' : ''}${dPeriode}</div></div>
+      <div><div style="color:var(--text3)">Perubahan poin</div>
+           <div style="font-weight:700;color:${dPoin >= 0 ? 'var(--green)' : 'var(--red)'}">${dPoin >= 0 ? '+' : ''}${dPoin} poin</div></div>
+      <div><div style="color:var(--text3)">Status pinjaman</div><div style="font-weight:600">${lunas ? 'Lunas' : 'Aktif'}</div></div>
+    </div>
+    <div style="margin-top:8px;color:var(--text2)">Tanggal jatuh tempo dihitung ulang otomatis dari tanggal pencairan.</div>`;
+}
+
+async function doKoreksiCicilan() {
+  if (!_kcCtx) return;
+  const btn = document.getElementById('btn-do-kc');
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  const alertEl = document.getElementById('kc-alert');
+  alertEl.style.display = 'none';
+  try {
+    const baru   = parseInt(document.getElementById('kc-amount').value) || 0;
+    const alasan = document.getElementById('kc-alasan').value.trim();
+    if (!baru || baru < 1) { alertEl.textContent = 'Nominal yang benar wajib diisi'; alertEl.style.display = 'block'; return; }
+    if (!alasan)           { alertEl.textContent = 'Alasan koreksi wajib diisi'; alertEl.style.display = 'block'; return; }
+    if (baru === _kcCtx.amountLama) {
+      alertEl.textContent = 'Nominalnya sama dengan yang tercatat — tidak ada yang perlu dikoreksi';
+      alertEl.style.display = 'block'; return;
+    }
+
+    const { data, error } = await dbRpc('koreksi_cicilan', {
+      p_payment_id: _kcCtx.id,
+      p_amount_baru: baru,
+      p_alasan: alasan
+    });
+    if (error) {
+      alertEl.textContent = '❌ ' + (error.message || JSON.stringify(error));
+      alertEl.style.display = 'block';
+      return;
+    }
+
+    // Poin disesuaikan menurut perubahan jumlah periode terlunasi.
+    // Di luar transaksi karena poin bukan uang — kalau gagal, angka
+    // keuangannya tetap benar dan poin bisa disesuaikan manual.
+    const memberId = data?.member_id || null;
+    const dPeriode = (Number(data?.paid_count_baru) || 0) - (Number(data?.paid_count_lama) || 0);
+    const dPoin    = 5 * dPeriode;
+    if (memberId && dPoin !== 0) {
+      await simpanPoin(memberId, Math.abs(dPoin),
+        `[KOREKSI] Cicilan ${fmt(_kcCtx.amountLama)} → ${fmt(baru)} (${dPeriode > 0 ? '+' : ''}${dPeriode} periode)`,
+        dPoin > 0 ? 'credit' : 'debit');
+    }
+
+    await logActivity('KOREKSI_CICILAN',
+      `Cicilan ${fmt(_kcCtx.amountLama)} → ${fmt(baru)} (${alasan})`, memberId);
+
+    const lunas = data?.status_baru === 'completed';
+    showToast(`✅ Pembayaran dikoreksi menjadi ${fmt(baru)}`
+      + (lunas ? ' 🎉 Pinjaman Lunas!' : '')
+      + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
+    closeModal('modal-koreksi-cicilan');
+    _kcCtx = null;
+    loadCicilan(); loadPinjaman(); loadDashboard();
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2690,7 +2858,7 @@ async function doAjukanPinjaman() {
     if (lastCompleted && lastCompleted.length > 0 && lastCompleted[0].disbursed_at) {
       const lastLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=id&order=disbursed_at.desc&limit=1`);
       if (lastLoan && lastLoan.length > 0) {
-        const lastPayments = await dbQuery('loan_payments', `loan_id=eq.${lastLoan[0].id}&select=created_at&order=created_at.desc&limit=1`);
+        const lastPayments = await dbQuery('loan_payments', `loan_id=eq.${lastLoan[0].id}&select=created_at&is_reversed=is.false&order=created_at.desc&limit=1`);
         if (lastPayments && lastPayments.length > 0) {
           const lastPayDate = new Date(lastPayments[0].created_at);
           const oneMonthLater = new Date(lastPayDate);
@@ -2977,7 +3145,7 @@ async function openCatatCicilan(loanId) {
   currentCicilanLoan = loan;
 
   // Dipakai pratinjau agar alokasi yang ditampilkan sama dengan yang dicatat
-  const riw = await dbQuery('loan_payments', `loan_id=eq.${loanId}&select=interest_component`);
+  const riw = await dbQuery('loan_payments', `loan_id=eq.${loanId}&select=interest_component&is_reversed=is.false`);
   _cicilanInterestPaid = (riw || []).reduce((a, p) => a + Number(p.interest_component || 0), 0);
 
   const info = document.getElementById('cicilan-detail-info');
@@ -3115,7 +3283,7 @@ async function doCatatCicilan() {
 
     // Riwayat pembayaran dibaca langsung dari database agar alokasi bunga
     // akurat dan tidak bergantung pada angka yang mungkin sudah usang di layar.
-    const riwayat = await dbQuery('loan_payments', `loan_id=eq.${loan.id}&select=interest_component`);
+    const riwayat = await dbQuery('loan_payments', `loan_id=eq.${loan.id}&select=interest_component&is_reversed=is.false`);
     if (riwayat === null) {
       showToast('❌ Gagal membaca riwayat pembayaran. Periksa koneksi lalu coba lagi.');
       return;
@@ -3190,17 +3358,30 @@ async function loadCicilanHistory() {
   const el = document.getElementById('cicilan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat cicilan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th></tr></thead>
-    <tbody>${data.map(p => `<tr>
-      <td>${fmtDate(p.created_at)}</td>
-      <td>${escapeHtml(p.profiles?.full_name || '-')}</td>
-      <td style="text-align:center">${p.payment_number}</td>
-      <td class="td-mono" style="font-weight:600">${fmt(p.amount_paid)}</td>
-      <td class="td-mono">${fmt(p.principal_component)}</td>
-      <td class="td-mono">${fmt(p.interest_component)}</td>
-      <td class="td-mono" style="color:var(--amber)">${fmt(p.remaining_after)}</td>
-      <td style="color:var(--text2)">${escapeHtml(p.note || '-')}</td>
-    </tr>`).join('')}</tbody>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th>${isAdmin() ? '<th></th>' : ''}</tr></thead>
+    <tbody>${data.map(p => {
+      // Penanda: mana yang nominalnya sudah diperbaiki, mana baris penggantinya
+      const tanda = p.is_reversed
+        ? ' <span class="badge badge-gray" title="Nominalnya sudah diperbaiki">Dikoreksi</span>'
+        : (p.corrects_id ? ' <span class="badge badge-amber" title="Baris hasil koreksi">Koreksi</span>' : '');
+      const bisaKoreksi = isAdmin() && !p.is_reversed;
+      const tombol = isAdmin()
+        ? `<td>${bisaKoreksi
+            ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal pembayaran ini" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
+            : ''}</td>`
+        : '';
+      return `<tr${p.is_reversed ? ' style="opacity:0.55"' : ''}>
+        <td>${fmtDate(p.created_at)}</td>
+        <td>${escapeHtml(p.profiles?.full_name || '-')}${tanda}</td>
+        <td style="text-align:center">${p.payment_number}</td>
+        <td class="td-mono" style="font-weight:600${p.is_reversed ? ';text-decoration:line-through' : ''}">${fmt(p.amount_paid)}</td>
+        <td class="td-mono">${fmt(p.principal_component)}</td>
+        <td class="td-mono">${fmt(p.interest_component)}</td>
+        <td class="td-mono" style="color:var(--amber)">${fmt(p.remaining_after)}</td>
+        <td style="color:var(--text2)">${escapeHtml(p.note || '-')}</td>
+        ${tombol}
+      </tr>`;
+    }).join('')}</tbody>
   </table>`;
 }
 
@@ -3300,7 +3481,7 @@ async function exportLaporan() {
     if (isAdmin()) {
       const [savJ, payJ, loanJ, expJ] = await Promise.all([
         dbQuery('savings', 'select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc'),
-        dbQuery('loan_payments', 'select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc'),
+        dbQuery('loan_payments', 'select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.asc'),
         dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc'),
         dbQuery('org_expenses', 'select=description,amount,created_at&order=created_at.asc')
       ]);
@@ -3528,7 +3709,7 @@ async function renderLaporanJurnal() {
   // Ambil semua sumber transaksi secara paralel
   const [savings, payments, loans, orgExp] = await Promise.all([
     dbQuery('savings', `select=id,type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
-    dbQuery('loan_payments', `select=id,amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
+    dbQuery('loan_payments', `select=id,amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.asc${dateFilter}`),
     dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`),
     dbQuery('org_expenses', `select=id,description,amount,created_at&order=created_at.asc${dateFilter}`)
   ]);
@@ -3599,7 +3780,7 @@ async function renderLaporanJurnal() {
     // Ambil semua transaksi sebelum dateFrom untuk hitung saldo awal
     const [savBefore, payBefore, loanBefore, expBefore] = await Promise.all([
       dbQuery('savings', `select=type,amount&created_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('loan_payments', `select=amount_paid&created_at=lt.${dateFrom}T00:00:00`),
+      dbQuery('loan_payments', `select=amount_paid&is_reversed=is.false&created_at=lt.${dateFrom}T00:00:00`),
       dbQuery('loans', `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${dateFrom}T00:00:00`),
       dbQuery('org_expenses', `select=amount&created_at=lt.${dateFrom}T00:00:00`)
     ]);
@@ -4510,7 +4691,7 @@ let _cairanTotalBunga = 0;
 // total yang dibagikan bisa melebihi keuntungan yang sebenarnya ada.
 async function hitungKeuntunganTersedia() {
   const [payments, orgExp] = await Promise.all([
-    dbQuery('loan_payments', 'select=interest_component'),
+    dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
     dbQuery('org_expenses', 'select=amount,category')
   ]);
   if (payments === null || orgExp === null) return null;   // gagal baca → jangan menebak
@@ -5010,7 +5191,7 @@ async function loadDashboardCharts(savings, memberBalances) {
       .reduce((a, s) => a + Number(s.amount), 0)
   );
 
-  const allPayments = await dbQuery('loan_payments', 'select=amount_paid,created_at&order=created_at.asc');
+  const allPayments = await dbQuery('loan_payments', 'select=amount_paid,created_at&is_reversed=is.false&order=created_at.asc');
   const cicilanPerBulan = months6.map(m =>
     (allPayments || []).filter(p => p.created_at?.startsWith(m))
       .reduce((a, p) => a + Number(p.amount_paid), 0)

@@ -2529,8 +2529,10 @@ async function doAjukanPinjaman() {
   document.getElementById('simulasi-cicilan').style.display = 'none';
 }
 
-function getNextDueDate(type) {
-  const d = new Date();
+function getNextDueDate(type, fromDate) {
+  // fromDate = next_due_date sebelumnya, bukan tanggal bayar
+  // Kalau fromDate tidak ada, pakai hari ini (fallback)
+  const d = fromDate ? new Date(fromDate) : new Date();
   if (type === 'weekly') d.setDate(d.getDate() + 7);
   else if (type === 'biweekly') d.setDate(d.getDate() + 14);
   else d.setMonth(d.getMonth() + 1);
@@ -2764,7 +2766,9 @@ async function doCatatCicilan() {
   const remainingAfter = Math.max(0, loan.remaining_amount - amount);
   const newPaidCount = loan.paid_count + 1;
   const isLastPayment = remainingAfter <= 0 || newPaidCount >= totalPeriods;
-  const nextDue = isLastPayment ? null : getNextDueDate(loan.installment_type);
+  // next_due_date maju 1 periode dari due date SEBELUMNYA (bukan dari hari bayar)
+  // Ini memastikan nunggak tetap nunggak kalau baru bayar 1 cicilan yang sudah lewat
+  const nextDue = isLastPayment ? null : getNextDueDate(loan.installment_type, loan.next_due_date);
   await dbInsert('loan_payments', {
     loan_id: loan.id, member_id: loan.member_id,
     payment_number: newPaidCount, amount_paid: amount,

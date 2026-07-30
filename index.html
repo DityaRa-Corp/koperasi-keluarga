@@ -1007,8 +1007,8 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-title">Pinjaman</div>
         <div class="page-sub">Kelola pengajuan dan pencairan pinjaman</div>
         <div class="page-actions">
-          <button class="btn btn-accent member-only" style="display:none" onclick="openModal('modal-ajukan')">+ Ajukan Pinjaman</button>
-          <button class="btn btn-accent admin-only" style="display:none" onclick="openModal('modal-ajukan')">+ Buat Pinjaman</button>
+          <button class="btn btn-accent member-only" style="display:none" onclick="bukaModalAjukan()">+ Ajukan Pinjaman</button>
+          <button class="btn btn-accent admin-only" style="display:none" onclick="bukaModalAjukan()">+ Buat Pinjaman</button>
         </div>
       </div>
       <div class="tabs">
@@ -1339,6 +1339,26 @@ tbody tr:hover { background: var(--surface2); }
         <button class="btn btn-primary" onclick="saveBunga()">Simpan Pengaturan</button>
       </div>
       <div class="card" style="max-width:480px;margin-top:14px">
+        <div class="section-title">Batas Maksimal Pinjaman</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Menentukan berapa banyak seorang anggota boleh meminjam. Berlaku saat pengajuan baru.</p>
+        <div class="form-group">
+          <label class="form-label">Cara Menghitung Batas</label>
+          <select class="form-input form-select" id="plafon-mode" onchange="ubahModePlafon()">
+            <option value="off">Tanpa batas</option>
+            <option value="kelipatan">Kelipatan simpanan anggota</option>
+            <option value="nominal">Nominal tetap</option>
+            <option value="persen_kas">Persentase total simpanan koperasi</option>
+          </select>
+        </div>
+        <div class="form-group" id="plafon-nilai-group" style="display:none">
+          <label class="form-label" id="plafon-nilai-label">Nilai</label>
+          <input class="form-input" type="number" id="plafon-nilai" min="0" step="0.1" placeholder="Contoh: 3">
+          <div class="form-hint" id="plafon-nilai-hint"></div>
+        </div>
+        <div id="plafon-contoh" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
+        <button class="btn btn-primary" onclick="savePlafon()">Simpan Batas Pinjaman</button>
+      </div>
+      <div class="card" style="max-width:480px;margin-top:14px">
         <div class="section-title">Ubah Password Admin</div>
         <div class="form-group">
           <label class="form-label">Password Baru</label>
@@ -1484,6 +1504,7 @@ tbody tr:hover { background: var(--surface2); }
       <label class="form-label">Anggota</label>
       <select class="form-input form-select" id="ajukan-member"></select>
     </div>
+    <div id="ajukan-plafon-info" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
     <div class="form-group">
       <label class="form-label">Pokok Pinjaman (Rp)</label>
       <input class="form-input" type="text" inputmode="numeric" id="ajukan-pokok" placeholder="Contoh: 1000000" oninput="updateSimulasiCicilan()">
@@ -1791,7 +1812,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.15.0';
+const APP_VERSION = 'v4.16.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2128,6 +2149,7 @@ async function initApp(user) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
   setRoleUI();
+  await muatPengaturan();
   await loadAllMembers();
   loadDashboard();
   resetIdleTimer(); // Start idle timer
@@ -2764,6 +2786,32 @@ async function updateSimulasiCicilan() {
   document.getElementById('simulasi-cicilan').style.display = 'block';
 }
 
+// Menampilkan batas pinjaman sebelum anggota mengisi form, supaya
+// tidak baru ketahuan ditolak setelah semuanya diisi.
+async function bukaModalAjukan() {
+  openModal('modal-ajukan');
+  const info = document.getElementById('ajukan-plafon-info');
+  if (!info) return;
+  info.style.display = 'none';
+
+  const p = appSettings.plafon_pinjaman || { mode: 'off' };
+  if (p.mode === 'off' || !(Number(p.nilai) > 0)) return;
+
+  // Untuk anggota, batasnya bisa langsung dihitung. Untuk admin yang
+  // memilihkan anggota, batas per orang baru diketahui setelah dipilih —
+  // jadi yang ditampilkan aturannya saja.
+  if (isAdmin()) {
+    info.innerHTML = `📋 Aturan batas pinjaman: <strong>${labelPlafon()}</strong>`;
+    info.style.display = 'block';
+    return;
+  }
+
+  const plafon = await hitungPlafonPinjaman(currentUser.id);
+  if (plafon === null) return;
+  info.innerHTML = `📋 ${labelPlafon()}<br>Untuk Anda saat ini: maksimal <strong>${fmt(plafon)}</strong>`;
+  info.style.display = 'block';
+}
+
 async function doAjukanPinjaman() {
   const memberId = isAdmin() ? document.getElementById('ajukan-member').value : currentUser.id;
   const pokokRaw = document.getElementById('ajukan-pokok').value.replace(/[^0-9]/g, '');
@@ -2798,6 +2846,13 @@ async function doAjukanPinjaman() {
   const saldo = await getMemberBalance(memberId);
   if (saldo < 100000) {
     showToast('❌ Saldo simpanan minimal Rp 100.000 untuk dapat mengajukan pinjaman (saldo saat ini: ' + fmt(saldo) + ')');
+    return;
+  }
+
+  // Rule 5: Batas maksimal pinjaman sesuai pengaturan koperasi
+  const plafon = await hitungPlafonPinjaman(memberId);
+  if (plafon !== null && pokok > plafon) {
+    showToast(`❌ Melebihi batas pinjaman. ${labelPlafon()} — untuk anggota ini maksimal ${fmt(plafon)}.`, 7000);
     return;
   }
 
@@ -4344,6 +4399,142 @@ async function loadPengaturan() {
   const bunga = await getBunga();
   document.getElementById('current-bunga').textContent = bunga;
   document.getElementById('setting-bunga').value = bunga;
+  await muatPengaturan();
+  tampilkanPengaturanPlafon();
+}
+
+// ══════════════════════════════════════════════════════════════
+// PENGATURAN APLIKASI (tabel app_settings)
+//
+// Aturan koperasi yang bisa diubah admin tanpa mengubah kode.
+// Dibaca sekali saat aplikasi dibuka lalu disimpan di memori, dan
+// dibaca ulang setiap kali admin menyimpannya.
+// ══════════════════════════════════════════════════════════════
+let appSettings = {
+  plafon_pinjaman:     { mode: 'off', nilai: 0 },
+  denda_keterlambatan: { aktif: false, nominal: 0 }
+};
+
+async function muatPengaturan() {
+  const rows = await dbQuery('app_settings', 'select=key,value');
+  if (rows === null) return;               // gagal baca → pakai nilai bawaan
+  rows.forEach(r => {
+    if (r.key && r.value) appSettings[r.key] = r.value;
+  });
+}
+
+async function simpanPengaturan(key, value) {
+  const { error } = await dbUpdate('app_settings', `key=eq.${key}`, {
+    value, updated_by: currentUser.id, updated_at: new Date().toISOString()
+  });
+  if (error) return { error };
+  appSettings[key] = value;
+  return { error: null };
+}
+
+// ── Batas maksimal pinjaman ──
+//
+// Empat cara menghitung. Mengembalikan null bila tanpa batas.
+async function hitungPlafonPinjaman(memberId) {
+  const p = appSettings.plafon_pinjaman || { mode: 'off' };
+  const nilai = Number(p.nilai) || 0;
+  if (p.mode === 'off' || nilai <= 0) return null;
+
+  if (p.mode === 'nominal') return nilai;
+
+  if (p.mode === 'kelipatan') {
+    const saldo = await getMemberBalance(memberId);
+    return Math.floor(saldo * nilai);
+  }
+
+  if (p.mode === 'persen_kas') {
+    const savings = await dbQuery('savings', 'select=type,amount');
+    if (savings === null) return null;
+    const totalSimpanan = savings.reduce((a, s) =>
+      a + (s.type === 'deposit' ? Number(s.amount || 0) : -Number(s.amount || 0)), 0);
+    return Math.floor(totalSimpanan * nilai / 100);
+  }
+  return null;
+}
+
+function labelPlafon() {
+  const p = appSettings.plafon_pinjaman || { mode: 'off' };
+  const n = Number(p.nilai) || 0;
+  if (p.mode === 'off' || n <= 0) return 'Tanpa batas';
+  if (p.mode === 'nominal')   return `Maksimal ${fmt(n)} per anggota`;
+  if (p.mode === 'kelipatan') return `Maksimal ${n}× saldo simpanan anggota`;
+  if (p.mode === 'persen_kas')return `Maksimal ${n}% dari total simpanan koperasi`;
+  return 'Tanpa batas';
+}
+
+function ubahModePlafon() {
+  const mode  = document.getElementById('plafon-mode').value;
+  const grup  = document.getElementById('plafon-nilai-group');
+  const label = document.getElementById('plafon-nilai-label');
+  const hint  = document.getElementById('plafon-nilai-hint');
+  const input = document.getElementById('plafon-nilai');
+  const contoh= document.getElementById('plafon-contoh');
+
+  if (mode === 'off') {
+    grup.style.display = 'none';
+    contoh.style.display = 'block';
+    contoh.innerHTML = 'Anggota boleh meminjam berapa pun, selama kas koperasi mencukupi.';
+    return;
+  }
+  grup.style.display = 'block';
+  contoh.style.display = 'block';
+
+  if (mode === 'kelipatan') {
+    label.textContent = 'Kelipatan Simpanan';
+    input.placeholder = 'Contoh: 3';
+    input.step = '0.5';
+    hint.textContent = 'Anggota boleh meminjam sebanyak ini dikali saldo simpanannya.';
+    contoh.innerHTML = 'Contoh dengan nilai <strong>3</strong>: anggota bersaldo '
+      + fmt(1000000) + ' boleh meminjam sampai <strong>' + fmt(3000000) + '</strong>.';
+  } else if (mode === 'nominal') {
+    label.textContent = 'Nominal Maksimal (Rp)';
+    input.placeholder = 'Contoh: 5000000';
+    input.step = '100000';
+    hint.textContent = 'Batas yang sama untuk semua anggota.';
+    contoh.innerHTML = 'Contoh dengan nilai <strong>' + fmt(5000000)
+      + '</strong>: tidak ada anggota yang boleh meminjam lebih dari itu.';
+  } else if (mode === 'persen_kas') {
+    label.textContent = 'Persentase (%)';
+    input.placeholder = 'Contoh: 40';
+    input.step = '1';
+    hint.textContent = 'Batasnya dihitung dari total simpanan seluruh anggota.';
+    contoh.innerHTML = 'Contoh dengan nilai <strong>40%</strong> dan total simpanan '
+      + fmt(10000000) + ': satu anggota boleh meminjam sampai <strong>' + fmt(4000000) + '</strong>.';
+  }
+}
+
+async function savePlafon() {
+  const mode  = document.getElementById('plafon-mode').value;
+  const nilai = parseFloat(document.getElementById('plafon-nilai').value) || 0;
+
+  if (mode !== 'off' && nilai <= 0) {
+    showToast('Isi nilainya dulu, harus lebih dari 0'); return;
+  }
+  if (mode === 'persen_kas' && nilai > 100) {
+    showToast('Persentase tidak boleh lebih dari 100%'); return;
+  }
+
+  const { error } = await simpanPengaturan('plafon_pinjaman', { mode, nilai });
+  if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error))); return; }
+
+  await logActivity('PENGATURAN', 'Batas pinjaman diubah: ' + labelPlafon(), null);
+  showToast('✅ Batas pinjaman disimpan — ' + labelPlafon());
+  tampilkanPengaturanPlafon();
+}
+
+function tampilkanPengaturanPlafon() {
+  const p = appSettings.plafon_pinjaman || { mode: 'off', nilai: 0 };
+  const sel = document.getElementById('plafon-mode');
+  const inp = document.getElementById('plafon-nilai');
+  if (!sel || !inp) return;
+  sel.value = p.mode || 'off';
+  inp.value = Number(p.nilai) || '';
+  ubahModePlafon();
 }
 
 async function saveBunga() {

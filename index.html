@@ -1581,6 +1581,30 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
+<!-- Koreksi Setoran -->
+<div class="modal-overlay" id="modal-koreksi-setoran">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">✏️ Perbaiki Setoran</div>
+    <div class="modal-sub">Setoran yang salah akan dibatalkan, lalu dicatat ulang dengan nominal yang benar. Keduanya tetap terlihat di riwayat.</div>
+    <input type="hidden" id="koreksi-savings-id">
+    <div id="koreksi-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px"></div>
+    <div class="form-group">
+      <label class="form-label">Nominal yang Benar (Rp)</label>
+      <input class="form-input" type="number" id="koreksi-amount" placeholder="Contoh: 500000" min="1" oninput="previewKoreksi()">
+    </div>
+    <div id="koreksi-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
+    <div class="form-group">
+      <label class="form-label">Alasan Koreksi <span style="color:var(--red)">*</span></label>
+      <input class="form-input" type="text" id="koreksi-alasan" placeholder="Contoh: salah ketik nominal">
+    </div>
+    <div id="koreksi-alert" class="alert alert-error" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-koreksi-setoran')">Batal</button>
+      <button class="btn btn-primary" id="btn-do-koreksi" onclick="doKoreksiSetoran()">Simpan Koreksi</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-cicilan">
   <div class="modal">
     <div class="modal-title">Catat Pembayaran Cicilan</div>
@@ -1800,7 +1824,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.10.3';
+const APP_VERSION = 'v4.11.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2325,6 +2349,106 @@ async function loadSimpanan() {
   await loadSimpananHistory();
 }
 
+// ══════════════════════════════════════════════════════════════
+// KOREKSI SETORAN
+//
+// Transaksi yang sudah tercatat tidak pernah diubah angkanya. Koreksi
+// menghasilkan dua baris baru — pembatalan dan pencatatan ulang — yang
+// dikerjakan di dalam satu fungsi database supaya bersifat
+// semua-atau-tidak-sama-sekali. Kalau dijalankan sebagai dua perintah
+// terpisah dan yang kedua gagal, saldo anggota bisa tertinggal salah.
+// ══════════════════════════════════════════════════════════════
+let _koreksiCtx = null;
+
+function openKoreksiSetoran(savingsId, nama, amountLama, tanggal) {
+  _koreksiCtx = { id: savingsId, nama, amountLama: Number(amountLama), tanggal };
+  document.getElementById('koreksi-savings-id').value = savingsId;
+  document.getElementById('koreksi-info').innerHTML =
+    `<div style="font-weight:600;margin-bottom:6px">${escapeHtml(nama)}</div>
+     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+       <div><div style="color:var(--text3)">Tanggal setoran</div><div style="font-weight:600">${fmtDate(tanggal)}</div></div>
+       <div><div style="color:var(--text3)">Nominal tercatat</div><div style="font-weight:700;color:var(--red)">${fmt(amountLama)}</div></div>
+     </div>`;
+  document.getElementById('koreksi-amount').value = '';
+  document.getElementById('koreksi-alasan').value = '';
+  document.getElementById('koreksi-preview').style.display = 'none';
+  document.getElementById('koreksi-alert').style.display = 'none';
+  openModal('modal-koreksi-setoran');
+}
+
+function previewKoreksi() {
+  const el = document.getElementById('koreksi-preview');
+  if (!el || !_koreksiCtx) return;
+  const baru = parseInt(document.getElementById('koreksi-amount').value) || 0;
+  if (!baru) { el.style.display = 'none'; return; }
+
+  const lama     = _koreksiCtx.amountLama;
+  const selisih  = baru - lama;
+  const poinLama = hitungPoinSetor(lama);
+  const poinBaru = hitungPoinSetor(baru);
+  const dPoin    = poinBaru - poinLama;
+
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div style="color:var(--text3)">Perubahan saldo</div>
+           <div style="font-weight:700;color:${selisih >= 0 ? 'var(--green)' : 'var(--red)'}">${selisih >= 0 ? '+' : ''}${fmt(selisih)}</div></div>
+      <div><div style="color:var(--text3)">Perubahan poin</div>
+           <div style="font-weight:700;color:${dPoin >= 0 ? 'var(--green)' : 'var(--red)'}">${dPoin >= 0 ? '+' : ''}${dPoin} poin</div></div>
+    </div>
+    <div style="margin-top:8px;color:var(--text2)">Riwayat akan menampilkan pembatalan ${fmt(lama)} lalu setoran ${fmt(baru)}.</div>`;
+}
+
+async function doKoreksiSetoran() {
+  if (!_koreksiCtx) return;
+  const btn = document.getElementById('btn-do-koreksi');
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  const alertEl = document.getElementById('koreksi-alert');
+  alertEl.style.display = 'none';
+  try {
+    const baru   = parseInt(document.getElementById('koreksi-amount').value) || 0;
+    const alasan = document.getElementById('koreksi-alasan').value.trim();
+    if (!baru || baru < 1)  { alertEl.textContent = 'Nominal yang benar wajib diisi'; alertEl.style.display = 'block'; return; }
+    if (!alasan)            { alertEl.textContent = 'Alasan koreksi wajib diisi'; alertEl.style.display = 'block'; return; }
+    if (baru === _koreksiCtx.amountLama) {
+      alertEl.textContent = 'Nominalnya sama dengan yang tercatat — tidak ada yang perlu dikoreksi';
+      alertEl.style.display = 'block'; return;
+    }
+
+    const { data, error } = await dbRpc('koreksi_setoran', {
+      p_savings_id: _koreksiCtx.id,
+      p_amount_baru: baru,
+      p_alasan: alasan
+    });
+    if (error) {
+      alertEl.textContent = '❌ ' + (error.message || JSON.stringify(error));
+      alertEl.style.display = 'block';
+      return;
+    }
+
+    // Poin dikoreksi menyusul. Ini di luar transaksi karena poin bukan uang —
+    // kalau gagal, saldo tetap benar dan poin bisa disesuaikan manual.
+    const memberId = data?.member_id || null;
+    const dPoin = hitungPoinSetor(baru) - hitungPoinSetor(_koreksiCtx.amountLama);
+    if (memberId && dPoin !== 0) {
+      await simpanPoin(memberId, Math.abs(dPoin),
+        `[KOREKSI] Setoran ${fmt(_koreksiCtx.amountLama)} → ${fmt(baru)}`,
+        dPoin > 0 ? 'credit' : 'debit');
+    }
+
+    await logActivity('KOREKSI_SETORAN',
+      `Setoran ${fmt(_koreksiCtx.amountLama)} → ${fmt(baru)} (${alasan})`, memberId);
+
+    showToast(`✅ Setoran dikoreksi menjadi ${fmt(baru)}` + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
+    closeModal('modal-koreksi-setoran');
+    _koreksiCtx = null;
+    loadSimpanan(); loadDashboard();
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
 async function loadSimpananHistory() {
   const memberId = document.getElementById('filter-simpanan-member').value;
   const month = document.getElementById('filter-simpanan-month').value;
@@ -2336,15 +2460,34 @@ async function loadSimpananHistory() {
   const el = document.getElementById('simpanan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada transaksi</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th></tr></thead>
-    <tbody>${data.map(s => `<tr>
-      <td>${fmtDate(s.created_at)}</td>
-      <td>${escapeHtml(s.profiles?.full_name || '-')}</td>
-      <td>${s.type === 'deposit' ? '<span class="badge badge-green">Setor</span>' : '<span class="badge badge-red">Tarik</span>'}</td>
-      <td class="td-mono">${fmt(s.amount)}</td>
-      <td class="td-mono">${fmt(s.balance_after)}</td>
-      <td style="color:var(--text2)">${escapeHtml(s.note || '-')}</td>
-    </tr>`).join('')}</tbody>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th>${isAdmin() ? '<th></th>' : ''}</tr></thead>
+    <tbody>${data.map(s => {
+      const jenis = s.type === 'deposit'
+        ? '<span class="badge badge-green">Setor</span>'
+        : '<span class="badge badge-red">Tarik</span>';
+      // Penanda agar riwayat mudah dibaca: mana yang sudah dikoreksi,
+      // dan mana yang merupakan baris hasil koreksi.
+      const tanda = s.is_reversed
+        ? '<span class="badge badge-gray" title="Nominalnya sudah diperbaiki">Dikoreksi</span>'
+        : (s.corrects_id ? '<span class="badge badge-amber" title="Baris hasil koreksi">Koreksi</span>' : '');
+      // Hanya setoran yang belum pernah dikoreksi yang bisa diperbaiki.
+      // Penarikan & pencairan dihitung otomatis sistem, jadi tidak ada risiko salah ketik.
+      const bisaKoreksi = isAdmin() && s.type === 'deposit' && !s.is_reversed;
+      const tombol = isAdmin()
+        ? `<td>${bisaKoreksi
+            ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal setoran ini" onclick="openKoreksiSetoran('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}')">✏️</button>`
+            : ''}</td>`
+        : '';
+      return `<tr${s.is_reversed ? ' style="opacity:0.55"' : ''}>
+        <td>${fmtDate(s.created_at)}</td>
+        <td>${escapeHtml(s.profiles?.full_name || '-')}</td>
+        <td>${jenis} ${tanda}</td>
+        <td class="td-mono"${s.is_reversed ? ' style="text-decoration:line-through"' : ''}>${fmt(s.amount)}</td>
+        <td class="td-mono">${fmt(s.balance_after)}</td>
+        <td style="color:var(--text2)">${escapeHtml(s.note || '-')}</td>
+        ${tombol}
+      </tr>`;
+    }).join('')}</tbody>
   </table>`;
 }
 

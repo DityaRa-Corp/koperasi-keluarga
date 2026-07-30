@@ -525,6 +525,15 @@ tbody tr:hover { background: var(--surface2); }
 }
 
 /* ── MOBILE AUTH ── */
+/* Laporan summary stats - compact */
+.laporan-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.lap-stat { padding: 12px 14px !important; }
+.lap-stat-label { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.lap-stat-value { font-size: 1.1rem; font-weight: 700; line-height: 1.3; word-break: break-all; }
+.lap-stat-value.green { color: var(--green); }
+.lap-stat-value.amber { color: var(--amber); }
+.lap-stat-value.red { color: var(--red); }
+
 @media (max-width: 400px) {
   .page { padding: 12px 10px; }
   .card { padding: 12px; }
@@ -3021,9 +3030,9 @@ async function renderLaporanSimpanan() {
   const rows = Object.values(balances);
   const totalSaldo = rows.reduce((a, r) => a + (r.deposit - r.withdraw), 0);
   document.getElementById('laporan-content').innerHTML = `
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div><div class="card-title">Total Simpanan Aktif</div><div class="card-value green">${fmt(totalSaldo)}</div></div>
-      <div><div class="card-title">Total Anggota</div><div class="card-value">${rows.length} orang</div></div>
+    <div class="laporan-summary">
+      <div class="card lap-stat"><div class="lap-stat-label">Total Simpanan Aktif</div><div class="lap-stat-value green">${fmt(totalSaldo)}</div></div>
+      <div class="card lap-stat"><div class="lap-stat-label">Total Anggota</div><div class="lap-stat-value">${rows.length} orang</div></div>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>No</th><th>Nama Anggota</th><th>Total Setor</th><th>Total Tarik</th><th>Saldo</th><th>Transaksi Terakhir</th></tr></thead>
@@ -3043,9 +3052,9 @@ async function renderLaporanPinjaman() {
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
   const statusBadge = { active: '<span class="badge badge-blue">Aktif</span>', pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
   document.getElementById('laporan-content').innerHTML = `
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div><div class="card-title">Pinjaman Aktif</div><div class="card-value amber">${active.length} pinjaman</div></div>
-      <div><div class="card-title">Total Sisa Tagihan</div><div class="card-value amber">${fmt(totalPinjaman)}</div></div>
+    <div class="laporan-summary">
+      <div class="card lap-stat"><div class="lap-stat-label">Pinjaman Aktif</div><div class="lap-stat-value amber">${active.length} pinjaman</div></div>
+      <div class="card lap-stat"><div class="lap-stat-label">Total Sisa Tagihan</div><div class="lap-stat-value amber">${fmt(totalPinjaman)}</div></div>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>No. Pinjaman</th><th>Anggota</th><th>Tgl Cair</th><th>Pokok</th><th>Bunga%</th><th>Total Bunga</th><th>Total Tagihan</th><th>Jenis Cicilan</th><th>Cicilan/Periode</th><th>Dibayar</th><th>Sisa</th><th>Jatuh Tempo</th><th>Status</th></tr></thead>
@@ -3074,9 +3083,9 @@ async function renderLaporanCicilan() {
   const data = await dbQuery('loan_payments', cicQ);
   const totalDibayar = (data || []).reduce((a, p) => a + Number(p.amount_paid), 0);
   document.getElementById('laporan-content').innerHTML = `
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div><div class="card-title">Total Cicilan Diterima</div><div class="card-value green">${fmt(totalDibayar)}</div></div>
-      <div><div class="card-title">Jumlah Transaksi</div><div class="card-value">${(data||[]).length}x</div></div>
+    <div class="laporan-summary">
+      <div class="card lap-stat"><div class="lap-stat-label">Total Cicilan Diterima</div><div class="lap-stat-value green">${fmt(totalDibayar)}</div></div>
+      <div class="card lap-stat"><div class="lap-stat-label">Jumlah Transaksi</div><div class="lap-stat-value">${(data||[]).length}x</div></div>
     </div>
     <div class="table-wrap"><table>
       <thead><tr><th>Tanggal</th><th>Anggota</th><th>Cicilan Ke-</th><th>Dibayar</th><th>Komponen Pokok</th><th>Komponen Bunga</th><th>Sisa Tagihan</th><th>Keterangan</th></tr></thead>

@@ -206,7 +206,9 @@ nav { flex: 1; padding: 8px; }
 .card-value.amber { color: var(--amber); }
 .card-value.blue { color: #2563eb; }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
-.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 0; }
+.stats-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px 8px; }
+.stat-card { min-width: 130px; }
 #dashboard-charts-row { grid-template-columns: 1fr 1fr; }
 #kalk-input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 10px; }
 
@@ -513,11 +515,11 @@ tbody tr:hover { background: var(--surface2); }
 
 /* ── MOBILE AUTH ── */
 @media (max-width: 400px) {
-  .stats-grid { grid-template-columns: 1fr; }
   .page { padding: 12px 10px; }
   .card { padding: 12px; }
   .page-header .page-title { font-size: 18px; }
   .tab-btn { font-size: 11px; padding: 5px 8px; }
+  .stats-scroll-wrap { margin: 0 -10px; padding: 0 10px 8px; }
 }
 
 /* Tabel aksi di mobile - wrap ke bawah */
@@ -561,7 +563,8 @@ tbody tr:hover { background: var(--surface2); }
   .main { padding-top: 0; width: 100%; }
   .page { padding: 14px 12px; }
   .form-row { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stats-grid { grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .stats-scroll-wrap { margin: 0 -12px; padding: 0 12px 8px; }
   #dashboard-charts-row { grid-template-columns: 1fr; }
   #kalk-input-grid { grid-template-columns: 1fr 1fr !important; }
   .detail-grid { grid-template-columns: 1fr; }
@@ -851,13 +854,15 @@ tbody tr:hover { background: var(--surface2); }
             </div>
           </div>
         </div>
-        <!-- 4 Card Sekunder -->
-        <div class="stats-grid" id="stats-grid">
-          <div class="card"><div class="card-title">Total Simpanan Anggota</div><div class="card-value green" id="stat-simpanan">-</div><div class="card-sub">Saldo tersimpan anggota</div></div>
-          <div class="card"><div class="card-title">Keuntungan Bunga</div><div class="card-value green" id="stat-bunga-masuk">-</div><div class="card-sub">Dari cicilan terbayar</div></div>
-          <div class="card"><div class="card-title">Peminjam Aktif</div><div class="card-value amber" id="stat-peminjam-aktif">-</div><div class="card-sub">Sedang meminjam</div></div>
-          <div class="card"><div class="card-title">Pinjaman Menunggak</div><div class="card-value red" id="stat-tunggak">-</div><div class="card-sub">Melewati jatuh tempo</div></div>
-          <div class="card"><div class="card-title">Anggota Aktif</div><div class="card-value" id="stat-anggota">-</div><div class="card-sub">Terdaftar</div></div>
+        <!-- 4 Card Sekunder - horizontal scroll di mobile -->
+        <div class="stats-scroll-wrap">
+          <div class="stats-grid" id="stats-grid">
+            <div class="card stat-card"><div class="card-title">Total Simpanan</div><div class="card-value green" id="stat-simpanan">-</div><div class="card-sub">Saldo tersimpan</div></div>
+            <div class="card stat-card"><div class="card-title">Keuntungan Bunga</div><div class="card-value green" id="stat-bunga-masuk">-</div><div class="card-sub">Dari cicilan</div></div>
+            <div class="card stat-card"><div class="card-title">Peminjam Aktif</div><div class="card-value amber" id="stat-peminjam-aktif">-</div><div class="card-sub">Sedang meminjam</div></div>
+            <div class="card stat-card"><div class="card-title">Menunggak</div><div class="card-value red" id="stat-tunggak">-</div><div class="card-sub">Lewat jatuh tempo</div></div>
+            <div class="card stat-card"><div class="card-title">Anggota Aktif</div><div class="card-value" id="stat-anggota">-</div><div class="card-sub">Terdaftar</div></div>
+          </div>
         </div>
       </div>
       <div class="card" id="member-dashboard" style="display:none">
@@ -867,22 +872,20 @@ tbody tr:hover { background: var(--surface2); }
           <div><div class="card-title">Pinjaman Aktif</div><div class="card-value amber" id="my-pinjaman">-</div></div>
         </div>
       </div>
-      <!-- Grafik Tren & Kalkulator -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px" id="dashboard-charts-row">
-        <!-- Grafik Tren Simpanan -->
-        <div class="card">
-          <div class="section-title">📈 Tren Simpanan & Cicilan (6 Bulan)</div>
-          <div id="chart-tren" style="height:200px;display:flex;align-items:flex-end;gap:6px;padding:8px 0"></div>
-          <div id="chart-tren-legend" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text2)">
-            <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:2px;margin-right:4px"></span>Simpanan</span>
-            <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:4px"></span>Cicilan</span>
-          </div>
+      <!-- Grafik Tren - full width -->
+      <div class="card" style="margin-top:14px">
+        <div class="section-title">📈 Tren Simpanan & Cicilan (6 Bulan)</div>
+        <div id="chart-tren" style="height:180px;display:flex;align-items:flex-end;gap:4px;padding:8px 0"></div>
+        <div id="chart-tren-legend" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text2)">
+          <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:2px;margin-right:4px"></span>Simpanan</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:4px"></span>Cicilan</span>
         </div>
-        <!-- Grafik Per Anggota (admin only) -->
-        <div class="card admin-only" style="display:none">
-          <div class="section-title">👥 Simpanan per Anggota</div>
-          <div id="chart-per-anggota" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;min-height:120px;align-items:center"></div>
-        </div>
+      </div>
+
+      <!-- Grafik Per Anggota - full width, admin only -->
+      <div class="card admin-only" style="margin-top:14px;display:none">
+        <div class="section-title">👥 Simpanan per Anggota</div>
+        <div id="chart-per-anggota" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;min-height:80px;align-items:center"></div>
       </div>
 
       <!-- Kalkulator Simulasi Pinjaman - full width di bawah grafik -->

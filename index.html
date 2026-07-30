@@ -1178,8 +1178,9 @@ tbody tr:hover { background: var(--surface2); }
               ✅ Riwayat simpanan<br>
               ✅ Data pinjaman<br>
               ✅ Riwayat cicilan<br>
-              ✅ Jurnal kas lengkap<br>
-              ✅ Data event
+              ✅ Data event<br>
+              ✅ Poin reward<br>
+              ✅ Pengeluaran kas
             </div>
           </div>
           <div class="card" style="padding:14px;background:var(--surface2)">
@@ -1204,7 +1205,7 @@ tbody tr:hover { background: var(--surface2); }
       <div class="card">
         <div class="section-title">📥 Restore Data</div>
         <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
-          ⚠️ <strong>Perhatian:</strong> Restore akan MENAMBAHKAN data dari file backup ke database yang ada. Data yang sudah ada tidak akan dihapus. Pastikan file backup adalah file yang valid dari aplikasi ini.
+          ⚠️ <strong>Perhatian:</strong> Saat ini restore baru memulihkan sheet <strong>Simpanan</strong> saja. Sheet Pinjaman, Cicilan, Event, dan Poin belum dipulihkan otomatis. Data yang sudah ada tidak akan dihapus. Pastikan file backup berasal dari aplikasi ini.
         </div>
         <div class="form-group">
           <label class="form-label">Pilih File Backup (.xlsx)</label>
@@ -1798,7 +1799,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.9.13';
+const APP_VERSION = 'v4.9.14';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2147,11 +2148,12 @@ function populateMemberSelects() {
 async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const [savings, loans, members, allPayments] = await Promise.all([
+  const [savings, loans, members, allPayments, orgExpenses] = await Promise.all([
     dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
     dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
-    dbQuery('loan_payments', 'select=interest_component')
+    dbQuery('loan_payments', 'select=interest_component'),
+    dbQuery('org_expenses', 'select=amount')
   ]);
   // Alias profiles untuk dipakai di transaksi terbaru
   const profiles = members;
@@ -2164,7 +2166,10 @@ async function loadDashboard() {
   });
   const totalSimpanan = Object.values(memberBalances).reduce((a, b) => Number(a) + Number(b), 0);
   const totalBungaMasuk = (allPayments || []).reduce((a, p) => a + Number(p.interest_component || 0), 0);
-  const totalKas = totalSimpanan + totalBungaMasuk;
+  // Pengeluaran kas organisasi (biaya event) mengurangi kas koperasi.
+  // Nilainya TIDAK memotong simpanan anggota mana pun.
+  const totalOrgExpense = (orgExpenses || []).reduce((a, e) => a + Number(e.amount || 0), 0);
+  const totalKas = totalSimpanan + totalBungaMasuk - totalOrgExpense;
   const activeLoans = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
   const now = new Date();
@@ -2787,43 +2792,66 @@ async function doCatatCicilan() {
   const btnC = document.getElementById('btn-do-cicilan');
   if (btnC && btnC.disabled) return;
   if (btnC) { btnC.disabled = true; btnC.style.opacity = '0.6'; }
-  const amount = parseInt(document.getElementById('cicilan-amount').value);
-  const note = document.getElementById('cicilan-note').value;
-  const loan = currentCicilanLoan;
-  if (!amount || amount < 1) { showToast('Isi jumlah pembayaran'); return; }
-  if (amount > loan.remaining_amount) {
-    showToast(`❌ Nominal melebihi sisa tagihan. Maksimal: ${fmt(loan.remaining_amount)}`);
-    return;
-  }
-  const totalPeriods = loan.installment_count;
-  const interestPerPeriod = Math.round(loan.total_interest / totalPeriods);
-  const principalPerPeriod = Math.round(amount - interestPerPeriod);
-  const remainingAfter = Math.max(0, loan.remaining_amount - amount);
-  const newPaidCount = loan.paid_count + 1;
-  const isLastPayment = remainingAfter <= 0 || newPaidCount >= totalPeriods;
-  // next_due_date maju 1 periode dari due date SEBELUMNYA (bukan dari hari bayar)
-  // Ini memastikan nunggak tetap nunggak kalau baru bayar 1 cicilan yang sudah lewat
-  const nextDue = isLastPayment ? null : getNextDueDate(loan.installment_type, loan.next_due_date);
-  await dbInsert('loan_payments', {
-    loan_id: loan.id, member_id: loan.member_id,
-    payment_number: newPaidCount, amount_paid: amount,
-    principal_component: principalPerPeriod, interest_component: interestPerPeriod,
-    remaining_after: remainingAfter, recorded_by: currentUser.id, note
-  });
-  await dbUpdate('loans', `id=eq.${loan.id}`, {
-    amount_paid: loan.amount_paid + amount, remaining_amount: remainingAfter,
-    paid_count: newPaidCount, next_due_date: nextDue,
-    status: isLastPayment ? 'completed' : 'active'
-  });
-  showToast('Cicilan berhasil dicatat ✓' + (isLastPayment ? ' 🎉 Pinjaman Lunas!' : ''));
-  closeModal('modal-cicilan');
-  document.getElementById('cicilan-note').value = '';
+  try {
+    const amount = parseInt(document.getElementById('cicilan-amount').value);
+    const note = document.getElementById('cicilan-note').value;
+    const loan = currentCicilanLoan;
+    if (!amount || amount < 1) { showToast('Isi jumlah pembayaran'); return; }
+    if (amount > loan.remaining_amount) {
+      showToast(`❌ Nominal melebihi sisa tagihan. Maksimal: ${fmt(loan.remaining_amount)}`);
+      return;
+    }
 
-  // Auto-poin cicilan
-  await autoPoinCicilan(loan.member_id, loan.next_due_date);
-  loadCicilan(); loadDashboard();
-  const btnCEnd = document.getElementById('btn-do-cicilan');
-  if (btnCEnd) { btnCEnd.disabled = false; btnCEnd.style.opacity = ''; }
+    const totalPeriods       = loan.installment_count;
+    const interestPerPeriod  = Math.round(loan.total_interest / totalPeriods);
+    const principalPerPeriod = Math.round(amount - interestPerPeriod);
+    const remainingAfter     = Math.max(0, loan.remaining_amount - amount);
+    const newPaidCount       = loan.paid_count + 1;
+
+    // Pelunasan HANYA ditentukan oleh sisa tagihan.
+    // Kalau ada pembayaran sebagian, paid_count bisa mencapai jumlah cicilan
+    // sementara sisa tagihan masih ada — pinjaman wajib tetap aktif.
+    const isLastPayment = remainingAfter <= 0;
+
+    // next_due_date maju 1 periode dari due date SEBELUMNYA (bukan dari hari bayar),
+    // supaya yang menunggak tetap menunggak sampai seluruh tunggakan terbayar.
+    const nextDue = isLastPayment ? null : getNextDueDate(loan.installment_type, loan.next_due_date);
+
+    // ── Langkah 1: catat pembayaran dulu ──
+    // dbInsert TIDAK melempar exception, jadi error wajib diperiksa manual.
+    // Kalau langkah ini gagal, saldo pinjaman tidak boleh disentuh sama sekali.
+    const { error: payErr } = await dbInsert('loan_payments', {
+      loan_id: loan.id, member_id: loan.member_id,
+      payment_number: newPaidCount, amount_paid: amount,
+      principal_component: principalPerPeriod, interest_component: interestPerPeriod,
+      remaining_after: remainingAfter, recorded_by: currentUser.id, note
+    });
+    if (payErr) {
+      showToast('❌ Gagal mencatat pembayaran: ' + (payErr.message || JSON.stringify(payErr)));
+      return;
+    }
+
+    // ── Langkah 2: perbarui saldo pinjaman ──
+    const { error: loanErr } = await dbUpdate('loans', `id=eq.${loan.id}`, {
+      amount_paid: loan.amount_paid + amount, remaining_amount: remainingAfter,
+      paid_count: newPaidCount, next_due_date: nextDue,
+      status: isLastPayment ? 'completed' : 'active'
+    });
+    if (loanErr) {
+      showToast('⚠️ Pembayaran sudah tercatat tetapi saldo pinjaman GAGAL diperbarui. Catat nominal ' + fmt(amount) + ' dan periksa data pinjaman ini.');
+      return;
+    }
+
+    showToast('Cicilan berhasil dicatat ✓' + (isLastPayment ? ' 🎉 Pinjaman Lunas!' : ''));
+    closeModal('modal-cicilan');
+    document.getElementById('cicilan-note').value = '';
+
+    // Auto-poin memakai due date LAMA untuk menilai tepat waktu / terlambat
+    await autoPoinCicilan(loan.member_id, loan.next_due_date);
+    loadCicilan(); loadDashboard();
+  } finally {
+    if (btnC) { btnC.disabled = false; btnC.style.opacity = ''; }
+  }
 }
 
 async function loadCicilanHistory() {
@@ -2944,15 +2972,17 @@ async function exportLaporan() {
 
     // ── Sheet 5: Jurnal Kas (admin only) ──
     if (isAdmin()) {
-      const [savJ, payJ, loanJ] = await Promise.all([
+      const [savJ, payJ, loanJ, expJ] = await Promise.all([
         dbQuery('savings', 'select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc'),
         dbQuery('loan_payments', 'select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc'),
-        dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc')
+        dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc'),
+        dbQuery('org_expenses', 'select=description,amount,created_at&order=created_at.asc')
       ]);
       const jEntries = [];
       (savJ||[]).forEach(s => jEntries.push({ date: new Date(s.created_at), ket: `${s.type==='deposit'?'Setoran Simpanan':'Penarikan Simpanan'} — ${s.profiles?.full_name||'-'}${s.note?' ('+s.note+')':''}`, masuk: s.type==='deposit'?Number(s.amount):0, keluar: s.type==='withdraw'?Number(s.amount):0 }));
       (payJ||[]).forEach(p => jEntries.push({ date: new Date(p.created_at), ket: `Bayar Cicilan — ${p.profiles?.full_name||'-'}`, masuk: Number(p.amount_paid), keluar: 0 }));
       (loanJ||[]).forEach(l => { if(l.disbursed_at) jEntries.push({ date: new Date(l.disbursed_at), ket: `Cair Pinjaman — ${l.profiles?.full_name||'-'}`, masuk: 0, keluar: Number(l.principal) }); });
+      (expJ||[]).forEach(e => jEntries.push({ date: new Date(e.created_at), ket: `Pengeluaran Kas — ${e.description||'-'}`, masuk: 0, keluar: Number(e.amount) }));
       jEntries.sort((a,b) => a.date - b.date);
       let jSaldo = 0;
       const jurnalRows = [['Tanggal','Keterangan','Uang Masuk (Rp)','Uang Keluar (Rp)','Saldo Kas (Rp)']];
@@ -3169,10 +3199,11 @@ async function renderLaporanJurnal() {
   const dateFilter = getLaporanDateFilter();
 
   // Ambil semua sumber transaksi secara paralel
-  const [savings, payments, loans] = await Promise.all([
+  const [savings, payments, loans, orgExp] = await Promise.all([
     dbQuery('savings', `select=id,type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
     dbQuery('loan_payments', `select=id,amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
-    dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`)
+    dbQuery('loans', `select=id,principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilter.replace(/created_at/g,'disbursed_at')}`),
+    dbQuery('org_expenses', `select=id,description,amount,created_at&order=created_at.asc${dateFilter}`)
   ]);
 
   // Susun semua transaksi jadi satu array
@@ -3212,6 +3243,18 @@ async function renderLaporanJurnal() {
     });
   });
 
+  // Pengeluaran kas organisasi (biaya event) — tidak terkait simpanan anggota
+  (orgExp || []).forEach(e => {
+    entries.push({
+      date: new Date(e.created_at),
+      keterangan: `Pengeluaran Kas — ${escapeHtml(e.description || '-')}`,
+      masuk:  0,
+      keluar: Number(e.amount),
+      ikon: '🎉',
+      warna: 'var(--red)'
+    });
+  });
+
   // Urutkan berdasarkan tanggal
   entries.sort((a, b) => a.date - b.date);
 
@@ -3227,14 +3270,16 @@ async function renderLaporanJurnal() {
   const dateFrom = document.getElementById('laporan-date-from')?.value;
   if (dateFrom) {
     // Ambil semua transaksi sebelum dateFrom untuk hitung saldo awal
-    const [savBefore, payBefore, loanBefore] = await Promise.all([
+    const [savBefore, payBefore, loanBefore, expBefore] = await Promise.all([
       dbQuery('savings', `select=type,amount&created_at=lt.${dateFrom}T00:00:00`),
       dbQuery('loan_payments', `select=amount_paid&created_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('loans', `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${dateFrom}T00:00:00`)
+      dbQuery('loans', `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${dateFrom}T00:00:00`),
+      dbQuery('org_expenses', `select=amount&created_at=lt.${dateFrom}T00:00:00`)
     ]);
     (savBefore||[]).forEach(s => { saldoAwal += s.type==='deposit' ? Number(s.amount) : -Number(s.amount); });
     (payBefore||[]).forEach(p => { saldoAwal += Number(p.amount_paid); });
     (loanBefore||[]).forEach(l => { saldoAwal -= Number(l.principal); });
+    (expBefore||[]).forEach(e => { saldoAwal -= Number(e.amount); });
   }
 
   // Hitung running balance
@@ -3364,6 +3409,7 @@ async function doTambahAnggota() {
   const btnTA = document.getElementById('btn-do-tambah-anggota');
   if (btnTA && btnTA.disabled) return;
   if (btnTA) { btnTA.disabled = true; btnTA.style.opacity = '0.6'; }
+  try {
   const nama = document.getElementById('anggota-nama').value.trim();
   const username = document.getElementById('anggota-username').value.trim().toLowerCase();
   const password = document.getElementById('anggota-password').value;
@@ -3414,8 +3460,9 @@ async function doTambahAnggota() {
   document.getElementById('anggota-password').value = '';
   await loadAllMembers();
   loadAnggota();
-  const btnTAEnd = document.getElementById('btn-do-tambah-anggota');
-  if (btnTAEnd) { btnTAEnd.disabled = false; btnTAEnd.style.opacity = ''; }
+  } finally {
+    if (btnTA) { btnTA.disabled = false; btnTA.style.opacity = ''; }
+  }
 }
 
 // ── RESET PASSWORD & UNLOCK ──
@@ -4394,12 +4441,26 @@ async function doFinalEvent() {
   }
   const judul = ev.judul || 'Event';
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
+
   const { error } = await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'final', total_biaya: total });
-  if (error) { showToast('Gagal finalisasi: ' + error.message); return; }
-  await dbInsert('savings', {
-    member_id: currentUser.id, type: 'withdraw', amount: total,
-    balance_after: 0, recorded_by: currentUser.id, note: '🎉 Event: ' + judul
+  if (error) { showToast('Gagal finalisasi: ' + (error.message || JSON.stringify(error))); return; }
+
+  // Biaya event dicatat sebagai pengeluaran KAS ORGANISASI, bukan penarikan
+  // simpanan pribadi admin. Kalau ditulis ke tabel `savings`, tabungan admin
+  // akan ikut terpotong dan bisa jadi minus.
+  const { error: expErr } = await dbInsert('org_expenses', {
+    event_id: currentEventId,
+    description: 'Event: ' + judul,
+    amount: total,
+    recorded_by: currentUser.id
   });
+  if (expErr) {
+    // Kembalikan status ke draft supaya kas dan status tetap sinkron
+    await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'draft' });
+    showToast('❌ Gagal mencatat pengeluaran kas. Event dikembalikan ke status Draft, silakan coba lagi.');
+    return;
+  }
+
   showToast('✅ Event "' + judul + '" berhasil difinalkan. Kas terpotong ' + fmt(total));
   closeModal('modal-final-event');
   showEventDetail(currentEventId);
@@ -4964,6 +5025,15 @@ async function doBackup() {
     const wsPoint = XLSX.utils.aoa_to_sheet(pointRows);
     wsPoint['!cols'] = [{wch:36},{wch:25},{wch:8},{wch:10},{wch:40},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsPoint, 'Poin Reward');
+
+    // Sheet 7: Pengeluaran Kas Organisasi
+    status.textContent = '🎉 Mengambil data pengeluaran kas...';
+    const orgExpB = await dbQuery('org_expenses', 'select=*&order=created_at.asc');
+    const expRows = [['ID','Event ID','Keterangan','Jumlah','Dicatat Oleh','Tanggal']];
+    (orgExpB||[]).forEach(e => expRows.push([e.id, e.event_id||'', e.description, e.amount, e.recorded_by||'', e.created_at]));
+    const wsExp = XLSX.utils.aoa_to_sheet(expRows);
+    wsExp['!cols'] = [{wch:36},{wch:36},{wch:35},{wch:15},{wch:36},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsExp, 'Pengeluaran Kas');
 
     // Tulis file
     status.textContent = '💾 Menyimpan file...';

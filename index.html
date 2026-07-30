@@ -887,7 +887,7 @@ tbody tr:hover { background: var(--surface2); }
           <div class="card stat-card2">
             <div class="stat2-label">📈 Keuntungan Bunga</div>
             <div class="stat2-value green" id="stat-bunga-masuk">-</div>
-            <div class="stat2-sub">Belum dibagikan</div>
+            <div class="stat2-sub">Tinggal di kas koperasi</div>
           </div>
           <div class="card stat-card2">
             <div class="stat2-label">👥 Peminjam Aktif</div>
@@ -1391,34 +1391,11 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <!-- Info saldo anggota -->
     <div id="cairan-info" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;font-size:13px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Saldo Simpanan</div><div id="cairan-saldo" style="font-weight:700;color:var(--green);font-size:15px">-</div></div>
-        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Porsi Keuntungan</div><div id="cairan-pct" style="font-weight:700;color:var(--accent);font-size:15px">-</div></div>
-        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Total Keuntungan Koperasi</div><div id="cairan-total-bunga" style="font-weight:600;font-size:13px">-</div></div>
-        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Bagian Keuntungan</div><div id="cairan-bagian-bunga" style="font-weight:700;color:var(--amber);font-size:15px">-</div></div>
-      </div>
-    </div>
-    <!-- Opsi cairkan -->
-    <div class="form-group">
-      <label class="form-label">Opsi Pencairan</label>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
-        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer" id="opsi-tanpa-label">
-          <input type="radio" name="opsi-cairan" value="tanpa" id="opsi-tanpa" checked onchange="updateCairanInfo()" style="margin-top:2px">
-          <div>
-            <div style="font-weight:600;font-size:13px">Simpanan Saja</div>
-            <div style="font-size:12px;color:var(--text2)">Anggota menerima saldo simpanannya saja</div>
-            <div style="font-size:13px;font-weight:700;color:var(--green);margin-top:4px">Total: <span id="total-tanpa-keuntungan">-</span></div>
-          </div>
-        </label>
-        <label style="display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer" id="opsi-dengan-label">
-          <input type="radio" name="opsi-cairan" value="dengan" id="opsi-dengan" onchange="updateCairanInfo()" style="margin-top:2px">
-          <div>
-            <div style="font-weight:600;font-size:13px">Simpanan + Keuntungan Koperasi</div>
-            <div style="font-size:12px;color:var(--text2)">Simpanan + porsi keuntungan berdasarkan persentase simpanan</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:4px" id="rumus-keuntungan">-</div>
-            <div style="font-size:13px;font-weight:700;color:var(--amber);margin-top:4px">Total: <span id="total-dengan-keuntungan">-</span></div>
-          </div>
-        </label>
+      <div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Saldo Simpanan yang Akan Dicairkan</div>
+      <div id="cairan-saldo" style="font-weight:700;color:var(--green);font-size:20px">-</div>
+      <div style="color:var(--text2);font-size:12px;margin-top:8px;line-height:1.6">
+        Anggota menerima saldo simpanannya. Keuntungan koperasi tetap tinggal
+        di kas dan dinikmati bersama, misalnya untuk membiayai event keluarga.
       </div>
     </div>
     <div id="cairan-alert" class="alert alert-error"></div>
@@ -1814,7 +1791,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.14.1';
+const APP_VERSION = 'v4.15.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -4651,15 +4628,6 @@ async function bypassMasaTunggu(memberId, memberName) {
 // ══════════════════════════════════════════════════════════════
 // CAIRKAN SIMPANAN
 // ══════════════════════════════════════════════════════════════
-let _cairanTotalSimpanan = 0;
-let _cairanTotalBunga = 0;
-
-// Menghitung keuntungan bunga yang MASIH ADA di koperasi:
-// seluruh bunga yang pernah masuk, dikurangi yang sudah pernah dibagikan
-// kepada anggota yang mencairkan simpanan.
-//
-// Tanpa pengurangan ini, kolam keuntungan tidak pernah menyusut sehingga
-// total yang dibagikan bisa melebihi keuntungan yang sebenarnya ada.
 // ══════════════════════════════════════════════════════════════
 // KETERSEDIAAN KAS
 //
@@ -4701,152 +4669,60 @@ async function hitungKasTersedia() {
   };
 }
 
-async function hitungKeuntunganTersedia() {
-  const [payments, orgExp] = await Promise.all([
-    dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
-    dbQuery('org_expenses', 'select=amount,category')
-  ]);
-  if (payments === null || orgExp === null) return null;   // gagal baca → jangan menebak
-
-  const bungaMasuk   = payments.reduce((a, p) => a + Number(p.interest_component || 0), 0);
-  const sudahDibagi  = orgExp
-    .filter(e => e.category === 'profit_share')
-    .reduce((a, e) => a + Number(e.amount || 0), 0);
-
-  return {
-    bungaMasuk,
-    sudahDibagi,
-    tersedia: Math.max(0, bungaMasuk - sudahDibagi)
-  };
-}
 
 async function updateCairanInfo() {
   const memberId = document.getElementById('tarik-member').value;
   const infoEl = document.getElementById('cairan-info');
   if (!memberId) { infoEl.style.display = 'none'; return; }
   const saldo = await getMemberBalance(memberId);
-  const allSavings = await dbQuery('savings', 'select=member_id,type,amount');
-  const balances = {};
-  (allSavings || []).forEach(s => {
-    if (!balances[s.member_id]) balances[s.member_id] = 0;
-    balances[s.member_id] += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
-  });
-  const totalSimpanan = Object.values(balances).reduce((a,b) => Number(a) + Number(b), 0);
-  const untung = await hitungKeuntunganTersedia();
-  if (!untung) {
-    infoEl.innerHTML = '<span style="color:var(--red)">Gagal membaca data keuntungan. Periksa koneksi lalu coba lagi.</span>';
-    infoEl.style.display = 'block';
-    return;
-  }
-  // Yang dibagi adalah keuntungan yang MASIH ADA, bukan seluruh bunga
-  // yang pernah masuk sejak koperasi berdiri.
-  const totalBunga = untung.tersedia;
-  const porsi = totalSimpanan > 0 ? saldo / totalSimpanan : 0;
-  const bagianBunga = Math.round(totalBunga * porsi);
-  _cairanTotalSimpanan = totalSimpanan;
-  _cairanTotalBunga = totalBunga;
   document.getElementById('cairan-saldo').textContent = fmt(saldo);
-  document.getElementById('cairan-pct').textContent = (porsi * 100).toFixed(1) + '%';
-  document.getElementById('cairan-total-bunga').textContent = fmt(totalBunga);
-  document.getElementById('cairan-bagian-bunga').textContent = fmt(bagianBunga);
-  document.getElementById('rumus-keuntungan').textContent =
-    `${fmt(saldo)} ÷ ${fmt(totalSimpanan)} × ${fmt(totalBunga)} = ${fmt(bagianBunga)}`;
-  document.getElementById('total-tanpa-keuntungan').textContent = fmt(saldo);
-  document.getElementById('total-dengan-keuntungan').textContent = fmt(saldo + bagianBunga);
   infoEl.style.display = 'block';
 }
-
 async function doCairanSimpanan() {
   const memberId = document.getElementById('tarik-member').value;
-  const opsi = document.querySelector('input[name="opsi-cairan"]:checked')?.value;
   const alertEl = document.getElementById('cairan-alert');
   alertEl.style.display = 'none';
   if (!memberId) { alertEl.textContent = 'Pilih anggota terlebih dahulu'; alertEl.style.display = 'block'; return; }
-  // Validasi saldo tidak negatif sebelum proses
-  const currentBal = await getMemberBalance(memberId);
-  if (currentBal <= 0) {
+
+  const saldo = await getMemberBalance(memberId);
+  if (saldo <= 0) {
     alertEl.textContent = '❌ Saldo anggota ini sudah 0, tidak ada yang bisa dicairkan';
-    alertEl.style.display = 'block';
-    return;
+    alertEl.style.display = 'block'; return;
   }
+
   const activeLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
-  if (activeLoan && activeLoan.length > 0) {
+  if (activeLoan === null) { alertEl.textContent = 'Gagal memeriksa pinjaman. Coba lagi.'; alertEl.style.display = 'block'; return; }
+  if (activeLoan.length > 0) {
     alertEl.textContent = '❌ Tidak bisa cairkan simpanan — anggota masih punya pinjaman aktif';
     alertEl.style.display = 'block'; return;
   }
-  const saldo = await getMemberBalance(memberId);
-  if (saldo <= 0) { alertEl.textContent = 'Saldo simpanan kosong'; alertEl.style.display = 'block'; return; }
-
-  // Dihitung ulang di sini — tidak memakai angka yang tersimpan saat modal
-  // dibuka, karena bisa sudah berubah bila ada transaksi lain di sela waktu.
-  let bagianBunga = 0;
-  if (opsi === 'dengan') {
-    const untung = await hitungKeuntunganTersedia();
-    if (!untung) {
-      alertEl.textContent = '❌ Gagal membaca data keuntungan. Periksa koneksi lalu coba lagi.';
-      alertEl.style.display = 'block'; return;
-    }
-    const porsiNow = _cairanTotalSimpanan > 0 ? saldo / _cairanTotalSimpanan : 0;
-    bagianBunga = Math.min(Math.round(untung.tersedia * porsiNow), untung.tersedia);
-    bagianBunga = Math.max(0, bagianBunga);
-  }
-  const porsi = _cairanTotalSimpanan > 0 ? saldo / _cairanTotalSimpanan : 0;
-  const totalCairan = saldo + bagianBunga;
 
   // Kas tidak boleh tercatat negatif. Kalau uang koperasi sedang banyak
-  // tertanam di pinjaman, pencairan harus menunggu cicilan masuk dulu —
-  // kalau dipaksakan, buku menyatakan lunas padahal anggotanya belum
-  // menerima uangnya.
+  // tertanam di pinjaman, pencairan menunggu cicilan masuk dulu.
   const kas2 = await hitungKasTersedia();
   if (!kas2) {
     alertEl.textContent = 'Gagal memeriksa ketersediaan kas. Coba lagi.';
     alertEl.style.display = 'block'; return;
   }
-  if (totalCairan > kas2.tersedia) {
+  if (saldo > kas2.tersedia) {
     alertEl.innerHTML = `❌ Kas koperasi tidak cukup untuk pencairan ini.<br>`
       + `Uang tersedia: <strong>${fmt(kas2.tersedia)}</strong><br>`
-      + `Yang perlu dibayar: <strong>${fmt(totalCairan)}</strong><br>`
+      + `Yang perlu dibayar: <strong>${fmt(saldo)}</strong><br>`
       + `<span style="font-size:12px">Sebagian uang koperasi sedang dipinjam (${fmt(kas2.piutangPokok)}). Tunggu cicilan masuk lalu coba lagi.</span>`;
     alertEl.style.display = 'block'; return;
   }
-  const konfirmasi = opsi === 'dengan'
-    ? `Cairkan simpanan ${fmt(saldo)} + keuntungan ${fmt(bagianBunga)} = ${fmt(totalCairan)}?`
-    : `Cairkan simpanan ${fmt(saldo)}?`;
-  if (!confirm(konfirmasi)) return;
+
+  if (!confirm(`Cairkan simpanan ${fmt(saldo)}?\n\nAnggota menerima saldo simpanannya. Keuntungan koperasi tetap tinggal di kas.`)) return;
+
   const { error: e1 } = await dbInsert('savings', {
     member_id: memberId, type: 'withdraw', amount: saldo,
     balance_after: 0, recorded_by: currentUser.id,
-    note: opsi === 'dengan' ? 'Pencairan simpanan + keuntungan koperasi' : 'Pencairan simpanan'
+    note: 'Pencairan simpanan'
   });
-  if (e1) { alertEl.textContent = 'Gagal: ' + e1.message; alertEl.style.display = 'block'; return; }
-  if (opsi === 'dengan' && bagianBunga > 0) {
-    // Porsi keuntungan adalah uang yang BENAR-BENAR keluar dari kas koperasi,
-    // jadi wajib tercatat sebagai pengeluaran kas — bukan hanya sebagai
-    // catatan di tabel adjustments. Tanpa ini, Total Kas akan menunjukkan
-    // angka lebih besar dari uang yang sebenarnya ada.
-    const namaAnggota = (allMembers.find(m => m.id === memberId)?.full_name) || 'Anggota';
-    const { error: eBagi } = await dbInsert('org_expenses', {
-      event_id: null,
-      description: 'Bagi keuntungan koperasi — ' + namaAnggota,
-      amount: bagianBunga,
-      category: 'profit_share',
-      recorded_by: currentUser.id
-    });
-    if (eBagi) {
-      alertEl.textContent = '⚠️ Simpanan sudah dicairkan, tetapi porsi keuntungan ' + fmt(bagianBunga) + ' GAGAL dicatat sebagai pengeluaran kas. Catat angka ini dan hubungi pengelola sistem.';
-      alertEl.style.display = 'block';
-      loadSimpanan(); loadDashboard();
-      return;
-    }
-    // Catatan audit tambahan (tidak mempengaruhi kas)
-    await dbInsert('adjustments', {
-      member_id: memberId, type: 'savings',
-      value_before: 0, value_after: 0, difference: -bagianBunga,
-      reason: `[BAGI KEUNTUNGAN] Porsi ${(porsi*100).toFixed(1)}% = ${fmt(bagianBunga)}`,
-      admin_id: currentUser.id
-    });
-  }
-  showToast(`✅ Pencairan ${fmt(totalCairan)} berhasil diproses`);
+  if (e1) { alertEl.textContent = 'Gagal: ' + (e1.message || JSON.stringify(e1)); alertEl.style.display = 'block'; return; }
+
+  await logActivity('CAIRKAN_SIMPANAN', `Pencairan simpanan ${fmt(saldo)}`, memberId);
+  showToast(`✅ Pencairan ${fmt(saldo)} berhasil diproses`);
   closeModal('modal-tarik');
   loadSimpanan(); loadDashboard();
 }

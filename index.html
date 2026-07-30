@@ -1824,7 +1824,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.11.1';
+const APP_VERSION = 'v4.11.2';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3214,12 +3214,13 @@ async function exportLaporan() {
 
     // ── Sheet 1: Simpanan ──
     const [savings, members] = await Promise.all([
-      dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
+      dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
       dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
     ]);
     const balances = {};
     (members||[]).forEach(m => balances[m.id] = { name: m.full_name, deposit: 0, withdraw: 0, last: null });
     (savings||[]).forEach(s => {
+      if (!isBarisSimpananEfektif(s)) return;   // samakan dengan tampilan di aplikasi
       if (!balances[s.member_id]) balances[s.member_id] = { name: s.profiles?.full_name || s.member_id, deposit: 0, withdraw: 0, last: null };
       if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
       else balances[s.member_id].withdraw += Number(s.amount);

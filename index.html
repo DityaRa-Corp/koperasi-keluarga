@@ -1800,7 +1800,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.10.0';
+const APP_VERSION = 'v4.10.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2626,9 +2626,9 @@ async function showDetailPinjaman(loanId) {
       <div class="progress-bar-wrap" style="height:8px"><div class="progress-bar ${pct >= 100 ? 'green' : ''}" style="width:${pct}%"></div></div>
     </div>
     ${loan.note ? `<div style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">Catatan: ${escapeHtml(loan.note)}</div>` : ''}
-    ${payments?.length ? `<div class="section-title" style="margin-top:8px">Riwayat Cicilan (${payments.length}/${loan.installment_count})</div>
+    ${payments?.length ? `<div class="section-title" style="margin-top:8px">Riwayat Pembayaran (${payments.length}x, cicilan terlunasi ${loan.paid_count}/${loan.installment_count})</div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Ke-</th><th>Tanggal</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th></tr></thead>
+      <thead><tr><th>Bayar Ke-</th><th>Tanggal</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th></tr></thead>
       <tbody>${payments.map(p => `<tr>
         <td>${p.payment_number}</td><td>${fmtDate(p.created_at)}</td>
         <td class="td-mono">${fmt(p.amount_paid)}</td>
@@ -3023,7 +3023,7 @@ async function loadCicilanHistory() {
   const el = document.getElementById('cicilan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat cicilan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th></tr></thead>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th></tr></thead>
     <tbody>${data.map(p => `<tr>
       <td>${fmtDate(p.created_at)}</td>
       <td>${escapeHtml(p.profiles?.full_name || '-')}</td>
@@ -3111,7 +3111,7 @@ async function exportLaporan() {
 
     // ── Sheet 4: Cicilan ──
     const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc');
-    const cicilanRows = [['Tanggal','Anggota','Cicilan Ke-','Dibayar (Rp)','Komponen Pokok (Rp)','Komponen Bunga (Rp)','Sisa Tagihan (Rp)','Keterangan']];
+    const cicilanRows = [['Tanggal','Anggota','Pembayaran Ke-','Dibayar (Rp)','Komponen Pokok (Rp)','Komponen Bunga (Rp)','Sisa Tagihan (Rp)','Keterangan']];
     (payments||[]).forEach(p => {
       cicilanRows.push([
         new Date(p.created_at).toLocaleDateString('id-ID'),
@@ -3316,7 +3316,7 @@ async function renderLaporanCicilan() {
       <div class="card lap-stat"><div class="lap-stat-label">Jumlah Transaksi</div><div class="lap-stat-value">${(data||[]).length}x</div></div>
     </div>
     <div class="table-wrap"><table>
-      <thead><tr><th>Tanggal</th><th>Anggota</th><th>Cicilan Ke-</th><th>Dibayar</th><th>Komponen Pokok</th><th>Komponen Bunga</th><th>Sisa Tagihan</th><th>Keterangan</th></tr></thead>
+      <thead><tr><th>Tanggal</th><th>Anggota</th><th>Pembayaran Ke-</th><th>Dibayar</th><th>Komponen Pokok</th><th>Komponen Bunga</th><th>Sisa Tagihan</th><th>Keterangan</th></tr></thead>
       <tbody>${(data||[]).map(p => `<tr>
         <td>${fmtDate(p.created_at)}</td>
         <td style="font-weight:500">${escapeHtml(p.profiles?.full_name || '-')}</td>

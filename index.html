@@ -1814,7 +1814,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.14.0';
+const APP_VERSION = 'v4.14.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2598,7 +2598,7 @@ async function loadSimpananHistory() {
   let qParams = 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc&limit=100';
   if (memberId) qParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) qParams += `&member_id=eq.${currentUser.id}`;
-  if (month) { const [y,m] = month.split('-'); const next = m==='12'?`${+y+1}-01`:`${y}-${String(+m+1).padStart(2,'0')}`; qParams += `&created_at=gte.${month}-01&created_at=lt.${next}-01`; }
+  if (month) { const b = batasBulan(month); qParams += `&created_at=gte.${b.dari}&created_at=lt.${b.sampai}`; }
   const data = await dbQuery('savings', qParams);
   const el = document.getElementById('simpanan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada transaksi</div></div>'; return; }
@@ -3270,10 +3270,27 @@ async function doCatatCicilan() {
   try {
     const amount = parseInt(document.getElementById('cicilan-amount').value);
     const note = document.getElementById('cicilan-note').value;
-    const loan = currentCicilanLoan;
     if (!amount || amount < 1) { showToast('Isi jumlah pembayaran'); return; }
+
+    // Keadaan pinjaman dibaca ULANG di sini, bukan memakai angka yang
+    // tersimpan saat modal dibuka. Kalau ada pembayaran lain masuk di sela
+    // waktu — misalnya dari tab atau perangkat lain — validasi sisa tagihan
+    // yang memakai angka lama bisa meloloskan pembayaran berlebih.
+    const loanFresh = await dbQuery('loans',
+      `select=*,profiles!loans_member_id_fkey(full_name)&id=eq.${currentCicilanLoan.id}&limit=1`);
+    if (loanFresh === null) { showToast('❌ Gagal memuat data pinjaman terkini. Coba lagi.'); return; }
+    const loan = loanFresh[0];
+    if (!loan) { showToast('❌ Pinjaman tidak ditemukan.'); return; }
+    if (loan.status !== 'active') {
+      showToast('⚠️ Pinjaman ini sudah tidak aktif — mungkin baru saja dilunasi dari tempat lain.');
+      closeModal('modal-cicilan'); loadCicilan(); return;
+    }
     if (amount > loan.remaining_amount) {
-      showToast(`❌ Nominal melebihi sisa tagihan. Maksimal: ${fmt(loan.remaining_amount)}`);
+      showToast(`❌ Nominal melebihi sisa tagihan. Sisa terkini: ${fmt(loan.remaining_amount)}`
+        + (Number(currentCicilanLoan.remaining_amount) !== Number(loan.remaining_amount)
+            ? ' (berubah sejak modal dibuka)' : ''), 6000);
+      currentCicilanLoan = loan;
+      previewCicilan();
       return;
     }
 
@@ -3349,7 +3366,7 @@ async function loadCicilanHistory() {
   let cihParams = 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=100';
   if (memberId) cihParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) cihParams += `&member_id=eq.${currentUser.id}`;
-  if (month) { const [y,m] = month.split('-'); const next = m==='12'?`${+y+1}-01`:`${y}-${String(+m+1).padStart(2,'0')}`; cihParams += `&created_at=gte.${month}-01&created_at=lt.${next}-01`; }
+  if (month) { const b = batasBulan(month); cihParams += `&created_at=gte.${b.dari}&created_at=lt.${b.sampai}`; }
   const data = await dbQuery('loan_payments', cihParams);
   const el = document.getElementById('cicilan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat cicilan</div></div>'; return; }
@@ -3549,12 +3566,41 @@ function setLaporanRange(range) {
   loadLaporan();
 }
 
+// Zona waktu koperasi. `created_at` di database bertipe timestamptz dan
+// dibandingkan dalam UTC. Karena WIB = UTC+7, transaksi antara 00:00–07:00
+// WIB akan terbaca sebagai TANGGAL SEBELUMNYA kalau batasnya ditulis tanpa
+// offset — dan kalau itu terjadi tanggal 1, transaksinya masuk laporan
+// BULAN SEBELUMNYA.
+//
+// Karena itu setiap batas tanggal ditulis lengkap dengan offset waktu,
+// dan pengelompokan bulan memakai komponen tanggal lokal.
+const TZ_OFFSET = '+07:00';
+
+// Ambil 'YYYY-MM' menurut waktu lokal, bukan UTC
+function bulanLokal(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d)) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Batas awal & akhir bulan dalam waktu lokal, siap dipakai di query
+function batasBulan(bulan) {
+  const [y, m] = bulan.split('-').map(Number);
+  const nextY = m === 12 ? y + 1 : y;
+  const nextM = m === 12 ? 1 : m + 1;
+  return {
+    dari:   `${bulan}-01T00:00:00${TZ_OFFSET}`,
+    sampai: `${nextY}-${String(nextM).padStart(2, '0')}-01T00:00:00${TZ_OFFSET}`
+  };
+}
+
 function getLaporanDateFilter() {
   const from = document.getElementById('laporan-date-from')?.value;
   const to   = document.getElementById('laporan-date-to')?.value;
   let q = '';
-  if (from) q += `&created_at=gte.${from}T00:00:00`;
-  if (to)   q += `&created_at=lte.${to}T23:59:59`;
+  if (from) q += `&created_at=gte.${from}T00:00:00${TZ_OFFSET}`;
+  if (to)   q += `&created_at=lte.${to}T23:59:59${TZ_OFFSET}`;
   return q;
 }
 
@@ -5178,13 +5224,13 @@ async function loadDashboardCharts(savings, memberBalances) {
   }
 
   const simpananPerBulan = months6.map(m =>
-    (savings || []).filter(s => s.type === 'deposit' && isBarisSimpananEfektif(s) && s.created_at?.startsWith(m))
+    (savings || []).filter(s => s.type === 'deposit' && isBarisSimpananEfektif(s) && bulanLokal(s.created_at) === m)
       .reduce((a, s) => a + Number(s.amount), 0)
   );
 
   const allPayments = await dbQuery('loan_payments', 'select=amount_paid,created_at&is_reversed=is.false&order=created_at.asc');
   const cicilanPerBulan = months6.map(m =>
-    (allPayments || []).filter(p => p.created_at?.startsWith(m))
+    (allPayments || []).filter(p => bulanLokal(p.created_at) === m)
       .reduce((a, p) => a + Number(p.amount_paid), 0)
   );
 

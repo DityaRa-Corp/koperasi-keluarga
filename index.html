@@ -209,6 +209,17 @@ nav { flex: 1; padding: 8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 0; }
 .stats-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px 8px; }
 .stat-card { min-width: 130px; }
+
+/* Stats 2x2 baru */
+.stats-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.stat-card2 { padding: 12px 14px !important; }
+.stat2-label { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat2-value { font-size: 1.25rem; font-weight: 800; line-height: 1.2; margin-bottom: 2px; }
+.stat2-value.green { color: var(--green); }
+.stat2-value.amber { color: var(--amber); }
+.stat2-value.red { color: var(--red); }
+.stat2-sub { font-size: 10px; color: var(--text3); }
+
 #dashboard-charts-row { grid-template-columns: 1fr 1fr; }
 #kalk-input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 10px; }
 
@@ -565,6 +576,9 @@ tbody tr:hover { background: var(--surface2); }
   .form-row { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(5, 1fr); gap: 12px; }
   .stats-scroll-wrap { margin: 0 -12px; padding: 0 12px 8px; }
+  .stats-grid-2 { gap: 8px; }
+  .stat-card2 { padding: 10px 12px !important; }
+  .stat2-value { font-size: 1.1rem; }
   #dashboard-charts-row { grid-template-columns: 1fr; }
   #kalk-input-grid { grid-template-columns: 1fr 1fr !important; }
   .detail-grid { grid-template-columns: 1fr; }
@@ -854,16 +868,31 @@ tbody tr:hover { background: var(--surface2); }
             </div>
           </div>
         </div>
-        <!-- 4 Card Sekunder - horizontal scroll di mobile -->
-        <div class="stats-scroll-wrap">
-          <div class="stats-grid" id="stats-grid">
-            <div class="card stat-card"><div class="card-title">Total Simpanan</div><div class="card-value green" id="stat-simpanan">-</div><div class="card-sub">Saldo tersimpan</div></div>
-            <div class="card stat-card"><div class="card-title">Keuntungan Bunga</div><div class="card-value green" id="stat-bunga-masuk">-</div><div class="card-sub">Dari cicilan</div></div>
-            <div class="card stat-card"><div class="card-title">Peminjam Aktif</div><div class="card-value amber" id="stat-peminjam-aktif">-</div><div class="card-sub">Sedang meminjam</div></div>
-            <div class="card stat-card"><div class="card-title">Menunggak</div><div class="card-value red" id="stat-tunggak">-</div><div class="card-sub">Lewat jatuh tempo</div></div>
-            <div class="card stat-card"><div class="card-title">Anggota Aktif</div><div class="card-value" id="stat-anggota">-</div><div class="card-sub">Terdaftar</div></div>
+        <!-- Stats Grid - 2 baris, 2 kolom, fit layar HP -->
+        <div class="stats-grid-2" id="stats-grid">
+          <div class="card stat-card2">
+            <div class="stat2-label">💰 Total Simpanan</div>
+            <div class="stat2-value green" id="stat-simpanan">-</div>
+            <div class="stat2-sub">Saldo tersimpan</div>
+          </div>
+          <div class="card stat-card2">
+            <div class="stat2-label">📈 Keuntungan Bunga</div>
+            <div class="stat2-value green" id="stat-bunga-masuk">-</div>
+            <div class="stat2-sub">Dari cicilan</div>
+          </div>
+          <div class="card stat-card2">
+            <div class="stat2-label">👥 Peminjam Aktif</div>
+            <div class="stat2-value amber" id="stat-peminjam-aktif">-</div>
+            <div class="stat2-sub">Sedang meminjam</div>
+          </div>
+          <div class="card stat-card2">
+            <div class="stat2-label">✅ Anggota Aktif</div>
+            <div class="stat2-value" id="stat-anggota">-</div>
+            <div class="stat2-sub">Terdaftar</div>
           </div>
         </div>
+        <!-- Hidden stat tunggak (masih dipakai di JS) -->
+        <div style="display:none" id="stat-tunggak">-</div>
       </div>
       <div class="card" id="member-dashboard" style="display:none">
         <div class="section-title">Ringkasan Akun Saya</div>

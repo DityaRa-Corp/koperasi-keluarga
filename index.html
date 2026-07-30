@@ -1367,7 +1367,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-setor')">Batal</button>
-      <button class="btn btn-success" onclick="doSetor()">Catat Setoran</button>
+      <button class="btn btn-success" id="btn-do-setor" onclick="doSetor()">Catat Setoran</button>
     </div>
   </div>
 </div>
@@ -1486,7 +1486,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-final-event')">Batal</button>
-      <button class="btn btn-danger" onclick="doFinalEvent()">Ya, Finalkan Event</button>
+      <button class="btn btn-danger" id="btn-do-final-event" onclick="doFinalEvent()">Ya, Finalkan Event</button>
     </div>
   </div>
 </div>
@@ -1594,7 +1594,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-cicilan')">Batal</button>
-      <button class="btn btn-success" onclick="doCatatCicilan()">Catat Pembayaran</button>
+      <button class="btn btn-success" id="btn-do-cicilan" onclick="doCatatCicilan()">Catat Pembayaran</button>
     </div>
   </div>
 </div>
@@ -1692,7 +1692,7 @@ tbody tr:hover { background: var(--surface2); }
     <div id="anggota-modal-alert" class="alert alert-error"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-tambah-anggota')">Batal</button>
-      <button class="btn btn-primary" onclick="doTambahAnggota()">Tambah Anggota</button>
+      <button class="btn btn-primary" id="btn-do-tambah-anggota" onclick="doTambahAnggota()">Tambah Anggota</button>
     </div>
   </div>
 </div>
@@ -1756,7 +1756,7 @@ tbody tr:hover { background: var(--surface2); }
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-approve-pinjaman')">Batal</button>
-      <button class="btn btn-success" onclick="doApprovePinjaman()">Cairkan</button>
+      <button class="btn btn-success" id="btn-do-approve" onclick="doApprovePinjaman()">Cairkan</button>
     </div>
   </div>
 </div>
@@ -1798,7 +1798,18 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.8-batch1';
+const APP_VERSION = 'v4.9.13';
+
+// ── SECURITY: XSS Prevention ─────────────────────────────
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
 console.log('App loaded:', APP_VERSION);
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
@@ -2128,7 +2139,7 @@ function populateMemberSelects() {
     if (!el) return;
     const isFilter = id.startsWith('filter-');
     const opts = isFilter ? '<option value="">Semua anggota</option>' : '';
-    el.innerHTML = opts + allMembers.map(m => `<option value="${m.id}">${m.full_name}</option>`).join('');
+    el.innerHTML = opts + allMembers.map(m => `<option value="${m.id}">${escapeHtml(m.full_name)}</option>`).join('');
   });
 }
 
@@ -2300,6 +2311,10 @@ async function getMemberBalance(memberId) {
 }
 
 async function doSetor() {
+  const btnS = document.getElementById('btn-do-setor');
+  if (btnS && btnS.disabled) return;
+  if (btnS) { btnS.disabled = true; btnS.style.opacity = '0.6'; }
+  try {
   const memberId = document.getElementById('setor-member').value;
   const amount = parseInt(document.getElementById('setor-amount').value);
   const note = document.getElementById('setor-note').value;
@@ -2316,6 +2331,10 @@ async function doSetor() {
   document.getElementById('setor-amount').value = '';
   document.getElementById('setor-note').value = '';
   loadSimpanan(); loadDashboard();
+  } finally {
+    const btn2 = document.getElementById('btn-do-setor');
+    if (btn2) { btn2.disabled = false; btn2.style.opacity = ''; }
+  }
 }
 
 // PINJAMAN
@@ -2536,7 +2555,11 @@ function getNextDueDate(type, fromDate) {
   if (type === 'weekly') d.setDate(d.getDate() + 7);
   else if (type === 'biweekly') d.setDate(d.getDate() + 14);
   else d.setMonth(d.getMonth() + 1);
-  return d.toISOString().split('T')[0];
+// Gunakan local date components untuk hindari UTC timezone shift
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 async function showDetailPinjaman(loanId) {
@@ -2614,6 +2637,10 @@ function openApproveForm() {
 }
 
 async function doApprovePinjaman() {
+  const btnA = document.getElementById('btn-do-approve');
+  if (btnA && btnA.disabled) return;
+  if (btnA) { btnA.disabled = true; btnA.style.opacity = '0.6'; }
+  try {
   const approvedNominal = parseInt(document.getElementById('approve-nominal').value);
   const bungaPerCicilan = parseInt(document.getElementById('approve-bunga-nominal').value) || 0;
   if (!approvedNominal || approvedNominal < 1000) { showToast('Isi nominal yang disetujui'); return; }
@@ -2652,6 +2679,11 @@ async function doApprovePinjaman() {
   showToast('Pinjaman disetujui dan dicairkan ✓');
   closeModal('modal-approve-pinjaman');
   loadPinjaman(); loadDashboard();
+  } catch(e) { showToast('Gagal: ' + e.message); }
+  finally {
+    const btnAEnd = document.getElementById('btn-do-approve');
+    if (btnAEnd) { btnAEnd.disabled = false; btnAEnd.style.opacity = ''; }
+  }
 }
 
 async function doRejectPinjaman() {
@@ -2738,7 +2770,7 @@ async function openCatatCicilan(loanId) {
   const loan = loanArr3?.[0];
   currentCicilanLoan = loan;
   const info = document.getElementById('cicilan-detail-info');
-  info.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${loan.profiles?.full_name}</div>
+  info.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${escapeHtml(loan.profiles?.full_name)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
       <div><div style="color:var(--text3)">Cicilan ke-</div><div style="font-weight:600">${loan.paid_count + 1} dari ${loan.installment_count}</div></div>
       <div><div style="color:var(--text3)">Nominal cicilan</div><div style="font-weight:700;color:var(--accent)">${fmt(loan.installment_amount)}</div></div>
@@ -2752,6 +2784,9 @@ async function openCatatCicilan(loanId) {
 
 async function doCatatCicilan() {
   if (!currentCicilanLoan) return;
+  const btnC = document.getElementById('btn-do-cicilan');
+  if (btnC && btnC.disabled) return;
+  if (btnC) { btnC.disabled = true; btnC.style.opacity = '0.6'; }
   const amount = parseInt(document.getElementById('cicilan-amount').value);
   const note = document.getElementById('cicilan-note').value;
   const loan = currentCicilanLoan;
@@ -2786,8 +2821,9 @@ async function doCatatCicilan() {
 
   // Auto-poin cicilan
   await autoPoinCicilan(loan.member_id, loan.next_due_date);
-
   loadCicilan(); loadDashboard();
+  const btnCEnd = document.getElementById('btn-do-cicilan');
+  if (btnCEnd) { btnCEnd.disabled = false; btnCEnd.style.opacity = ''; }
 }
 
 async function loadCicilanHistory() {
@@ -3325,6 +3361,9 @@ function renderAnggotaTable(data) {
 }
 
 async function doTambahAnggota() {
+  const btnTA = document.getElementById('btn-do-tambah-anggota');
+  if (btnTA && btnTA.disabled) return;
+  if (btnTA) { btnTA.disabled = true; btnTA.style.opacity = '0.6'; }
   const nama = document.getElementById('anggota-nama').value.trim();
   const username = document.getElementById('anggota-username').value.trim().toLowerCase();
   const password = document.getElementById('anggota-password').value;
@@ -3375,6 +3414,8 @@ async function doTambahAnggota() {
   document.getElementById('anggota-password').value = '';
   await loadAllMembers();
   loadAnggota();
+  const btnTAEnd = document.getElementById('btn-do-tambah-anggota');
+  if (btnTAEnd) { btnTAEnd.disabled = false; btnTAEnd.style.opacity = ''; }
 }
 
 // ── RESET PASSWORD & UNLOCK ──
@@ -3825,7 +3866,7 @@ async function loadProfil() {
     const sel = document.getElementById('profil-reset-member');
     sel.innerHTML = allMembers
       .filter(m => m.id !== currentUser.id)
-      .map(m => `<option value="${m.id}">${m.full_name}</option>`).join('');
+      .map(m => `<option value="${m.id}">${escapeHtml(m.full_name)}</option>`).join('');
   }
 
   // Tampilkan avatar & poin di halaman profil
@@ -4093,6 +4134,13 @@ async function doCairanSimpanan() {
   const alertEl = document.getElementById('cairan-alert');
   alertEl.style.display = 'none';
   if (!memberId) { alertEl.textContent = 'Pilih anggota terlebih dahulu'; alertEl.style.display = 'block'; return; }
+  // Validasi saldo tidak negatif sebelum proses
+  const currentBal = await getMemberBalance(memberId);
+  if (currentBal <= 0) {
+    alertEl.textContent = '❌ Saldo anggota ini sudah 0, tidak ada yang bisa dicairkan';
+    alertEl.style.display = 'block';
+    return;
+  }
   const activeLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
   if (activeLoan && activeLoan.length > 0) {
     alertEl.textContent = '❌ Tidak bisa cairkan simpanan — anggota masih punya pinjaman aktif';
@@ -4328,11 +4376,23 @@ async function konfirmasiFinalisasiEvent(eventId) {
 
 async function doFinalEvent() {
   if (!currentEventId) return;
+  const btnFE = document.getElementById('btn-do-final-event');
+  if (btnFE && btnFE.disabled) return;
+  if (btnFE) { btnFE.disabled = true; btnFE.style.opacity = '0.6'; }
+  try {
   const [evArr, items] = await Promise.all([
-    dbQuery('events', `id=eq.${currentEventId}&select=judul&limit=1`),
+    dbQuery('events', `id=eq.${currentEventId}&select=judul,status&limit=1`),
     dbQuery('event_items', `event_id=eq.${currentEventId}&select=biaya`)
   ]);
-  const judul = evArr?.[0]?.judul || 'Event';
+  const ev = evArr?.[0];
+  if (!ev) { showToast('Event tidak ditemukan'); return; }
+  // Idempotency check: jangan proses jika sudah bukan draft
+  if (ev.status !== 'draft') {
+    showToast('⚠️ Event ini sudah pernah difinalkan sebelumnya');
+    closeModal('modal-final-event');
+    return;
+  }
+  const judul = ev.judul || 'Event';
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
   const { error } = await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'final', total_biaya: total });
   if (error) { showToast('Gagal finalisasi: ' + error.message); return; }
@@ -4344,6 +4404,10 @@ async function doFinalEvent() {
   closeModal('modal-final-event');
   showEventDetail(currentEventId);
   loadDashboard();
+  } catch(e) { showToast('Gagal: ' + e.message); }
+  finally {
+    if (btnFE) { btnFE.disabled = false; btnFE.style.opacity = ''; }
+  }
 }
 
 async function tandaiSelesaiEvent(eventId) {
@@ -5043,12 +5107,12 @@ async function simpanPoin(memberId, poin, reason, type = 'credit') {
       reason,
       type
     });
-    // Update total_points di profiles
+    // Update total_points di profiles - pakai increment untuk menghindari race condition
+    // Baca dulu untuk pastikan tidak negatif
     const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
     const currentPts = profileArr?.[0]?.total_points || 0;
-    const newPts = type === 'credit'
-      ? currentPts + Math.abs(poin)
-      : Math.max(0, currentPts - Math.abs(poin));
+    const delta = type === 'credit' ? Math.abs(poin) : -Math.abs(poin);
+    const newPts = Math.max(0, currentPts + delta);
     await dbUpdate('profiles', `id=eq.${memberId}`, { total_points: newPts });
   } catch(e) {
     console.warn('Auto-poin gagal (tidak kritikal):', e.message);

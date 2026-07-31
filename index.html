@@ -11,33 +11,38 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg: #f3f4f9;
-  --surface: #ffffff;
-  --surface2: #eef0fb;
-  --border: #e2e4f0;
-  --border2: #d0d3e8;
-  --text: #1e2238;
-  --text2: #6b6e82;
-  --text3: #9b9ea6;
-  --accent: #2d3250;
-  --accent-bg: #e8eaf6;
-  --accent-text: #2d3250;
-  --green: #16a34a;
-  --green-bg: #f0fdf4;
-  --green-text: #15803d;
-  --red: #dc2626;
-  --red-bg: #fef2f2;
-  --red-text: #b91c1c;
-  --amber: #d97706;
-  --amber-bg: #fffbeb;
-  --amber-text: #b45309;
-  --purple: #7c3aed;
-  --purple-bg: #f5f3ff;
-  --purple-text: #6d28d9;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  /* ── Palet "Padi Menguning" ──
+     Lambang koperasi Indonesia adalah padi dan kapas. Padi berubah dari
+     hijau ke keemasan saat siap panen — hijau untuk yang tersimpan dan
+     tumbuh, keemasan untuk yang sudah berbuah. Nama variabelnya sengaja
+     dipertahankan agar seluruh komponen ikut berubah tanpa disentuh. */
+  --bg: #F2F5EC;          /* sekam  — putih dengan semburat hijau */
+  --surface: #ffffff;     /* kapas  */
+  --surface2: #E9EFDF;
+  --border: #DDE4D0;
+  --border2: #C5D1B2;
+  --text: #2A2B26;        /* tanah  */
+  --text2: #5C6B52;
+  --text3: #8B9682;
+  --accent: #1F7A4C;      /* daun   — warna utama, menggantikan navy */
+  --accent-bg: #E3F0E7;
+  --accent-text: #155635;
+  --green: #2E9E5B;       /* tunas  */
+  --green-bg: #E8F5EA;
+  --green-text: #1B6B3A;
+  --red: #C1462F;         /* bata   — tegas tapi tidak galak */
+  --red-bg: #FBEDE9;
+  --red-text: #9A3421;
+  --amber: #E8A317;       /* padi   — uang yang bekerja */
+  --amber-bg: #FDF4E0;
+  --amber-text: #9C6B08;
+  --purple: #2C6E7F;      /* senja  — pembeda peran admin */
+  --purple-bg: #E4F0F3;
+  --purple-text: #1D4E5B;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(42,43,38,0.06), 0 1px 3px rgba(42,43,38,0.04);
+  --shadow-md: 0 4px 14px rgba(31,122,76,0.10), 0 2px 5px rgba(42,43,38,0.05);
   --font: 'Plus Jakarta Sans', sans-serif;
   --mono: 'DM Mono', monospace;
   --sidebar-w: 240px;
@@ -108,9 +113,9 @@ html, body { height: 100%; font-family: var(--font); background: var(--bg); colo
   white-space: nowrap;
 }
 .btn-primary { background: var(--accent); color: white; }
-.btn-primary:hover { background: #1e2238; }
+.btn-primary:hover { background: #155635; }
 .btn-accent { background: var(--accent); color: white; }
-.btn-accent:hover { background: #1e2238; }
+.btn-accent:hover { background: #155635; }
 .btn-danger { background: var(--red-bg); color: var(--red-text); border: 1px solid #fecaca; }
 .btn-danger:hover { background: #fecaca; }
 .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
@@ -204,7 +209,7 @@ nav { flex: 1; padding: 8px; }
 .card-value.green { color: var(--green); }
 .card-value.red { color: var(--red); }
 .card-value.amber { color: var(--amber); }
-.card-value.blue { color: #2563eb; }
+.card-value.blue { color: var(--accent); }
 .card-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
 .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 0; }
 .stats-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -16px; padding: 0 16px 8px; }
@@ -354,67 +359,46 @@ tbody tr:hover { background: var(--surface2); }
 .auth-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   overflow: hidden;
+  /* ── Anyaman padi ──
+     Anyaman bambu ada di hampir setiap rumah, dan maknanya pas untuk
+     koperasi: helai yang saling mengunci jadi lebih kuat daripada
+     sendiri-sendiri. Latarnya menua dari hijau daun di atas ke
+     keemasan di bawah — padi yang menguning menjelang panen.
+     Seluruhnya CSS, tanpa gambar dan tanpa berkas dari luar. */
+  background-color: #14603A;
+  background-image:
+    repeating-linear-gradient(45deg,
+      rgba(255,255,255,0.075) 0 20px, transparent 20px 40px),
+    repeating-linear-gradient(-45deg,
+      rgba(232,163,23,0.14) 0 20px, transparent 20px 40px),
+    linear-gradient(168deg, #14603A 0%, #1F7A4C 42%, #3E8A44 72%, #7A8C25 100%);
+  background-size: 56px 56px, 56px 56px, 100% 100%;
+  animation: anyamanGeser 45s linear infinite;
 }
-.auth-wave {
-  position: absolute;
-  width: 200%;
-  bottom: 0;
-  left: -50%;
+@keyframes anyamanGeser {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to   { background-position: 56px 56px, -56px 56px, 0 0; }
 }
-.auth-wave svg {
-  display: block;
-  width: 100%;
-}
-.auth-wave-1 { animation: waveMove1 12s ease-in-out infinite; opacity: 0.45; bottom: -20px; }
-.auth-wave-2 { animation: waveMove2 16s ease-in-out infinite; opacity: 0.3; bottom: 30px; }
-.auth-wave-3 { animation: waveMove3 20s ease-in-out infinite; opacity: 0.2; bottom: 60px; }
-
-@keyframes waveMove1 {
-  0%, 100% { transform: translateX(0) scaleY(1); }
-  25% { transform: translateX(-3%) scaleY(1.02); }
-  50% { transform: translateX(-6%) scaleY(0.98); }
-  75% { transform: translateX(-2%) scaleY(1.01); }
-}
-@keyframes waveMove2 {
-  0%, 100% { transform: translateX(0) scaleY(1); }
-  33% { transform: translateX(4%) scaleY(1.03); }
-  66% { transform: translateX(-4%) scaleY(0.97); }
-}
-@keyframes waveMove3 {
-  0%, 100% { transform: translateX(0) scaleY(1); }
-  40% { transform: translateX(-5%) scaleY(1.02); }
-  80% { transform: translateX(3%) scaleY(0.98); }
+@media (prefers-reduced-motion: reduce) {
+  .auth-bg { animation: none; }
 }
 
-/* Floating orbs for extra depth */
-.auth-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  animation: orbFloat 8s ease-in-out infinite;
+/* Garis panen — batas tempat hijau berubah jadi emas */
+.auth-panen {
+  position: absolute; left: 0; right: 0; bottom: 26%;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%, rgba(232,163,23,0.55) 18%,
+    rgba(255,214,110,0.85) 50%, rgba(232,163,23,0.55) 82%, transparent 100%);
 }
-.auth-orb-1 {
-  width: 380px; height: 380px;
-  background: radial-gradient(circle, rgba(139,148,214,0.35) 0%, transparent 70%);
-  top: -80px; left: -60px;
-  animation-delay: 0s;
+
+/* Bulir padi — tiga rumpun samar sebagai kedalaman */
+.auth-bulir {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  opacity: 0.16;
 }
-.auth-orb-2 {
-  width: 280px; height: 280px;
-  background: radial-gradient(circle, rgba(163,170,224,0.25) 0%, transparent 70%);
-  top: 30%; right: -40px;
-  animation-delay: -3s;
-}
-.auth-orb-3 {
-  width: 200px; height: 200px;
-  background: radial-gradient(circle, rgba(120,130,200,0.2) 0%, transparent 70%);
-  bottom: 25%; left: 15%;
-  animation-delay: -5s;
-}
-@keyframes orbFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-20px) scale(1.05); }
-}
+.auth-bulir svg { display: block; width: 100%; height: auto; }
+
 .auth-layout {
   display: flex;
   width: 100%;
@@ -439,11 +423,11 @@ tbody tr:hover { background: var(--surface2); }
 }
 .auth-brand-logo {
   width: 80px; height: 80px;
-  background: #2d3250;
-  border-radius: 20px;
+  background: rgba(255,255,255,0.94);
+  border-radius: 22px;
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 20px;
-  box-shadow: 0 8px 32px rgba(45,50,80,0.25);
+  box-shadow: 0 10px 34px rgba(10,50,28,0.35);
 }
 .auth-brand-name {
   font-size: 32px;
@@ -451,11 +435,11 @@ tbody tr:hover { background: var(--surface2); }
   margin-bottom: 6px;
   letter-spacing: -0.5px;
 }
-.auth-brand-koperasi { color: #2d3250; }
-.auth-brand-keluarga { color: #9b9ea6; }
+.auth-brand-koperasi { color: #ffffff; }
+.auth-brand-keluarga { color: #FFD66E; }
 .auth-brand-tagline {
-  font-size: 14px;
-  color: #6b6e82;
+  font-size: 13px;
+  color: rgba(255,255,255,0.78);
   margin-bottom: 32px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -472,12 +456,12 @@ tbody tr:hover { background: var(--surface2); }
 .auth-card {
   width: 100%;
   max-width: 400px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(45,50,80,0.1);
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(255,255,255,0.5);
   border-radius: 20px;
   padding: 36px 32px;
-  box-shadow: 0 8px 40px rgba(45,50,80,0.12), 0 2px 8px rgba(45,50,80,0.06);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 48px rgba(10,50,28,0.28), 0 2px 8px rgba(10,50,28,0.12);
+  backdrop-filter: blur(10px);
 }
 .auth-card-logo {
   display: flex;
@@ -486,34 +470,57 @@ tbody tr:hover { background: var(--surface2); }
   margin-bottom: 28px;
 }
 .auth-card-logo-text { font-size: 18px; line-height: 1.2; }
-.auth-card-logo-sub { font-size: 11px; color: #9b9ea6; margin-top: 2px; letter-spacing: 0.04em; }
-.auth-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; color: #1e2238; }
-.auth-sub { font-size: 13px; color: #6b6e82; margin-bottom: 24px; }
+.auth-card-logo-sub { font-size: 11px; color: var(--text3); margin-top: 2px; letter-spacing: 0.04em; }
+.auth-title { font-size: 24px; font-weight: 700; margin-bottom: 6px; color: #155635; }
+.auth-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
 .auth-footer {
   margin-top: 24px;
   padding-top: 16px;
-  border-top: 1px solid #e8eaf6;
+  border-top: 1px solid var(--border);
   text-align: center;
 }
 .auth-footer-deploy {
   font-size: 11px;
-  color: #9b9ea6;
+  color: var(--text3);
   margin-bottom: 4px;
 }
-.auth-footer-deploy strong { color: #6b6e82; }
+.auth-footer-deploy strong { color: var(--text2); }
 .auth-footer-version {
   font-size: 10px;
-  color: #b0b3be;
+  color: var(--text3);
   letter-spacing: 0.04em;
 }
 
+/* ── IKON ──
+   Ditulis langsung di berkas ini, bukan dari layanan luar. Kita pernah
+   kehilangan seluruh tampilan waktu Chart.js gagal dimuat dari CDN.
+   Warnanya mengikuti teks di sekitarnya lewat currentColor. */
+.ico { width: 18px; height: 18px; flex-shrink: 0; vertical-align: -3px; }
+.ico-lg { width: 22px; height: 22px; }
+.section-title { display: flex; align-items: center; gap: 9px; }
+.stat2-label { display: flex; align-items: center; gap: 7px; }
+.ico-daun { color: var(--accent); }
+.ico-padi { color: var(--amber); }
+
+/* ── TIPOGRAFI ──
+   Plus Jakarta Sans punya rentang tebal 200–800 yang selama ini hanya
+   terpakai sebagian. Angka uang diberi tabular-nums supaya digitnya
+   sejajar antar baris — penting di tabel keuangan. */
+.card-value, .stat2-value, .lap-stat-value, .td-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.page-title { font-weight: 800; letter-spacing: -0.03em; }
+.section-title { font-weight: 700; letter-spacing: -0.01em; }
+.form-label { font-weight: 600; }
+
 /* ── SIDEBAR LOGO UPDATE ── */
 .sidebar-logo-icon {
-  background: #2d3250 !important;
+  background: #1F7A4C !important;
 }
-.sidebar-header { border-bottom: 1px solid #e8eaf6; }
-.nav-item.active { background: #2d3250 !important; color: white !important; }
-.nav-item:hover { background: #eef0fb !important; color: #2d3250 !important; }
+.sidebar-header { border-bottom: 1px solid var(--border); }
+.nav-item.active { background: #1F7A4C !important; color: white !important; }
+.nav-item:hover { background: var(--surface2) !important; color: #1F7A4C !important; }
 
 /* ── PAGE TRANSITIONS ── */
 .page {
@@ -628,7 +635,7 @@ tbody tr:hover { background: var(--surface2); }
 .print-header { display: none; }
 </style>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#2d3250">
+<meta name="theme-color" content="#1F7A4C">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KoperasiKeluarga">
@@ -637,24 +644,38 @@ tbody tr:hover { background: var(--surface2); }
 
 <!-- AUTH -->
 <div id="auth-screen">
-  <!-- Animated wave background -->
+  <!-- Latar anyaman padi -->
   <div class="auth-bg">
-    <div class="auth-orb auth-orb-1"></div>
-    <div class="auth-orb auth-orb-2"></div>
-    <div class="auth-orb auth-orb-3"></div>
-    <div class="auth-wave auth-wave-3">
-      <svg viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,100 C180,160 360,40 540,100 C720,160 900,40 1080,100 C1260,160 1350,80 1440,100 L1440,200 L0,200 Z" fill="rgba(139,148,214,0.18)"/>
-      </svg>
-    </div>
-    <div class="auth-wave auth-wave-2">
-      <svg viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,80 C240,150 480,20 720,90 C960,160 1200,30 1440,100 L1440,220 L0,220 Z" fill="rgba(120,130,200,0.22)"/>
-      </svg>
-    </div>
-    <div class="auth-wave auth-wave-1">
-      <svg viewBox="0 0 1440 240" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,120 C200,60 400,180 600,120 C800,60 1000,180 1200,120 C1320,80 1380,140 1440,120 L1440,240 L0,240 Z" fill="rgba(100,112,190,0.28)"/>
+    <div class="auth-panen"></div>
+    <div class="auth-bulir">
+      <svg viewBox="0 0 1440 260" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#FFE9A8" stroke-width="2.5" stroke-linecap="round">
+          <path d="M120 260 L120 120"/>
+          <path d="M120 138 q-26 -12 -34 -34 q26 4 34 26"/>
+          <path d="M120 138 q26 -12 34 -34 q-26 4 -34 26"/>
+          <path d="M120 172 q-26 -12 -34 -34 q26 4 34 26"/>
+          <path d="M120 172 q26 -12 34 -34 q-26 4 -34 26"/>
+          <path d="M120 206 q-26 -12 -34 -34 q26 4 34 26"/>
+          <path d="M120 206 q26 -12 34 -34 q-26 4 -34 26"/>
+
+          <path d="M720 260 L720 84"/>
+          <path d="M720 104 q-30 -14 -39 -39 q30 5 39 30"/>
+          <path d="M720 104 q30 -14 39 -39 q-30 5 -39 30"/>
+          <path d="M720 143 q-30 -14 -39 -39 q30 5 39 30"/>
+          <path d="M720 143 q30 -14 39 -39 q-30 5 -39 30"/>
+          <path d="M720 182 q-30 -14 -39 -39 q30 5 39 30"/>
+          <path d="M720 182 q30 -14 39 -39 q-30 5 -39 30"/>
+          <path d="M720 221 q-30 -14 -39 -39 q30 5 39 30"/>
+          <path d="M720 221 q30 -14 39 -39 q-30 5 -39 30"/>
+
+          <path d="M1310 260 L1310 132"/>
+          <path d="M1310 148 q-24 -11 -31 -31 q24 4 31 24"/>
+          <path d="M1310 148 q24 -11 31 -31 q-24 4 -31 24"/>
+          <path d="M1310 179 q-24 -11 -31 -31 q24 4 31 24"/>
+          <path d="M1310 179 q24 -11 31 -31 q-24 4 -31 24"/>
+          <path d="M1310 210 q-24 -11 -31 -31 q24 4 31 24"/>
+          <path d="M1310 210 q24 -11 31 -31 q-24 4 -31 24"/>
+        </g>
       </svg>
     </div>
   </div>
@@ -684,14 +705,14 @@ tbody tr:hover { background: var(--surface2); }
       <div class="auth-card">
         <div class="auth-card-logo">
           <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="4" y="16" width="40" height="28" rx="4" stroke="#2d3250" stroke-width="2.5" fill="none"/>
-            <path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="#2d3250" stroke-width="2.5" fill="none"/>
-            <line x1="4" y1="26" x2="44" y2="26" stroke="#2d3250" stroke-width="2"/>
-            <path d="M30 22l5 5-7 2 2-7z" fill="#2d3250"/>
-            <line x1="31" y1="23" x2="25" y2="29" stroke="#2d3250" stroke-width="1.5"/>
+            <rect x="4" y="16" width="40" height="28" rx="4" stroke="#1F7A4C" stroke-width="2.5" fill="none"/>
+            <path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="#1F7A4C" stroke-width="2.5" fill="none"/>
+            <line x1="4" y1="26" x2="44" y2="26" stroke="#1F7A4C" stroke-width="2"/>
+            <path d="M30 22l5 5-7 2 2-7z" fill="#1F7A4C"/>
+            <line x1="31" y1="23" x2="25" y2="29" stroke="#1F7A4C" stroke-width="1.5"/>
           </svg>
           <div>
-            <div class="auth-card-logo-text"><span style="color:#2d3250;font-weight:700">Koperasi</span><span style="color:#9b9ea6;font-weight:600">Keluarga</span></div>
+            <div class="auth-card-logo-text"><span style="color:#1F7A4C;font-weight:700">Koperasi</span><span style="color:#9b9ea6;font-weight:600">Keluarga</span></div>
             <div class="auth-card-logo-sub">Simpan &amp; Pinjam</div>
           </div>
         </div>
@@ -723,7 +744,7 @@ tbody tr:hover { background: var(--surface2); }
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">
-        <div class="sidebar-logo-icon" style="display:flex;align-items:center;justify-content:center;background:#2d3250;border-radius:8px;width:32px;height:32px;flex-shrink:0">
+        <div class="sidebar-logo-icon" style="display:flex;align-items:center;justify-content:center;background:#1F7A4C;border-radius:8px;width:32px;height:32px;flex-shrink:0">
           <svg width="20" height="20" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="4" y="16" width="40" height="28" rx="4" stroke="white" stroke-width="2.5" fill="none"/>
             <path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="white" stroke-width="2.5" fill="none"/>
@@ -732,7 +753,7 @@ tbody tr:hover { background: var(--surface2); }
           </svg>
         </div>
         <div style="line-height:1.2">
-          <span style="color:#2d3250;font-weight:700;font-size:13px">Koperasi</span><span style="color:#9b9ea6;font-weight:600;font-size:13px">Keluarga</span>
+          <span style="color:#1F7A4C;font-weight:700;font-size:13px">Koperasi</span><span style="color:#9b9ea6;font-weight:600;font-size:13px">Keluarga</span>
         </div>
       </div>
       <div class="sidebar-user">
@@ -826,10 +847,10 @@ tbody tr:hover { background: var(--surface2); }
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:24px;height:24px;background:#2d3250;border-radius:5px;display:flex;align-items:center;justify-content:center">
+        <div style="width:24px;height:24px;background:#1F7A4C;border-radius:5px;display:flex;align-items:center;justify-content:center">
           <svg width="14" height="14" viewBox="0 0 48 48" fill="none"><rect x="4" y="16" width="40" height="28" rx="4" stroke="white" stroke-width="3" fill="none"/><path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="white" stroke-width="3" fill="none"/><path d="M30 22l5 5-7 2 2-7z" fill="white"/></svg>
         </div>
-        <div style="font-size:14px;font-weight:700;color:#2d3250"><span>Koperasi</span><span style="color:#9b9ea6">Keluarga</span></div>
+        <div style="font-size:14px;font-weight:700;color:#1F7A4C"><span>Koperasi</span><span style="color:#9b9ea6">Keluarga</span></div>
       </div>
       <div style="width:30px"></div>
     </div>
@@ -850,9 +871,9 @@ tbody tr:hover { background: var(--surface2); }
               <div class="card-value blue" id="stat-kas" style="font-size:2rem;margin-bottom:14px">-</div>
               <div style="display:flex;gap:20px;flex-wrap:wrap" class="kas-breakdown">
                 <div style="display:flex;align-items:center;gap:8px">
-                  <div style="width:12px;height:12px;border-radius:3px;background:#2563eb;flex-shrink:0"></div>
+                  <div style="width:12px;height:12px;border-radius:3px;background:#E8A317;flex-shrink:0"></div>
                   <span style="font-size:13px;color:var(--text2)">Di dalam koperasi:</span>
-                  <span style="font-size:14px;font-weight:700;color:#2563eb" id="kas-dalam">-</span>
+                  <span style="font-size:14px;font-weight:700;color:var(--accent)" id="kas-dalam">-</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <div style="width:12px;height:12px;border-radius:3px;background:#f59e0b;flex-shrink:0"></div>
@@ -867,7 +888,7 @@ tbody tr:hover { background: var(--surface2); }
                 <span id="kas-pct-luar">-</span>
               </div>
               <div style="display:flex;border-radius:8px;overflow:hidden;height:14px;background:var(--surface2)">
-                <div id="kas-bar-dalam" style="background:#2563eb;transition:width 0.6s ease;width:100%"></div>
+                <div id="kas-bar-dalam" style="background:#E8A317;transition:width 0.6s ease;width:100%"></div>
                 <div id="kas-bar-luar" style="background:#f59e0b;transition:width 0.6s ease;width:0%"></div>
               </div>
               <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:5px">
@@ -880,22 +901,22 @@ tbody tr:hover { background: var(--surface2); }
         <!-- Stats Grid - 2 baris, 2 kolom, fit layar HP -->
         <div class="stats-grid-2" id="stats-grid">
           <div class="card stat-card2">
-            <div class="stat2-label">💰 Total Simpanan</div>
+            <div class="stat2-label"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8V6.5A2.5 2.5 0 0 0 17.5 4h-11A2.5 2.5 0 0 0 4 6.5v11A2.5 2.5 0 0 0 6.5 20h11a2.5 2.5 0 0 0 2.5-2.5V16"/><path d="M21 9.5h-4.5a2.5 2.5 0 0 0 0 5H21z"/></svg><span>Total simpanan</span></div>
             <div class="stat2-value green" id="stat-simpanan">-</div>
             <div class="stat2-sub">Saldo tersimpan</div>
           </div>
           <div class="card stat-card2">
-            <div class="stat2-label">📈 Keuntungan Bunga</div>
+            <div class="stat2-label"><svg class="ico ico-padi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V9"/><path d="M12 12c0-3.3-2.2-5.5-5.5-6 0 3.3 2.2 5.5 5.5 6z"/><path d="M12 10c0-3.3 2.2-5.5 5.5-6 0 3.3-2.2 5.5-5.5 6z"/></svg><span>Keuntungan bunga</span></div>
             <div class="stat2-value green" id="stat-bunga-masuk">-</div>
             <div class="stat2-sub">Tinggal di kas koperasi</div>
           </div>
           <div class="card stat-card2">
-            <div class="stat2-label">👥 Peminjam Aktif</div>
+            <div class="stat2-label"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2A3.2 3.2 0 0 1 16 14"/><path d="M17.5 14.8c2.1.7 3.5 2.5 3.5 5.2"/></svg><span>Peminjam aktif</span></div>
             <div class="stat2-value amber" id="stat-peminjam-aktif">-</div>
             <div class="stat2-sub">Sedang meminjam</div>
           </div>
           <div class="card stat-card2">
-            <div class="stat2-label">✅ Anggota Aktif</div>
+            <div class="stat2-label"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></svg><span>Anggota aktif</span></div>
             <div class="stat2-value" id="stat-anggota">-</div>
             <div class="stat2-sub">Terdaftar</div>
           </div>
@@ -912,23 +933,23 @@ tbody tr:hover { background: var(--surface2); }
       </div>
       <!-- Grafik Tren - full width -->
       <div class="card" style="margin-top:14px">
-        <div class="section-title">📈 Tren Simpanan & Cicilan (6 Bulan)</div>
+        <div class="section-title"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 7-7"/><path d="M14 9h5v5"/></svg><span>Tren simpanan &amp; cicilan (6 bulan)</span></div>
         <div id="chart-tren" style="height:180px;display:flex;align-items:flex-end;gap:4px;padding:8px 0"></div>
         <div id="chart-tren-legend" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text2)">
-          <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:2px;margin-right:4px"></span>Simpanan</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:4px"></span>Cicilan</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#2E9E5B;border-radius:2px;margin-right:4px"></span>Simpanan</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#E8A317;border-radius:2px;margin-right:4px"></span>Cicilan</span>
         </div>
       </div>
 
       <!-- Grafik Per Anggota - full width, admin only -->
       <div class="card admin-only" style="margin-top:14px;display:none">
-        <div class="section-title">👥 Simpanan per Anggota</div>
+        <div class="section-title"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.2A3.2 3.2 0 0 1 16 14"/><path d="M17.5 14.8c2.1.7 3.5 2.5 3.5 5.2"/></svg><span>Simpanan per anggota</span></div>
         <div id="chart-per-anggota" style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0;min-height:80px;align-items:center"></div>
       </div>
 
       <!-- Kalkulator Simulasi Pinjaman - full width di bawah grafik -->
       <div class="card" style="margin-top:14px">
-        <div class="section-title">🧮 Kalkulator Simulasi Pinjaman</div>
+        <div class="section-title"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/></svg><span>Kalkulator simulasi pinjaman</span></div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px" id="kalk-input-grid">
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label" style="font-size:11px">Pokok Pinjaman</label>
@@ -1029,7 +1050,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-sub">Catat pembayaran cicilan pinjaman</div>
       </div>
       <div class="card" style="margin-bottom:14px" id="tunggak-card">
-        <div class="section-title">⚡ Cicilan Aktif</div>
+        <div class="section-title"><svg class="ico ico-padi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M9 15l2 2 4-4"/></svg><span>Cicilan aktif</span></div>
         <div id="cicilan-tunggak"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div class="card">
@@ -1122,12 +1143,12 @@ tbody tr:hover { background: var(--surface2); }
       </div>
 
       <div id="anggota-tab-log" class="card">
-        <div class="section-title">📋 Log Aktivitas Admin</div>
+        <div class="section-title"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 3.5h6v3H9z"/><path d="M9 11h6M9 15h4"/></svg><span>Log aktivitas admin</span></div>
         <div id="activity-log-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div id="anggota-tab-poin" class="card" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div class="section-title" style="margin-bottom:0">⭐ Papan Poin Anggota</div>
+          <div class="section-title" style="margin-bottom:0"><svg class="ico ico-padi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.5"/><path d="M8.5 13.5L7 21l5-2.5L17 21l-1.5-7.5"/></svg><span>Papan poin anggota</span></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="poinAktifBulanan()">📅 Poin Aktif Bulanan</button>
             <button class="btn btn-danger btn-sm" onclick="resetPoinTahunan()">🔄 Reset Tahunan</button>
@@ -1138,7 +1159,7 @@ tbody tr:hover { background: var(--surface2); }
         <div id="poin-history"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div id="anggota-tab-edit" class="card" style="display:none">
-        <div class="section-title">✏️ Log Perubahan Data Anggota</div>
+        <div class="section-title"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.4 2.4 0 0 0-3.4-3.4L4.6 16.6z"/><path d="M14.5 6.5l3 3"/></svg><span>Log perubahan data anggota</span></div>
         <div class="table-wrap"><div id="anggota-edit-log"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
@@ -1174,7 +1195,7 @@ tbody tr:hover { background: var(--surface2); }
 
       <!-- Backup -->
       <div class="card" style="margin-bottom:14px">
-        <div class="section-title">💾 Backup Data</div>
+        <div class="section-title"><svg class="ico ico-daun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M8 11l4 4 4-4"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg><span>Backup data</span></div>
         <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Export seluruh data koperasi ke file Excel. Simpan file ini di tempat aman sebagai cadangan.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div class="card" style="padding:14px;background:var(--surface2)">
@@ -1209,7 +1230,7 @@ tbody tr:hover { background: var(--surface2); }
 
       <!-- Restore -->
       <div class="card">
-        <div class="section-title">📥 Restore Data</div>
+        <div class="section-title"><svg class="ico ico-padi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9"/><path d="M8 12l4-4 4 4"/><path d="M4 6V4.5A1.5 1.5 0 0 1 5.5 3h13A1.5 1.5 0 0 1 20 4.5V6"/></svg><span>Restore data</span></div>
         <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
           ⚠️ <strong>Perhatian:</strong> Saat ini restore baru memulihkan sheet <strong>Simpanan</strong> saja. Sheet Pinjaman, Cicilan, Event, dan Poin belum dipulihkan otomatis. Data yang sudah ada tidak akan dihapus. Pastikan file backup berasal dari aplikasi ini.
         </div>
@@ -1829,16 +1850,16 @@ tbody tr:hover { background: var(--surface2); }
 <div id="toast"></div>
 
 <!-- Idle Warning -->
-<div id="idle-warning" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9998;background:#1e2238;color:white;padding:16px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);align-items:center;gap:16px;min-width:320px;max-width:420px">
+<div id="idle-warning" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9998;background:#155635;color:white;padding:16px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);align-items:center;gap:16px;min-width:320px;max-width:420px">
   <div style="flex:1">
     <div style="font-weight:600;margin-bottom:2px">⏰ Sesi hampir berakhir</div>
     <div style="font-size:12px;color:rgba(255,255,255,0.7)">Anda akan otomatis logout dalam 5 menit karena tidak aktif.</div>
   </div>
-  <button onclick="resetIdleTimer()" style="background:#2d3250;border:1px solid rgba(255,255,255,0.2);color:white;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap;font-family:var(--font)">Tetap Login</button>
+  <button onclick="resetIdleTimer()" style="background:#1F7A4C;border:1px solid rgba(255,255,255,0.2);color:white;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;white-space:nowrap;font-family:var(--font)">Tetap Login</button>
 </div>
 
 <script>
-const APP_VERSION = 'v4.17.0';
+const APP_VERSION = 'v5.0.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5464,8 +5485,8 @@ async function loadDashboardCharts(savings, memberBalances) {
     barsHTML += `
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
         <div style="display:flex;align-items:flex-end;gap:2px;height:${chartH}px">
-          <div title="${fmt(s)}" style="width:${barW}px;height:${sH}px;background:#16a34a;border-radius:3px 3px 0 0;min-height:${s>0?2:0}px;cursor:pointer"></div>
-          <div title="${fmt(c)}" style="width:${barW}px;height:${cH}px;background:#2563eb;border-radius:3px 3px 0 0;min-height:${c>0?2:0}px;cursor:pointer"></div>
+          <div title="${fmt(s)}" style="width:${barW}px;height:${sH}px;background:#2E9E5B;border-radius:3px 3px 0 0;min-height:${s>0?2:0}px;cursor:pointer"></div>
+          <div title="${fmt(c)}" style="width:${barW}px;height:${cH}px;background:#E8A317;border-radius:3px 3px 0 0;min-height:${c>0?2:0}px;cursor:pointer"></div>
         </div>
         <div style="font-size:10px;color:var(--text3);text-align:center;white-space:nowrap">${labels6[i]}</div>
       </div>`;
@@ -5479,7 +5500,7 @@ async function loadDashboardCharts(savings, memberBalances) {
   const elAnggota = document.getElementById('chart-per-anggota');
   if (!elAnggota) return;
 
-  const colors = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'];
+  const colors = ['#1F7A4C','#E8A317','#2E9E5B','#C1462F','#2C6E7F','#8B6B3D'];
   const profiles = await dbQuery('profiles', 'select=id,full_name,avatar_url&order=full_name.asc');
   const items = (profiles || []).map(p => ({ id: p.id, name: p.full_name.split(' ')[0], fullName: p.full_name, avatar: p.avatar_url, saldo: memberBalances[p.id] || 0 })).filter(x => x.saldo > 0);
   const maxSaldo = Math.max(...items.map(x => x.saldo), 1);
@@ -5805,8 +5826,8 @@ function cetakLaporan() {
     document.body.prepend(printHeader);
   }
   printHeader.innerHTML = `
-    <div style="text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #2d3250">
-      <div style="font-size:22px;font-weight:700;color:#2d3250">KoperasiKeluarga</div>
+    <div style="text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1F7A4C">
+      <div style="font-size:22px;font-weight:700;color:#1F7A4C">KoperasiKeluarga</div>
       <div style="font-size:14px;color:#666">Simpan & Pinjam Keluarga</div>
       <div style="font-size:13px;margin-top:6px">${dateRange}</div>
       <div style="font-size:11px;color:#999">Dicetak: ${now.toLocaleString('id-ID')}</div>

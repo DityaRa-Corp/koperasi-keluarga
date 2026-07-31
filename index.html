@@ -613,17 +613,48 @@ tbody tr:hover { background: var(--surface2); }
 }
 /* ── Print styles ── */
 @media print {
+  /* Ukuran & orientasi kertas.
+     Laporan Pinjaman punya 14 kolom — pada A4 tegak, kolomnya pasti
+     terpotong. Mendatar memberi ruang yang cukup untuk semua tab, dan
+     ini juga berlaku saat menyimpan sebagai PDF lewat dialog cetak. */
+  @page { size: A4 landscape; margin: 12mm 10mm 14mm 10mm; }
+
   .sidebar, .page-header .page-actions, .tabs, .btn, .filter-input,
   #laporan-date-from, #laporan-date-to, .modal-overlay,
-  button, .hamburger, .nav-item, .sidebar-footer { display: none !important; }
-  .main-content { margin: 0 !important; padding: 0 !important; }
+  button, .hamburger, .nav-item, .sidebar-footer,
+  .mobile-header, .sidebar-overlay { display: none !important; }
+
+  .main-content, .main { margin: 0 !important; padding: 0 !important; }
   .page { padding: 0 !important; display: block !important; }
-  .card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
-  body { background: white !important; font-size: 12px; }
-  table { font-size: 11px; }
-  th, td { padding: 4px 6px !important; }
+  .card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: auto; }
+  body { background: white !important; font-size: 11px; color: #000; }
+
+  /* Tabel boleh terpecah antar halaman, tetapi barisnya tidak boleh
+     terbelah di tengah, dan judul kolomnya diulang di setiap halaman —
+     tanpa ini halaman kedua dan seterusnya jadi deretan angka tanpa nama. */
+  table { font-size: 10px; width: 100% !important; border-collapse: collapse; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+  tr, .lap-stat { break-inside: avoid; page-break-inside: avoid; }
+  th, td { padding: 3px 5px !important; border: 1px solid #ddd; }
+  th { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Kolom keterangan yang panjang dibatasi agar tidak mendorong kolom lain
+     keluar halaman; sisanya dipotong dengan elipsis. */
+  .table-wrap { overflow: visible !important; }
+  .table-wrap table { min-width: 0 !important; }
+  td { word-break: break-word; }
+
+  /* Warna latar lencana dan angka tetap tercetak, bukan jadi putih polos */
+  .badge, .lap-stat-value, .card-value {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
   .print-header { display: block !important; }
   #print-area { display: block !important; }
+
+  /* Ringkasan angka tetap menyatu, tidak terbelah antar halaman */
+  .laporan-summary { break-inside: avoid; page-break-inside: avoid; }
 }
 .print-header { display: none; }
 </style>
@@ -1838,7 +1869,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.17.1';
+const APP_VERSION = 'v4.18.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3505,6 +3536,54 @@ async function loadCicilanHistory() {
 }
 
 // LAPORAN
+// Menyusun baris kepala yang sama untuk setiap sheet Excel: nama koperasi,
+// judul laporan, periode yang sedang difilter, dan waktu pembuatan. Tanpa ini
+// berkas yang sudah diunduh tidak bisa dipertanggungjawabkan — tidak ada yang
+// tahu isinya periode kapan.
+// Laporan harus membedakan "memang tidak ada transaksi" dari "gagal memuat".
+// Selama ini keduanya tampil sama: tabel kosong. Admin bisa menyimpulkan
+// koperasinya tidak punya transaksi padahal sebenarnya koneksinya putus.
+function laporanKosong(pesan) {
+  return `<div class="empty-state">
+    <div class="empty-state-title">Tidak ada data pada periode ini</div>
+    <div class="empty-state-sub">${escapeHtml(pesan || 'Coba ubah rentang tanggalnya, atau pilih "Semua".')}</div>
+  </div>`;
+}
+function laporanGagal() {
+  return `<div class="empty-state">
+    <div class="empty-state-title" style="color:var(--red)">Gagal memuat laporan</div>
+    <div class="empty-state-sub">Periksa koneksi internet lalu muat ulang halaman. Angka yang tampil sebelumnya mungkin sudah tidak berlaku.</div>
+  </div>`;
+}
+
+function kepalaSheet(judul, periode) {
+  return [
+    ['KOPERASI KELUARGA'],
+    [judul],
+    ['Periode: ' + periode],
+    ['Dicetak: ' + new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })],
+    []
+  ];
+}
+
+// Keterangan periode yang sedang aktif, dipakai di kepala sheet dan nama berkas.
+function periodeAktif() {
+  const from = document.getElementById('laporan-date-from')?.value;
+  const to   = document.getElementById('laporan-date-to')?.value;
+  if (from && to) return fmtDate(from) + ' s/d ' + fmtDate(to);
+  if (from)       return 'Mulai ' + fmtDate(from);
+  if (to)         return 'Sampai ' + fmtDate(to);
+  return 'Semua periode';
+}
+
+// Menambahkan baris kosong lalu baris TOTAL di bawah tabel.
+function barisTotal(label, kolomKe, nilai, jumlahKolom) {
+  const baris = new Array(jumlahKolom).fill('');
+  baris[0] = label;
+  kolomKe.forEach((k, idx) => { baris[k] = nilai[idx]; });
+  return [[], baris];
+}
+
 async function exportLaporan() {
   showToast('Menyiapkan Excel...');
   try {
@@ -3512,9 +3591,17 @@ async function exportLaporan() {
     const now = new Date();
     const dateStr = now.toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g,'-');
 
+    // Berkas yang diunduh HARUS mengikuti rentang tanggal yang sedang dipilih.
+    // Sebelumnya seluruh query di sini mengabaikannya, sehingga admin yang
+    // memfilter "Bulan Ini" tetap menerima berkas berisi seluruh riwayat —
+    // dan tidak ada keterangan periode di dalamnya.
+    const dateFilter  = getLaporanDateFilter();
+    const dateFilterD = dateFilter.replace(/created_at/g, 'disbursed_at');
+    const periode     = periodeAktif();
+
     // ── Sheet 1: Simpanan ──
     const [savings, members] = await Promise.all([
-      dbQuery('savings', 'select=member_id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name)&order=created_at.desc'),
+      dbQuery('savings', `select=member_id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`),
       dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc')
     ]);
     const balances = {};
@@ -3526,7 +3613,8 @@ async function exportLaporan() {
       else balances[s.member_id].withdraw += Number(s.amount);
       balances[s.member_id].last = s.created_at;
     });
-    const simpRows = [['No', 'Nama Anggota', 'Total Setor (Rp)', 'Total Tarik (Rp)', 'Saldo (Rp)', 'Transaksi Terakhir']];
+    const simpRows = kepalaSheet('LAPORAN SALDO SIMPANAN ANGGOTA', periode);
+    simpRows.push(['No', 'Nama Anggota', 'Total Setor (Rp)', 'Total Tarik (Rp)', 'Saldo (Rp)', 'Transaksi Terakhir']);
     Object.values(balances).forEach((r, i) => {
       simpRows.push([i+1, r.name, r.deposit, r.withdraw, r.deposit - r.withdraw, r.last ? new Date(r.last).toLocaleDateString('id-ID') : '-']);
     });
@@ -3535,27 +3623,34 @@ async function exportLaporan() {
     XLSX.utils.book_append_sheet(wb, wsSimpanan, 'Simpanan');
 
     // ── Sheet 2: Riwayat Simpanan ──
-    const savingsDetail = await dbQuery('savings', 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc');
-    const simpDetailRows = [['Tanggal', 'Nama Anggota', 'Jenis', 'Jumlah (Rp)', 'Saldo Setelah (Rp)', 'Keterangan']];
+    const savingsDetail = await dbQuery('savings', `select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
+    const simpDetailRows = kepalaSheet('RIWAYAT TRANSAKSI SIMPANAN', periode);
+    simpDetailRows.push(['Tanggal', 'Nama Anggota', 'Jenis', 'Status', 'Jumlah (Rp)', 'Saldo Setelah (Rp)', 'Keterangan']);
     (savingsDetail||[]).forEach(s => {
+      // Baris yang sudah dikoreksi tetap ditampilkan demi jejak audit, tetapi
+      // diberi status agar kolom Jumlah tidak dijumlahkan mentah-mentah.
+      const status = s.is_reversed ? 'Dikoreksi (tidak dihitung)'
+                   : (s.corrects_id ? 'Baris koreksi' : 'Berlaku');
       simpDetailRows.push([
         new Date(s.created_at).toLocaleDateString('id-ID'),
         s.profiles?.full_name || '-',
         s.type === 'deposit' ? 'Setor' : 'Tarik',
+        status,
         Number(s.amount),
         Number(s.balance_after),
         s.note || '-'
       ]);
     });
     const wsSimpDetail = XLSX.utils.aoa_to_sheet(simpDetailRows);
-    wsSimpDetail['!cols'] = [{wch:15},{wch:25},{wch:10},{wch:18},{wch:18},{wch:30}];
+    wsSimpDetail['!cols'] = [{wch:15},{wch:25},{wch:10},{wch:24},{wch:18},{wch:18},{wch:34}];
     XLSX.utils.book_append_sheet(wb, wsSimpDetail, 'Riwayat Simpanan');
 
     // ── Sheet 3: Pinjaman ──
-    const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc');
+    const loans = await dbQuery('loans', `select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
     const typeLabel = { weekly:'Mingguan', biweekly:'2 Mingguan', monthly:'Bulanan' };
     const statusLabel = { active:'Aktif', pending:'Menunggu', completed:'Lunas', rejected:'Ditolak' };
-    const pinjamanRows = [['No. Pinjaman','Anggota','Tgl Cair','Pokok (Rp)','Bunga %','Total Bunga (Rp)','Total Tagihan (Rp)','Jenis Cicilan','Cicilan/Periode (Rp)','Dibayar (Rp)','Sisa (Rp)','Jatuh Tempo','Status']];
+    const pinjamanRows = kepalaSheet('LAPORAN PINJAMAN', periode);
+    pinjamanRows.push(['No. Pinjaman','Anggota','Tgl Cair','Pokok (Rp)','Bunga %','Total Bunga (Rp)','Total Tagihan (Rp)','Jenis Cicilan','Cicilan/Periode (Rp)','Dibayar (Rp)','Sisa (Rp)','Jatuh Tempo','Status']);
     (loans||[]).forEach(l => {
       pinjamanRows.push([
         l.id.substring(0,8),
@@ -3578,8 +3673,9 @@ async function exportLaporan() {
     XLSX.utils.book_append_sheet(wb, wsPinjaman, 'Pinjaman');
 
     // ── Sheet 4: Cicilan ──
-    const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.desc');
-    const cicilanRows = [['Tanggal','Anggota','Pembayaran Ke-','Dibayar (Rp)','Komponen Pokok (Rp)','Komponen Bunga (Rp)','Sisa Tagihan (Rp)','Keterangan']];
+    const payments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.desc${dateFilter}`);
+    const cicilanRows = kepalaSheet('LAPORAN PEMBAYARAN CICILAN', periode);
+    cicilanRows.push(['Tanggal','Anggota','Pembayaran Ke-','Dibayar (Rp)','Komponen Pokok (Rp)','Komponen Bunga (Rp)','Sisa Tagihan (Rp)','Keterangan']);
     (payments||[]).forEach(p => {
       cicilanRows.push([
         new Date(p.created_at).toLocaleDateString('id-ID'),
@@ -3599,10 +3695,10 @@ async function exportLaporan() {
     // ── Sheet 5: Jurnal Kas (admin only) ──
     if (isAdmin()) {
       const [savJ, payJ, loanJ, expJ] = await Promise.all([
-        dbQuery('savings', 'select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc'),
-        dbQuery('loan_payments', 'select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.asc'),
-        dbQuery('loans', 'select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc'),
-        dbQuery('org_expenses', 'select=description,amount,created_at&order=created_at.asc')
+        dbQuery('savings', `select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
+        dbQuery('loan_payments', `select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.asc${dateFilter}`),
+        dbQuery('loans', `select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilterD}`),
+        dbQuery('org_expenses', `select=description,amount,created_at&order=created_at.asc${dateFilter}`)
       ]);
       const jEntries = [];
       (savJ||[]).forEach(s => jEntries.push({ date: new Date(s.created_at), ket: `${s.type==='deposit'?'Setoran Simpanan':'Penarikan Simpanan'} — ${s.profiles?.full_name||'-'}${s.note?' ('+s.note+')':''}`, masuk: s.type==='deposit'?Number(s.amount):0, keluar: s.type==='withdraw'?Number(s.amount):0 }));
@@ -3611,7 +3707,8 @@ async function exportLaporan() {
       (expJ||[]).forEach(e => jEntries.push({ date: new Date(e.created_at), ket: `Pengeluaran Kas — ${e.description||'-'}`, masuk: 0, keluar: Number(e.amount) }));
       jEntries.sort((a,b) => a.date - b.date);
       let jSaldo = 0;
-      const jurnalRows = [['Tanggal','Keterangan','Uang Masuk (Rp)','Uang Keluar (Rp)','Saldo Kas (Rp)']];
+      const jurnalRows = kepalaSheet('JURNAL KAS KOPERASI', periode);
+    jurnalRows.push(['Tanggal','Keterangan','Uang Masuk (Rp)','Uang Keluar (Rp)','Saldo Kas (Rp)']);
       jEntries.forEach(e => { jSaldo += e.masuk - e.keluar; jurnalRows.push([e.date.toLocaleDateString('id-ID'), e.ket, e.masuk||'', e.keluar||'', jSaldo]); });
       jurnalRows.push(['','TOTAL', jEntries.reduce((a,e)=>a+e.masuk,0), jEntries.reduce((a,e)=>a+e.keluar,0), jSaldo]);
       const wsJurnal = XLSX.utils.aoa_to_sheet(jurnalRows);
@@ -3621,9 +3718,10 @@ async function exportLaporan() {
 
     // ── Sheet 5: Adjustment (admin only) ──
     if (isAdmin()) {
-      const adjustments = await dbQuery('adjustments', 'select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc');
+      const adjustments = await dbQuery('adjustments', `select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
       const adjTypeLabel = { savings:'Simpanan', loan:'Pinjaman', installment:'Cicilan' };
-      const adjRows = [['Tanggal','Anggota','Jenis Koreksi','Nilai Sebelum (Rp)','Nilai Sesudah (Rp)','Selisih (Rp)','Alasan','Admin']];
+      const adjRows = kepalaSheet('LOG PERUBAHAN DATA', periode);
+    adjRows.push(['Tanggal','Anggota','Jenis Koreksi','Nilai Sebelum (Rp)','Nilai Sesudah (Rp)','Selisih (Rp)','Alasan','Admin']);
       (adjustments||[]).forEach(a => {
         adjRows.push([
           new Date(a.created_at).toLocaleDateString('id-ID'),
@@ -3642,7 +3740,8 @@ async function exportLaporan() {
     }
 
     // ── Download ──
-    XLSX.writeFile(wb, `Laporan_Koperasi_Keluarga_${dateStr}.xlsx`);
+    const labelPeriode = periode.replace(/[^0-9A-Za-z]+/g, '-').replace(/^-|-$/g, '');
+    XLSX.writeFile(wb, `Laporan-KoperasiKeluarga_${labelPeriode}_dibuat-${dateStr}.xlsx`);
     showToast('Excel berhasil didownload ✓');
   } catch(e) {
     showToast('Gagal export: ' + e.message);
@@ -3739,6 +3838,9 @@ async function renderLaporanSimpanan() {
     dbQuery('savings', savingsQ),
     dbQuery('profiles', membersQ)
   ]);
+  if (savings === null || members === null) {
+    document.getElementById('laporan-content').innerHTML = laporanGagal(); return;
+  }
   const balances = {};
   (members || []).forEach(m => balances[m.id] = { name: m.full_name, deposit: 0, withdraw: 0, last: null });
   // Also add members from savings that might not be in profiles query
@@ -3770,9 +3872,14 @@ async function renderLaporanSimpanan() {
 }
 
 async function renderLaporanPinjaman() {
-  let loanQ = 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc';
+  // Tab ini sebelumnya mengabaikan rentang tanggal: memilih "Bulan Ini" tetap
+  // menampilkan seluruh pinjaman sejak koperasi berdiri, sementara tab lain
+  // ikut tersaring. Angkanya jadi tidak bisa dibandingkan antar tab.
+  const dateFilter = getLaporanDateFilter();
+  let loanQ = `select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`;
   if (!isAdmin()) loanQ += `&member_id=eq.${currentUser.id}`;
   const loans = await dbQuery('loans', loanQ);
+  if (loans === null) { document.getElementById('laporan-content').innerHTML = laporanGagal(); return; }
   const active = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = active.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
@@ -3810,6 +3917,7 @@ async function renderLaporanCicilan() {
   let cicQ = `select=*,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.desc${dateFilter}`;
   if (!isAdmin()) cicQ += `&member_id=eq.${currentUser.id}`;
   const data = await dbQuery('loan_payments', cicQ);
+  if (data === null) { document.getElementById('laporan-content').innerHTML = laporanGagal(); return; }
   const totalDibayar = (data || []).reduce((a, p) => a + Number(p.amount_paid), 0);
   document.getElementById('laporan-content').innerHTML = `
     <div class="laporan-summary">
@@ -3834,6 +3942,7 @@ async function renderLaporanCicilan() {
 async function renderLaporanAdjustment() {
   const dateFilter = getLaporanDateFilter();
   const data = await dbQuery('adjustments', `select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
+  if (data === null) { document.getElementById('laporan-content').innerHTML = laporanGagal(); return; }
   const typeLabel = { savings: 'Simpanan', loan: 'Pinjaman', installment: 'Cicilan' };
   document.getElementById('laporan-content').innerHTML = `
     <div class="table-wrap"><table>

@@ -1869,7 +1869,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.18.0';
+const APP_VERSION = 'v4.18.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3789,14 +3789,29 @@ function bulanLokal(isoString) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// Batas awal & akhir bulan dalam waktu lokal, siap dipakai di query
+// Mengubah waktu lokal (WIB) menjadi penanda waktu UTC berakhiran Z.
+//
+// PENTING: hasilnya TIDAK BOLEH mengandung tanda "+". Di dalam query string,
+// "+" dibaca sebagai spasi, sehingga batas seperti
+//     created_at=gte.2026-06-01T00:00:00+07:00
+// sampai ke server sebagai "2026-06-01T00:00:00 07:00" — bukan tanggal yang
+// sah — dan seluruh permintaannya ditolak. Menuliskannya sebagai UTC
+// menghilangkan tanda itu sekaligus, tanpa bergantung pada penyandian URL.
+function waktuLokalKeUTC(tanggal, jam) {
+  if (!tanggal) return null;
+  const d = new Date(`${tanggal}T${jam}${TZ_OFFSET}`);
+  return isNaN(d) ? null : d.toISOString();
+}
+
+// Batas awal & akhir bulan dalam waktu lokal, sudah dalam bentuk UTC
 function batasBulan(bulan) {
   const [y, m] = bulan.split('-').map(Number);
   const nextY = m === 12 ? y + 1 : y;
   const nextM = m === 12 ? 1 : m + 1;
+  const bulanBerikut = `${nextY}-${String(nextM).padStart(2, '0')}`;
   return {
-    dari:   `${bulan}-01T00:00:00${TZ_OFFSET}`,
-    sampai: `${nextY}-${String(nextM).padStart(2, '0')}-01T00:00:00${TZ_OFFSET}`
+    dari:   waktuLokalKeUTC(`${bulan}-01`, '00:00:00'),
+    sampai: waktuLokalKeUTC(`${bulanBerikut}-01`, '00:00:00')
   };
 }
 
@@ -3804,8 +3819,10 @@ function getLaporanDateFilter() {
   const from = document.getElementById('laporan-date-from')?.value;
   const to   = document.getElementById('laporan-date-to')?.value;
   let q = '';
-  if (from) q += `&created_at=gte.${from}T00:00:00${TZ_OFFSET}`;
-  if (to)   q += `&created_at=lte.${to}T23:59:59${TZ_OFFSET}`;
+  const dari   = waktuLokalKeUTC(from, '00:00:00');
+  const sampai = waktuLokalKeUTC(to,   '23:59:59');
+  if (dari)   q += `&created_at=gte.${dari}`;
+  if (sampai) q += `&created_at=lte.${sampai}`;
   return q;
 }
 
@@ -4205,7 +4222,7 @@ async function doTambahAnggota() {
   if (password.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
 
   // Cek username unik
-  const existingUser = await dbQuery('profiles', `username=eq.${username}&select=id&limit=1`);
+  const existingUser = await dbQuery('profiles', `username=eq.${encodeURIComponent(username)}&select=id&limit=1`);
   if (existingUser && existingUser.length > 0) { alertEl.textContent = 'Username sudah digunakan, pilih username lain.'; alertEl.style.display = 'block'; return; }
 
   // Generate email dummy dari username (tidak perlu valid, confirm email dimatikan)
@@ -4372,7 +4389,7 @@ async function doEditAnggota() {
 
   // Check username uniqueness (if changed)
   if (username && username !== editAnggotaOriginal.username) {
-    const existingUser = await dbQuery('profiles', `username=eq.${username}&select=id&limit=1`);
+    const existingUser = await dbQuery('profiles', `username=eq.${encodeURIComponent(username)}&select=id&limit=1`);
     if (existingUser && existingUser.length > 0 && existingUser[0].id !== id) {
       alertEl.textContent = 'Username sudah digunakan, pilih username lain.'; alertEl.style.display = 'block'; return;
     }
@@ -4859,7 +4876,7 @@ async function changeMyUsername() {
   if (newUsername === currentProfile?.username) { showToast('Username sama dengan yang sekarang'); return; }
 
   // Check uniqueness
-  const existing = await dbQuery('profiles', `username=eq.${newUsername}&select=id&limit=1`);
+  const existing = await dbQuery('profiles', `username=eq.${encodeURIComponent(newUsername)}&select=id&limit=1`);
   if (existing && existing.length > 0) { showToast('Username sudah digunakan, pilih yang lain'); return; }
 
   const oldUsername = currentProfile?.username || '-';

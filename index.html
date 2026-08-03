@@ -1936,7 +1936,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.22.2';
+const APP_VERSION = 'v4.23.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5170,6 +5170,41 @@ window.addEventListener('click', e => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════
+// PENJAGA KLIK GANDA
+//
+// Sebagian fungsi punya banyak titik keluar dan tidak dibungkus try/finally.
+// Membongkar masing-masing untuk menyisipkan penjaga berisiko merusak jalur
+// yang sudah benar, jadi penjaganya dipasang dari luar sebagai pembungkus.
+// Cara ini tidak menyentuh satu baris pun di dalam fungsinya.
+//
+// Yang paling penting doCairanSimpanan: tanpa penjaga, klik dua kali saat
+// proses berjalan bisa mencatat pencairan dua kali — saldo anggota dan kas
+// berkurang dua kali lipat padahal uang yang diserahkan hanya sekali.
+// ══════════════════════════════════════════════════════════════
+function bungkusSekaliJalan(nama) {
+  const asli = window[nama];
+  if (typeof asli !== 'function') { console.warn('Penjaga klik ganda: ' + nama + ' tidak ditemukan'); return; }
+  let sedangJalan = false;
+  window[nama] = async function (...args) {
+    if (sedangJalan) return;          // klik kedua diabaikan diam-diam
+    sedangJalan = true;
+    // Seluruh tombol pada modal yang sedang terbuka dinonaktifkan agar
+    // terlihat bahwa prosesnya sedang berjalan, bukan macet.
+    const modal = document.querySelector('.modal-overlay.open');
+    const tombol = modal ? Array.from(modal.querySelectorAll('button')) : [];
+    tombol.forEach(b => { b.disabled = true; b.style.opacity = '0.6'; });
+    try {
+      return await asli.apply(this, args);
+    } finally {
+      sedangJalan = false;
+      tombol.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+    }
+  };
+}
+
+// (pemasangan pembungkus dipindah ke akhir skrip — lihat bagian paling bawah)
+
 // ── AUTO LOGOUT AFTER 1 HOUR IDLE ──
 const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 jam
 let idleTimer = null;
@@ -6959,6 +6994,31 @@ async function resetPoinTahunan() {
   showToast(`✅ Poin ${berhasil} anggota berhasil direset ke 0`);
   loadPoinData();
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// PEMASANGAN PENJAGA KLIK GANDA
+//
+// Sengaja diletakkan di akhir skrip, setelah seluruh fungsi dideklarasikan.
+// JavaScript sebenarnya sudah menanganinya lewat hoisting walau ditaruh di
+// atas, tetapi urutan yang terbaca dari atas ke bawah lebih jujur: pembungkus
+// hanya bisa membungkus sesuatu yang sudah ada.
+// ══════════════════════════════════════════════════════════════
+[
+  'doCairanSimpanan',    // paling penting — mengeluarkan uang
+  'doAjukanPinjaman',
+  'doSimpanEvent',
+  'doSimpanItemEvent',
+  'doTambahPoin',
+  'doEditAnggota',
+  'doRejectPinjaman',
+  'doLogout',
+  'doKoreksiSetoran',
+  'doKoreksiCicilan',
+  'savePlafon',
+  'saveDenda',
+  'saveBunga'
+].forEach(bungkusSekaliJalan);
 
 </script>
 </body>

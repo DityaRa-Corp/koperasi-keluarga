@@ -1680,6 +1680,26 @@ tbody tr:hover { background: var(--surface2); }
     </div>
   </div>
 </div>
+<!-- Kwitansi Digital -->
+<div class="modal-overlay" id="modal-kwitansi">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title" id="kwitansi-judul">Bukti Transaksi</div>
+    <div class="modal-sub">Simpan gambarnya lalu kirim ke anggota lewat WhatsApp.</div>
+    <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px;margin-bottom:14px;text-align:center">
+      <img id="kwitansi-gambar" alt="Bukti transaksi" style="max-width:100%;border-radius:6px;box-shadow:0 2px 10px rgba(30,34,56,.12)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teks untuk caption</label>
+      <textarea class="form-input" id="kwitansi-teks" rows="6" readonly style="font-size:12px;line-height:1.6;resize:vertical"></textarea>
+    </div>
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-kwitansi')">Tutup</button>
+      <button class="btn btn-ghost" onclick="salinTeksKwitansi()">Salin Teks</button>
+      <button class="btn btn-primary" id="btn-bagikan-kwitansi" onclick="bagikanKwitansi()">Bagikan</button>
+    </div>
+  </div>
+</div>
+
 <!-- Koreksi Cicilan -->
 <div class="modal-overlay" id="modal-koreksi-cicilan">
   <div class="modal" style="max-width:460px">
@@ -1916,7 +1936,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.21.0';
+const APP_VERSION = 'v4.22.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2779,7 +2799,12 @@ async function doSetor() {
   const note = document.getElementById('setor-note').value;
   if (!memberId || !amount || amount < 1000) { showToast('Isi semua field dengan benar'); return; }
   const bal = await getMemberBalance(memberId);
-  const { error } = await dbInsert('savings', { member_id: memberId, type: 'deposit', amount, balance_after: bal + amount, recorded_by: currentUser.id, note });
+  const saldoBaru = bal + amount;
+  // Diminta kembali agar id barisnya bisa dipakai sebagai nomor bukti
+  // dbInsert sudah memakai Prefer: return=representation, jadi baris yang baru
+  // dibuat ikut dikembalikan — id-nya dipakai sebagai nomor bukti.
+  const { data: barisBaru, error } = await dbInsert('savings',
+    { member_id: memberId, type: 'deposit', amount, balance_after: saldoBaru, recorded_by: currentUser.id, note });
   if (error) { showToast('Gagal menyimpan: ' + JSON.stringify(error)); return; }
 
   // Auto-poin sesuai nominal setor
@@ -2790,6 +2815,39 @@ async function doSetor() {
   document.getElementById('setor-amount').value = '';
   document.getElementById('setor-note').value = '';
   loadSimpanan(); loadDashboard();
+
+  // Bukti dibuat setelah semuanya tersimpan. Kalau pembuatannya gagal,
+  // transaksinya tetap sah — buktinya bisa dibuat ulang belakangan.
+  const nama = allMembers.find(m => m.id === memberId)?.full_name || 'Anggota';
+  const idBaris = Array.isArray(barisBaru) ? barisBaru[0]?.id : barisBaru?.id;
+  const nomor = kwNomor('SP', idBaris, new Date());
+  const tgl = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  await tampilkanKwitansi(
+    {
+      judul: 'KWITANSI SETORAN SIMPANAN',
+      nomor, tanggal: tgl, nama,
+      baris: [
+        ['Jenis transaksi', 'Setoran simpanan'],
+        ['Saldo sebelumnya', fmt(bal)],
+        ['Saldo setelah setoran', fmt(saldoBaru)]
+      ],
+      labelUtama: 'JUMLAH DISETOR',
+      nominal: fmt(amount),
+      warna: 'hijau',
+      catatan: note || null,
+      pesanKaki: 'Terima kasih sudah menabung.'
+    },
+    `*KWITANSI SETORAN SIMPANAN*\n`
+      + `Koperasi Keluarga\n\n`
+      + `No. Bukti : ${nomor}\n`
+      + `Tanggal   : ${tgl}\n`
+      + `Nama      : ${nama}\n\n`
+      + `Jumlah disetor : ${fmt(amount)}\n`
+      + `Saldo sekarang : ${fmt(saldoBaru)}\n`
+      + (note ? `Keterangan : ${note}\n` : '')
+      + `\nTerima kasih sudah menabung.`,
+    `Kwitansi-Setoran-${nama.replace(/[^\w]+/g,'-')}-${nomor}`
+  );
   } finally {
     const btn2 = document.getElementById('btn-do-setor');
     if (btn2) { btn2.disabled = false; btn2.style.opacity = ''; }
@@ -5303,6 +5361,257 @@ async function hitungKasTersedia() {
 
 
 let _cairanSaldo = 0;
+
+// ══════════════════════════════════════════════════════════════
+// KWITANSI DIGITAL
+//
+// Gambar digambar langsung di Canvas, tanpa pustaka dari luar. Kwitansi
+// adalah bukti keuangan yang diserahkan ke anggota — kalau ia gagal muncul
+// karena layanan pihak ketiga sedang bermasalah, kepercayaannya ikut runtuh.
+// Aplikasi ini pernah kehilangan seluruh tampilan karena satu CDN gagal.
+//
+// Nomor bukti memakai empat huruf awal dari id transaksi, bukan urutan
+// harian. Alasannya: urutan harian butuh perhitungan tambahan yang bisa
+// bentrok, sementara potongan id selalu unik dan bisa ditelusuri balik ke
+// baris aslinya di database.
+// ══════════════════════════════════════════════════════════════
+
+const KW_LEBAR = 720;
+const KW_WARNA = {
+  navy:    '#2A3568',
+  navyTua: '#1C2348',
+  hijau:   '#16a34a',
+  merah:   '#dc2626',
+  amber:   '#d97706',
+  teks:    '#1e2238',
+  teks2:   '#6b6e82',
+  teks3:   '#9b9ea6',
+  garis:   '#e2e4f0',
+  latar:   '#f3f4f9'
+};
+
+function kwKotakBulat(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);       ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);   ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);       ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);           ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// Memotong teks yang terlalu panjang agar tidak keluar dari kertas
+function kwPotong(ctx, teks, maksLebar) {
+  let t = String(teks ?? '-');
+  if (ctx.measureText(t).width <= maksLebar) return t;
+  while (t.length > 1 && ctx.measureText(t + '...').width > maksLebar) t = t.slice(0, -1);
+  return t + '...';
+}
+
+function kwNomor(jenis, id, tanggal) {
+  const d = tanggal ? new Date(tanggal) : new Date();
+  const tgl = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const kode = String(id || '').replace(/-/g, '').slice(0, 4).toUpperCase() || 'XXXX';
+  return `${jenis}-${tgl}-${kode}`;
+}
+
+/**
+ * Menggambar kwitansi dan mengembalikannya sebagai data URL PNG.
+ * baris  : [[label, nilai], ...] untuk bagian rincian
+ * warna  : warna angka utama — 'hijau' untuk uang masuk, 'amber' untuk uang keluar
+ */
+async function gambarKwitansi({ judul, nomor, tanggal, nama, baris = [], labelUtama, nominal, warna = 'hijau', catatan, pesanKaki }) {
+  // Menunggu font selesai dimuat, kalau tidak Canvas memakai font cadangan
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e) {}
+
+  const F = "'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif";
+  const pad = 48;
+  const tinggiKop = 132;
+  const tinggiBaris = 38;
+  const tinggiUtama = 104;
+  const tinggiCatatan = catatan ? 64 : 0;
+  const tinggiKaki = 78;
+  const tinggi = tinggiKop + 34 + 44 + (baris.length * tinggiBaris) + 22 + tinggiUtama + tinggiCatatan + tinggiKaki;
+
+  const skala = 2;   // agar tajam di layar HP beresolusi tinggi
+  const cv = document.createElement('canvas');
+  cv.width = KW_LEBAR * skala;
+  cv.height = tinggi * skala;
+  const ctx = cv.getContext('2d');
+  ctx.scale(skala, skala);
+  ctx.textBaseline = 'alphabetic';
+
+  // Latar
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, KW_LEBAR, tinggi);
+
+  // Kop
+  ctx.fillStyle = KW_WARNA.navy;
+  ctx.fillRect(0, 0, KW_LEBAR, tinggiKop);
+  ctx.fillStyle = '#ffffff';
+  kwKotakBulat(ctx, pad, 34, 46, 46, 12); ctx.fill();
+  ctx.fillStyle = KW_WARNA.navy;
+  ctx.font = `700 22px ${F}`;
+  ctx.fillText('K', pad + 15, 65);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 22px ${F}`;
+  ctx.fillText('KOPERASI KELUARGA', pad + 62, 52);
+  ctx.font = `400 14px ${F}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.fillText('Simpan & Pinjam Keluarga', pad + 62, 74);
+
+  let y = tinggiKop + 40;
+
+  // Judul kwitansi
+  ctx.fillStyle = KW_WARNA.teks;
+  ctx.font = `700 17px ${F}`;
+  ctx.fillText(judul, pad, y);
+
+  // Nomor & tanggal di kanan
+  ctx.textAlign = 'right';
+  ctx.font = `400 12px ${F}`;
+  ctx.fillStyle = KW_WARNA.teks3;
+  ctx.fillText(nomor, KW_LEBAR - pad, y - 14);
+  ctx.fillStyle = KW_WARNA.teks2;
+  ctx.font = `500 13px ${F}`;
+  ctx.fillText(tanggal, KW_LEBAR - pad, y + 4);
+  ctx.textAlign = 'left';
+
+  y += 24;
+  ctx.strokeStyle = KW_WARNA.garis;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(KW_LEBAR - pad, y); ctx.stroke();
+  y += 34;
+
+  // Nama anggota
+  ctx.fillStyle = KW_WARNA.teks3;
+  ctx.font = `400 12px ${F}`;
+  ctx.fillText('DITERIMA DARI / DISERAHKAN KEPADA', pad, y - 16);
+  ctx.fillStyle = KW_WARNA.teks;
+  ctx.font = `700 19px ${F}`;
+  ctx.fillText(kwPotong(ctx, nama, KW_LEBAR - pad * 2), pad, y + 6);
+  y += 34;
+
+  // Rincian
+  baris.forEach(([label, nilai]) => {
+    ctx.fillStyle = KW_WARNA.teks2;
+    ctx.font = `400 14px ${F}`;
+    ctx.fillText(label, pad, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = KW_WARNA.teks;
+    ctx.font = `600 14px ${F}`;
+    ctx.fillText(kwPotong(ctx, nilai, 360), KW_LEBAR - pad, y);
+    ctx.textAlign = 'left';
+    y += tinggiBaris;
+  });
+
+  // Angka utama
+  y += 4;
+  const warnaUtama = KW_WARNA[warna] || KW_WARNA.hijau;
+  ctx.fillStyle = KW_WARNA.latar;
+  kwKotakBulat(ctx, pad, y, KW_LEBAR - pad * 2, 82, 10); ctx.fill();
+  ctx.fillStyle = KW_WARNA.teks2;
+  ctx.font = `500 13px ${F}`;
+  ctx.fillText(labelUtama, pad + 20, y + 28);
+  ctx.fillStyle = warnaUtama;
+  ctx.font = `700 30px ${F}`;
+  ctx.fillText(nominal, pad + 20, y + 62);
+  y += 82 + 22;
+
+  // Catatan
+  if (catatan) {
+    ctx.fillStyle = KW_WARNA.teks3;
+    ctx.font = `400 12px ${F}`;
+    ctx.fillText('KETERANGAN', pad, y);
+    ctx.fillStyle = KW_WARNA.teks2;
+    ctx.font = `400 14px ${F}`;
+    ctx.fillText(kwPotong(ctx, catatan, KW_LEBAR - pad * 2), pad, y + 22);
+    y += tinggiCatatan;
+  }
+
+  // Kaki
+  ctx.strokeStyle = KW_WARNA.garis;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(KW_LEBAR - pad, y); ctx.stroke();
+  y += 26;
+  ctx.fillStyle = KW_WARNA.teks3;
+  ctx.font = `400 12px ${F}`;
+  ctx.fillText(pesanKaki || 'Bukti ini dibuat otomatis oleh aplikasi KoperasiKeluarga.', pad, y);
+  ctx.textAlign = 'right';
+  ctx.fillText(new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }), KW_LEBAR - pad, y);
+  ctx.textAlign = 'left';
+
+  return cv.toDataURL('image/png');
+}
+
+let _kwitansiData = null;   // { dataURL, teks, namaFile }
+
+// Menampilkan kwitansi beserta teks captionnya.
+async function tampilkanKwitansi(opsi, teks, namaFile) {
+  try {
+    const dataURL = await gambarKwitansi(opsi);
+    _kwitansiData = { dataURL, teks, namaFile };
+    document.getElementById('kwitansi-judul').textContent = opsi.judul;
+    document.getElementById('kwitansi-gambar').src = dataURL;
+    document.getElementById('kwitansi-teks').value = teks;
+    openModal('modal-kwitansi');
+  } catch(e) {
+    // Kegagalan membuat bukti tidak boleh membatalkan transaksinya —
+    // uangnya sudah tercatat, buktinya bisa dibuat ulang belakangan.
+    showToast('Transaksi tersimpan, tetapi bukti gagal dibuat: ' + e.message, 6000);
+  }
+}
+
+function dataURLKeBlob(dataURL) {
+  const [kepala, isi] = dataURL.split(',');
+  const tipe = kepala.match(/:(.*?);/)[1];
+  const biner = atob(isi);
+  const arr = new Uint8Array(biner.length);
+  for (let i = 0; i < biner.length; i++) arr[i] = biner.charCodeAt(i);
+  return new Blob([arr], { type: tipe });
+}
+
+// Di HP, tombol ini membuka pemilih aplikasi sehingga gambar bisa langsung
+// dikirim ke WhatsApp. Di komputer yang tidak mendukungnya, gambarnya diunduh.
+async function bagikanKwitansi() {
+  if (!_kwitansiData) return;
+  const { dataURL, teks, namaFile } = _kwitansiData;
+  const blob = dataURLKeBlob(dataURL);
+  const file = new File([blob], namaFile + '.png', { type: 'image/png' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], text: teks });
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return;   // pengguna membatalkan, bukan galat
+    }
+  }
+  unduhKwitansi();
+}
+
+function unduhKwitansi() {
+  if (!_kwitansiData) return;
+  const a = document.createElement('a');
+  a.href = _kwitansiData.dataURL;
+  a.download = _kwitansiData.namaFile + '.png';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('Gambar bukti diunduh');
+}
+
+async function salinTeksKwitansi() {
+  if (!_kwitansiData) return;
+  try {
+    await navigator.clipboard.writeText(_kwitansiData.teks);
+    showToast('Teks disalin');
+  } catch(e) {
+    // Sebagian peramban menolak menyalin tanpa izin — pilih teksnya saja
+    const ta = document.getElementById('kwitansi-teks');
+    ta.select();
+    showToast('Tekan Ctrl+C atau Cmd+C untuk menyalin');
+  }
+}
 
 // ══════════════════════════════════════════════════════════════
 // MEMBUKA MODAL DENGAN KEADAAN BERSIH

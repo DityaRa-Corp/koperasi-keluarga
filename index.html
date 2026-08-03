@@ -1936,7 +1936,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.23.0';
+const APP_VERSION = 'v4.24.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3615,6 +3615,18 @@ async function doCatatCicilan() {
     closeModal('modal-cicilan');
     document.getElementById('cicilan-note').value = '';
     loadCicilan(); loadDashboard();
+
+    // Bukti dibuat paling akhir, setelah semuanya tersimpan. Kalau pembuatannya
+    // gagal, pembayarannya tetap sah — buktinya bisa dicetak ulang dari riwayat.
+    const { opsi: opsiKw, teks: teksKw, namaFile: fileKw } = susunBuktiCicilan({
+      id: paymentSeq + '-' + loan.id,
+      nama: loan.profiles?.full_name || 'Anggota',
+      tanggal: new Date(),
+      amount, pokok: principal, bunga: interest,
+      sisa: remainingAfter, urutan: paymentSeq,
+      lunas: isLastPayment, denda: dendaTercatat, catatan: note
+    });
+    await tampilkanKwitansi(opsiKw, teksKw, fileKw);
   } catch (e) {
     // Tanpa penangkap ini, galat tak terduga membuat layar seolah membeku:
     // modal tetap terbuka, tidak ada pesan apa pun, padahal transaksinya
@@ -3640,18 +3652,20 @@ async function loadCicilanHistory() {
   const el = document.getElementById('cicilan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat cicilan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th>${isAdmin() ? '<th></th>' : ''}</tr></thead>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th><th></th></tr></thead>
     <tbody>${data.map(p => {
       // Penanda: mana yang nominalnya sudah diperbaiki, mana baris penggantinya
       const tanda = p.is_reversed
         ? ' <span class="badge badge-gray" title="Nominalnya sudah diperbaiki">Dikoreksi</span>'
         : (p.corrects_id ? ' <span class="badge badge-amber" title="Baris hasil koreksi">Koreksi</span>' : '');
       const bisaKoreksi = isAdmin() && !p.is_reversed;
-      const tombol = isAdmin()
-        ? `<td>${bisaKoreksi
-            ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal pembayaran ini" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
-            : ''}</td>`
-        : '';
+      const tombolBuktiC = p.is_reversed
+        ? ''
+        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti pembayaran" onclick="cetakUlangBuktiCicilan('${p.id}')">🧾</button>`;
+      const tombol = `<td style="white-space:nowrap">${tombolBuktiC}${
+        bisaKoreksi
+          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal pembayaran ini" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
+          : ''}</td>`;
       return `<tr${p.is_reversed ? ' style="opacity:0.55"' : ''}>
         <td>${fmtDate(p.created_at)}</td>
         <td>${escapeHtml(p.profiles?.full_name || '-')}${tanda}</td>
@@ -5645,6 +5659,83 @@ async function cetakUlangBuktiSimpanan(savingsId) {
       + `\n${setor ? 'Terima kasih sudah menabung.' : 'Uang telah diterima oleh anggota yang bersangkutan.'}`,
     `${setor ? 'Kwitansi-Setoran' : 'TandaTerima-Pencairan'}-${nama.replace(/[^\w]+/g,'-')}-${nomor}`
   );
+}
+
+// Menyusun bukti pembayaran cicilan. Dipakai dua kali: sesaat setelah
+// pembayaran dicatat, dan saat admin menekan tombol cetak ulang di riwayat.
+// Keduanya memakai fungsi yang sama agar hasilnya tidak pernah berbeda.
+function susunBuktiCicilan({ id, nama, tanggal, amount, pokok, bunga, sisa, urutan, lunas, denda, catatan }) {
+  const nomor = kwNomor(lunas ? 'LN' : 'CC', id, tanggal);
+  const tgl = new Date(tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+
+  const baris = [
+    ['Pembayaran ke-', String(urutan)],
+    ['Pokok pinjaman', fmt(pokok)],
+    ['Bunga', fmt(bunga)]
+  ];
+  if (denda > 0) baris.push(['Denda keterlambatan', fmt(denda)]);
+  baris.push(['Sisa tagihan', lunas ? 'LUNAS' : fmt(sisa)]);
+
+  const opsi = {
+    judul: lunas ? 'SURAT KETERANGAN LUNAS' : 'KWITANSI PEMBAYARAN CICILAN',
+    nomor, tanggal: tgl, nama, baris,
+    labelUtama: lunas ? 'PEMBAYARAN PELUNASAN' : 'JUMLAH DIBAYAR',
+    nominal: fmt(amount),
+    warna: lunas ? 'hijau' : 'hijau',
+    catatan: catatan || null,
+    pesanKaki: lunas
+      ? 'Pinjaman telah lunas seluruhnya. Terima kasih atas kedisiplinannya.'
+      : 'Terima kasih atas pembayarannya.'
+  };
+
+  const teks = `*${opsi.judul}*\n`
+    + `Koperasi Keluarga\n\n`
+    + `No. Bukti : ${nomor}\n`
+    + `Tanggal   : ${tgl}\n`
+    + `Nama      : ${nama}\n\n`
+    + `Pembayaran ke-${urutan}\n`
+    + `Jumlah dibayar : ${fmt(amount)}\n`
+    + `  - Pokok : ${fmt(pokok)}\n`
+    + `  - Bunga : ${fmt(bunga)}\n`
+    + (denda > 0 ? `  - Denda : ${fmt(denda)}\n` : '')
+    + `Sisa tagihan : ${lunas ? 'LUNAS 🎉' : fmt(sisa)}\n`
+    + (catatan ? `Keterangan : ${catatan}\n` : '')
+    + `\n${opsi.pesanKaki}`;
+
+  const namaFile = `${lunas ? 'SuratLunas' : 'Kwitansi-Cicilan'}-${String(nama).replace(/[^\w]+/g,'-')}-${nomor}`;
+  return { opsi, teks, namaFile };
+}
+
+// Menggambar ulang bukti cicilan dari baris pembayaran yang tersimpan.
+async function cetakUlangBuktiCicilan(paymentId) {
+  showToast('Menyiapkan bukti...');
+  const rows = await dbQuery('loan_payments',
+    `id=eq.${paymentId}&select=*,profiles!loan_payments_member_id_fkey(full_name)&limit=1`);
+  if (rows === null) { showToast('Gagal memuat data. Periksa koneksi lalu coba lagi.'); return; }
+  const p = rows[0];
+  if (!p) { showToast('Pembayaran tidak ditemukan'); return; }
+
+  // Denda dicatat di tabel terpisah, jadi dicari berdasarkan pinjaman dan waktunya
+  const dendaRows = await dbQuery('pendapatan_lain',
+    `loan_id=eq.${p.loan_id}&jenis=eq.denda&select=amount,created_at`);
+  const denda = (dendaRows || [])
+    .filter(d => Math.abs(new Date(d.created_at) - new Date(p.created_at)) < 180000)
+    .reduce((a, d) => a + Number(d.amount || 0), 0);
+
+  const { opsi, teks, namaFile } = susunBuktiCicilan({
+    id: p.id,
+    nama: p.profiles?.full_name || 'Anggota',
+    tanggal: p.created_at,
+    amount: Number(p.amount_paid),
+    pokok: Number(p.principal_component),
+    bunga: Number(p.interest_component),
+    sisa: Number(p.remaining_after),
+    urutan: p.payment_number,
+    lunas: Number(p.remaining_after) <= 0,
+    denda,
+    catatan: p.note
+  });
+  await tampilkanKwitansi(opsi, teks, namaFile);
 }
 
 let _kwitansiData = null;   // { dataURL, teks, namaFile }

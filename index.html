@@ -1936,7 +1936,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.22.0';
+const APP_VERSION = 'v4.22.2';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2737,7 +2737,7 @@ async function loadSimpananHistory() {
   const el = document.getElementById('simpanan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada transaksi</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th>${isAdmin() ? '<th></th>' : ''}</tr></thead>
+    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th><th></th></tr></thead>
     <tbody>${data.map(s => {
       const jenis = s.type === 'deposit'
         ? '<span class="badge badge-green">Setor</span>'
@@ -2750,11 +2750,16 @@ async function loadSimpananHistory() {
       // Hanya setoran yang belum pernah dikoreksi yang bisa diperbaiki.
       // Penarikan & pencairan dihitung otomatis sistem, jadi tidak ada risiko salah ketik.
       const bisaKoreksi = isAdmin() && s.type === 'deposit' && !s.is_reversed;
-      const tombol = isAdmin()
-        ? `<td>${bisaKoreksi
-            ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal setoran ini" onclick="openKoreksiSetoran('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}')">✏️</button>`
-            : ''}</td>`
-        : '';
+      // Bukti bisa diambil ulang kapan saja. Tanpa ini, admin yang tidak sengaja
+      // menutup kwitansi kehilangan buktinya — padahal seluruh datanya masih ada
+      // di baris ini dan bisa digambar ulang persis sama.
+      const tombolBukti = s.is_reversed
+        ? ''
+        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti transaksi" onclick="cetakUlangBuktiSimpanan('${s.id}')">🧾</button>`;
+      const tombol = `<td style="white-space:nowrap">${tombolBukti}${
+        bisaKoreksi
+          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal setoran ini" onclick="openKoreksiSetoran('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}')">✏️</button>`
+          : ''}</td>`;
       return `<tr${s.is_reversed ? ' style="opacity:0.55"' : ''}>
         <td>${fmtDate(s.created_at)}</td>
         <td>${escapeHtml(s.profiles?.full_name || '-')}</td>
@@ -3565,18 +3570,14 @@ async function doCatatCicilan() {
       return;
     }
 
-    const ket = isLastPayment ? ' 🎉 Pinjaman Lunas!'
-              : periodsAdvanced > 1 ? ` (melunasi ${periodsAdvanced} cicilan)`
-              : periodsAdvanced === 0 ? ' (pembayaran sebagian, periode belum selesai)'
-              : '';
-    showToast('Cicilan berhasil dicatat ✓' + ket
-      + (dendaTercatat > 0 ? ` · denda ${fmt(dendaTercatat)} diterima` : ''));
-    closeModal('modal-cicilan');
-    document.getElementById('cicilan-note').value = '';
-
     // Denda keterlambatan dicatat sebagai pemasukan kas tersendiri.
     // Tidak menambah tagihan pinjaman, karena total tagihan sudah
     // disepakati saat persetujuan.
+    //
+    // Blok ini WAJIB berada sebelum pesan sukses, karena pesan itu menyebut
+    // dendaTercatat. Menaruhnya sesudah membuat variabelnya disentuh sebelum
+    // dibuat — JavaScript melemparkan galat, dan seluruh baris di bawahnya
+    // tidak pernah dijalankan.
     const nDenda   = nominalDenda();
     const dueLama  = loan.next_due_date ? loan.next_due_date.split('T')[0] : null;
     const telatBayar = dueLama && dueLama < getTodayStr();
@@ -3604,6 +3605,24 @@ async function doCatatCicilan() {
     if (periodsAdvanced > 0) {
       await autoPoinCicilan(loan.member_id, loan.next_due_date, periodsAdvanced);
     }
+
+    const ket = isLastPayment ? ' 🎉 Pinjaman Lunas!'
+              : periodsAdvanced > 1 ? ` (melunasi ${periodsAdvanced} cicilan)`
+              : periodsAdvanced === 0 ? ' (pembayaran sebagian, periode belum selesai)'
+              : '';
+    showToast('Cicilan berhasil dicatat ✓' + ket
+      + (dendaTercatat > 0 ? ` · denda ${fmt(dendaTercatat)} diterima` : ''));
+    closeModal('modal-cicilan');
+    document.getElementById('cicilan-note').value = '';
+    loadCicilan(); loadDashboard();
+  } catch (e) {
+    // Tanpa penangkap ini, galat tak terduga membuat layar seolah membeku:
+    // modal tetap terbuka, tidak ada pesan apa pun, padahal transaksinya
+    // mungkin sudah tersimpan. Lebih baik keadaannya terlihat.
+    console.error('doCatatCicilan:', e);
+    showToast('⚠️ Terjadi galat setelah pembayaran diproses: ' + (e.message || e)
+      + '. Periksa menu Cicilan untuk memastikan tercatat atau belum.', 9000);
+    closeModal('modal-cicilan');
     loadCicilan(); loadDashboard();
   } finally {
     if (btnC) { btnC.disabled = false; btnC.style.opacity = ''; }
@@ -5541,6 +5560,56 @@ async function gambarKwitansi({ judul, nomor, tanggal, nama, baris = [], labelUt
   ctx.textAlign = 'left';
 
   return cv.toDataURL('image/png');
+}
+
+// Menggambar ulang bukti dari baris transaksi yang tersimpan. Seluruh data
+// yang dibutuhkan ada di tabel savings, jadi hasilnya persis sama dengan
+// bukti yang muncul saat transaksi dicatat.
+async function cetakUlangBuktiSimpanan(savingsId) {
+  showToast('Menyiapkan bukti...');
+  const rows = await dbQuery('savings',
+    `id=eq.${savingsId}&select=*,profiles!savings_member_id_fkey(full_name)&limit=1`);
+  if (rows === null) { showToast('Gagal memuat data. Periksa koneksi lalu coba lagi.'); return; }
+  const s = rows[0];
+  if (!s) { showToast('Transaksi tidak ditemukan'); return; }
+
+  const nama   = s.profiles?.full_name || 'Anggota';
+  const jumlah = Number(s.amount);
+  const saldo  = Number(s.balance_after);
+  const setor  = s.type === 'deposit';
+  const nomor  = kwNomor(setor ? 'SP' : 'PC', s.id, s.created_at);
+  const tgl    = new Date(s.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  const catatan = s.note || null;
+
+  await tampilkanKwitansi(
+    {
+      judul: setor ? 'KWITANSI SETORAN SIMPANAN' : 'TANDA TERIMA PENCAIRAN SIMPANAN',
+      nomor, tanggal: tgl, nama,
+      baris: setor
+        ? [['Jenis transaksi', 'Setoran simpanan'],
+           ['Saldo sebelumnya', fmt(saldo - jumlah)],
+           ['Saldo setelah setoran', fmt(saldo)]]
+        : [['Jenis transaksi', 'Pencairan simpanan'],
+           ['Saldo sebelumnya', fmt(saldo + jumlah)],
+           ['Sisa simpanan', fmt(saldo)]],
+      labelUtama: setor ? 'JUMLAH DISETOR' : 'JUMLAH DITERIMA',
+      nominal: fmt(jumlah),
+      warna: setor ? 'hijau' : 'amber',
+      catatan,
+      pesanKaki: setor ? 'Terima kasih sudah menabung.'
+                       : 'Uang telah diterima oleh anggota yang bersangkutan.'
+    },
+    `*${setor ? 'KWITANSI SETORAN SIMPANAN' : 'TANDA TERIMA PENCAIRAN SIMPANAN'}*\n`
+      + `Koperasi Keluarga\n\n`
+      + `No. Bukti : ${nomor}\n`
+      + `Tanggal   : ${tgl}\n`
+      + `Nama      : ${nama}\n\n`
+      + `${setor ? 'Jumlah disetor' : 'Jumlah diterima'} : ${fmt(jumlah)}\n`
+      + `${setor ? 'Saldo sekarang' : 'Sisa simpanan'} : ${fmt(saldo)}\n`
+      + (catatan ? `Keterangan : ${catatan}\n` : '')
+      + `\n${setor ? 'Terima kasih sudah menabung.' : 'Uang telah diterima oleh anggota yang bersangkutan.'}`,
+    `${setor ? 'Kwitansi-Setoran' : 'TandaTerima-Pencairan'}-${nama.replace(/[^\w]+/g,'-')}-${nomor}`
+  );
 }
 
 let _kwitansiData = null;   // { dataURL, teks, namaFile }

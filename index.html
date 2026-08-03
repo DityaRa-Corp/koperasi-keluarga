@@ -1916,7 +1916,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.20.2';
+const APP_VERSION = 'v4.21.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2229,6 +2229,7 @@ async function doLogout() {
   localStorage.removeItem('kk_auth_token');
   localStorage.removeItem('kk_auth_user');
   localStorage.removeItem('kk_refresh_token');
+  localStorage.removeItem(KUNCI_KEGIATAN);
   localStorage.removeItem('kk_auth_username');
   // Catatan: SDK Supabase tidak dipakai untuk auth di aplikasi ini,
   // sesi dibersihkan cukup dengan menghapus token di localStorage.
@@ -2253,6 +2254,9 @@ async function initApp(user) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
   setRoleUI();
+  // Menandai awal sesi supaya batas 1 jam dihitung sejak sekarang
+  try { localStorage.setItem(KUNCI_KEGIATAN, String(Date.now())); } catch(e) {}
+  resetIdleTimer();
   await muatPengaturan();
   await loadAllMembers();
   loadDashboard();
@@ -5095,6 +5099,31 @@ let idleTimer = null;
 let idleWarningTimer = null;
 let idleWarningShown = false;
 
+// Waktu kegiatan terakhir disimpan agar batas 1 jam tetap berlaku walau
+// tab ditutup. Tanpa ini, menutup peramban semalam lalu membukanya lagi
+// besok pagi tetap masuk ke sesi yang sama — batas waktunya hanya hidup
+// selama halamannya terbuka.
+const KUNCI_KEGIATAN = 'kk_last_activity';
+let _idleTerakhirDicatat = 0;
+
+function catatKegiatan() {
+  const kini = Date.now();
+  // Dibatasi sekali per detik. Peristiwa mousemove bisa terpicu ratusan kali
+  // per detik, dan menulis ke localStorage sesering itu memberatkan.
+  if (kini - _idleTerakhirDicatat < 1000) return;
+  _idleTerakhirDicatat = kini;
+  try { localStorage.setItem(KUNCI_KEGIATAN, String(kini)); } catch(e) {}
+  resetIdleTimer();
+}
+
+// Memeriksa apakah sesi sudah kedaluwarsa sejak terakhir dipakai.
+// Dipanggil saat halaman dibuka dan setiap kali tab kembali aktif.
+function sesiSudahKedaluwarsa() {
+  const terakhir = Number(localStorage.getItem(KUNCI_KEGIATAN) || 0);
+  if (!terakhir) return false;
+  return (Date.now() - terakhir) > IDLE_TIMEOUT_MS;
+}
+
 function resetIdleTimer() {
   if (!currentUser) return; // Only track when logged in
   clearTimeout(idleTimer);
@@ -5124,14 +5153,38 @@ function resetIdleTimer() {
 
 // Track user activity
 ['mousedown','mousemove','keydown','scroll','touchstart','click'].forEach(evt => {
-  document.addEventListener(evt, resetIdleTimer, { passive: true });
+  document.addEventListener(evt, catatKegiatan, { passive: true });
+});
+
+// Saat tab kembali aktif — misalnya HP dibuka lagi setelah lama terkunci —
+// periksa langsung apakah batas waktunya sudah lewat. Timer di dalam halaman
+// tidak bisa diandalkan karena peramban menghentikannya saat tab tersembunyi.
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !currentUser) return;
+  if (sesiSudahKedaluwarsa()) {
+    showToast('Sesi berakhir karena tidak aktif selama 1 jam.');
+    await doLogout();
+  } else {
+    catatKegiatan();
+  }
 });
 
 // Check existing session from localStorage
 (async () => {
   const savedToken = localStorage.getItem('kk_auth_token');
   const savedUser = localStorage.getItem('kk_auth_user');
-  if (savedToken && savedUser) {
+
+  // Sesi yang ditinggalkan lebih dari 1 jam tidak dilanjutkan, walaupun
+  // tokennya masih sah di sisi Supabase. Ini yang membuat batas 1 jam tetap
+  // berlaku setelah tab ditutup.
+  if (savedToken && sesiSudahKedaluwarsa()) {
+    localStorage.removeItem('kk_auth_token');
+    localStorage.removeItem('kk_auth_user');
+    localStorage.removeItem('kk_refresh_token');
+    localStorage.removeItem(KUNCI_KEGIATAN);
+  }
+
+  if (localStorage.getItem('kk_auth_token') && savedUser) {
     try {
       // Verify token is still valid by making a test request
       const testRes = await fetch(SUPABASE_URL + '/auth/v1/user', {

@@ -624,8 +624,22 @@ tbody tr:hover { background: var(--surface2); }
   button, .hamburger, .nav-item, .sidebar-footer,
   .mobile-header, .sidebar-overlay { display: none !important; }
 
-  .main-content, .main { margin: 0 !important; padding: 0 !important; }
-  .page { padding: 0 !important; display: block !important; }
+  /* Wadah aplikasi dikunci setinggi satu layar dan menggulung isinya. Saat
+     mencetak, apa pun yang berada di luar layar tidak ikut tercetak — itulah
+     sebabnya kertas hanya berisi kop. Ketiga aturan ini melepaskan kuncian
+     tersebut agar seluruh isi mengalir ke halaman berikutnya. */
+  html, body { height: auto !important; overflow: visible !important; }
+  #app-screen { display: block !important; height: auto !important; overflow: visible !important; }
+  .main-content, .main {
+    margin: 0 !important; padding: 0 !important;
+    height: auto !important; overflow: visible !important;
+  }
+  #auth-screen { display: none !important; }
+
+  /* Hanya halaman yang sedang dibuka yang dicetak. Tanpa pembatasan ini,
+     seluruh halaman lain ikut tercetak karena semuanya dipaksa tampil. */
+  .page { padding: 0 !important; display: none !important; }
+  .page.active { display: block !important; max-width: none !important; }
   .card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: auto; }
   body { background: white !important; font-size: 11px; color: #000; }
 
@@ -1869,7 +1883,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.19.0';
+const APP_VERSION = 'v4.19.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -6002,15 +6016,20 @@ function cetakLaporan() {
     printHeader.className = 'print-header';
     document.body.prepend(printHeader);
   }
+  // Judul tab ikut menjadi nama berkas bawaan saat "Simpan sebagai PDF"
+  const namaTab = document.querySelector('.tab-btn.active')?.textContent.trim() || 'Laporan';
   printHeader.innerHTML = `
-    <div style="text-align:center;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #2A3568">
-      <div style="font-size:22px;font-weight:700;color:#2A3568">KoperasiKeluarga</div>
-      <div style="font-size:14px;color:#666">Simpan & Pinjam Keluarga</div>
-      <div style="font-size:13px;margin-top:6px">${dateRange}</div>
-      <div style="font-size:11px;color:#999">Dicetak: ${now.toLocaleString('id-ID')}</div>
+    <div style="text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #2A3568">
+      <div style="font-size:20px;font-weight:700;color:#2A3568">KOPERASI KELUARGA</div>
+      <div style="font-size:13px;color:#555;margin-top:2px">Laporan ${escapeHtml(namaTab)}</div>
+      <div style="font-size:12px;margin-top:5px">${escapeHtml(dateRange)}</div>
+      <div style="font-size:10px;color:#888">Dicetak: ${now.toLocaleString('id-ID')}</div>
     </div>`;
 
+  const judulAsli = document.title;
+  document.title = `Laporan ${namaTab} - Koperasi Keluarga`;
   window.print();
+  document.title = judulAsli;
 }
 
 // ══════════════════════════════════════════════════════════════

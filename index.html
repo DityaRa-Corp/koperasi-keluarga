@@ -1936,7 +1936,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.24.0';
+const APP_VERSION = 'v4.25.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2825,34 +2825,11 @@ async function doSetor() {
   // transaksinya tetap sah — buktinya bisa dibuat ulang belakangan.
   const nama = allMembers.find(m => m.id === memberId)?.full_name || 'Anggota';
   const idBaris = Array.isArray(barisBaru) ? barisBaru[0]?.id : barisBaru?.id;
-  const nomor = kwNomor('SP', idBaris, new Date());
-  const tgl = new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
-  await tampilkanKwitansi(
-    {
-      judul: 'KWITANSI SETORAN SIMPANAN',
-      nomor, tanggal: tgl, nama,
-      baris: [
-        ['Jenis transaksi', 'Setoran simpanan'],
-        ['Saldo sebelumnya', fmt(bal)],
-        ['Saldo setelah setoran', fmt(saldoBaru)]
-      ],
-      labelUtama: 'JUMLAH DISETOR',
-      nominal: fmt(amount),
-      warna: 'hijau',
-      catatan: note || null,
-      pesanKaki: 'Terima kasih sudah menabung.'
-    },
-    `*KWITANSI SETORAN SIMPANAN*\n`
-      + `Koperasi Keluarga\n\n`
-      + `No. Bukti : ${nomor}\n`
-      + `Tanggal   : ${tgl}\n`
-      + `Nama      : ${nama}\n\n`
-      + `Jumlah disetor : ${fmt(amount)}\n`
-      + `Saldo sekarang : ${fmt(saldoBaru)}\n`
-      + (note ? `Keterangan : ${note}\n` : '')
-      + `\nTerima kasih sudah menabung.`,
-    `Kwitansi-Setoran-${nama.replace(/[^\w]+/g,'-')}-${nomor}`
-  );
+  const bukti = susunBuktiSimpanan({
+    id: idBaris, nama, tanggal: new Date(), jenis: 'deposit',
+    jumlah: amount, saldoSesudah: saldoBaru, catatan: note
+  });
+  await tampilkanKwitansi(bukti.opsi, bukti.teks, bukti.namaFile);
   } finally {
     const btn2 = document.getElementById('btn-do-setor');
     if (btn2) { btn2.disabled = false; btn2.style.opacity = ''; }
@@ -3256,6 +3233,16 @@ async function doApprovePinjaman() {
   showToast('Pinjaman disetujui dan dicairkan ✓');
   closeModal('modal-approve-pinjaman');
   loadPinjaman(); loadDashboard();
+
+  // Tanda terima pencairan pinjaman — bukti bahwa uangnya sudah diserahkan.
+  const namaPeminjam = allMembers.find(m => m.id === loan.member_id)?.full_name || 'Anggota';
+  const buktiPinjam = susunBuktiPinjaman({
+    id: currentLoanId, nama: namaPeminjam, tanggal: new Date(),
+    pokok: approvedNominal, totalBunga, totalTagihan,
+    cicilan: cicilanPerPeriod, tenor: loan.installment_count,
+    jenisCicilan: loan.installment_type, jatuhTempo: nextDue
+  });
+  await tampilkanKwitansi(buktiPinjam.opsi, buktiPinjam.teks, buktiPinjam.namaFile);
   } catch(e) { showToast('Gagal: ' + e.message); }
   finally {
     const btnAEnd = document.getElementById('btn-do-approve');
@@ -5622,43 +5609,96 @@ async function cetakUlangBuktiSimpanan(savingsId) {
   const s = rows[0];
   if (!s) { showToast('Transaksi tidak ditemukan'); return; }
 
-  const nama   = s.profiles?.full_name || 'Anggota';
-  const jumlah = Number(s.amount);
-  const saldo  = Number(s.balance_after);
-  const setor  = s.type === 'deposit';
-  const nomor  = kwNomor(setor ? 'SP' : 'PC', s.id, s.created_at);
-  const tgl    = new Date(s.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
-  const catatan = s.note || null;
+  const { opsi, teks, namaFile } = susunBuktiSimpanan({
+    id: s.id,
+    nama: s.profiles?.full_name || 'Anggota',
+    tanggal: s.created_at,
+    jenis: s.type,
+    jumlah: Number(s.amount),
+    saldoSesudah: Number(s.balance_after),
+    catatan: s.note
+  });
+  await tampilkanKwitansi(opsi, teks, namaFile);
+}
 
-  await tampilkanKwitansi(
-    {
-      judul: setor ? 'KWITANSI SETORAN SIMPANAN' : 'TANDA TERIMA PENCAIRAN SIMPANAN',
-      nomor, tanggal: tgl, nama,
-      baris: setor
-        ? [['Jenis transaksi', 'Setoran simpanan'],
-           ['Saldo sebelumnya', fmt(saldo - jumlah)],
-           ['Saldo setelah setoran', fmt(saldo)]]
-        : [['Jenis transaksi', 'Pencairan simpanan'],
-           ['Saldo sebelumnya', fmt(saldo + jumlah)],
-           ['Sisa simpanan', fmt(saldo)]],
-      labelUtama: setor ? 'JUMLAH DISETOR' : 'JUMLAH DITERIMA',
-      nominal: fmt(jumlah),
-      warna: setor ? 'hijau' : 'amber',
-      catatan,
-      pesanKaki: setor ? 'Terima kasih sudah menabung.'
-                       : 'Uang telah diterima oleh anggota yang bersangkutan.'
-    },
-    `*${setor ? 'KWITANSI SETORAN SIMPANAN' : 'TANDA TERIMA PENCAIRAN SIMPANAN'}*\n`
-      + `Koperasi Keluarga\n\n`
-      + `No. Bukti : ${nomor}\n`
-      + `Tanggal   : ${tgl}\n`
-      + `Nama      : ${nama}\n\n`
-      + `${setor ? 'Jumlah disetor' : 'Jumlah diterima'} : ${fmt(jumlah)}\n`
-      + `${setor ? 'Saldo sekarang' : 'Sisa simpanan'} : ${fmt(saldo)}\n`
-      + (catatan ? `Keterangan : ${catatan}\n` : '')
-      + `\n${setor ? 'Terima kasih sudah menabung.' : 'Uang telah diterima oleh anggota yang bersangkutan.'}`,
-    `${setor ? 'Kwitansi-Setoran' : 'TandaTerima-Pencairan'}-${nama.replace(/[^\w]+/g,'-')}-${nomor}`
-  );
+// Menyusun bukti transaksi simpanan — setoran maupun pencairan.
+// Dipakai saat transaksi dicatat DAN saat dicetak ulang dari riwayat, supaya
+// keduanya tidak mungkin berbeda.
+function susunBuktiSimpanan({ id, nama, tanggal, jenis, jumlah, saldoSesudah, catatan }) {
+  const setor = jenis === 'deposit';
+  const nomor = kwNomor(setor ? 'SP' : 'PC', id, tanggal);
+  const tgl   = new Date(tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  const saldoSebelum = setor ? saldoSesudah - jumlah : saldoSesudah + jumlah;
+
+  const opsi = {
+    judul: setor ? 'KWITANSI SETORAN SIMPANAN' : 'TANDA TERIMA PENCAIRAN SIMPANAN',
+    nomor, tanggal: tgl, nama,
+    baris: [
+      ['Jenis transaksi', setor ? 'Setoran simpanan' : 'Pencairan simpanan'],
+      ['Saldo sebelumnya', fmt(saldoSebelum)],
+      [setor ? 'Saldo setelah setoran' : 'Sisa simpanan', fmt(saldoSesudah)]
+    ],
+    labelUtama: setor ? 'JUMLAH DISETOR' : 'JUMLAH DITERIMA',
+    nominal: fmt(jumlah),
+    warna: setor ? 'hijau' : 'amber',
+    catatan: catatan || null,
+    pesanKaki: setor
+      ? 'Terima kasih sudah menabung.'
+      : 'Uang telah diterima oleh anggota yang bersangkutan.'
+  };
+
+  const teks = `*${opsi.judul}*\n`
+    + `Koperasi Keluarga\n\n`
+    + `No. Bukti : ${nomor}\n`
+    + `Tanggal   : ${tgl}\n`
+    + `Nama      : ${nama}\n\n`
+    + `${setor ? 'Jumlah disetor' : 'Jumlah diterima'} : ${fmt(jumlah)}\n`
+    + `${setor ? 'Saldo sekarang' : 'Sisa simpanan'} : ${fmt(saldoSesudah)}\n`
+    + (catatan ? `Keterangan : ${catatan}\n` : '')
+    + `\n${opsi.pesanKaki}`;
+
+  const namaFile = `${setor ? 'Kwitansi-Setoran' : 'TandaTerima-Pencairan'}-${String(nama).replace(/[^\w]+/g,'-')}-${nomor}`;
+  return { opsi, teks, namaFile };
+}
+
+// Menyusun tanda terima pencairan pinjaman. Ini bukti bahwa uang pinjaman
+// benar-benar sudah diserahkan — bagian yang paling sering luput padahal
+// paling melindungi kedua pihak.
+function susunBuktiPinjaman({ id, nama, tanggal, pokok, totalBunga, totalTagihan, cicilan, tenor, jenisCicilan, jatuhTempo }) {
+  const nomor = kwNomor('PJ', id, tanggal);
+  const tgl   = new Date(tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  const labelJenis = { weekly: 'Mingguan', biweekly: 'Dua mingguan', monthly: 'Bulanan' }[jenisCicilan] || 'Bulanan';
+
+  const opsi = {
+    judul: 'TANDA TERIMA PENCAIRAN PINJAMAN',
+    nomor, tanggal: tgl, nama,
+    baris: [
+      ['Total bunga', fmt(totalBunga)],
+      ['Total tagihan', fmt(totalTagihan)],
+      ['Cicilan', `${fmt(cicilan)} × ${tenor} (${labelJenis})`],
+      ['Jatuh tempo pertama', jatuhTempo ? fmtDate(jatuhTempo) : '-']
+    ],
+    labelUtama: 'POKOK PINJAMAN DITERIMA',
+    nominal: fmt(pokok),
+    warna: 'amber',
+    catatan: null,
+    pesanKaki: 'Uang pinjaman telah diterima oleh anggota yang bersangkutan.'
+  };
+
+  const teks = `*TANDA TERIMA PENCAIRAN PINJAMAN*\n`
+    + `Koperasi Keluarga\n\n`
+    + `No. Bukti : ${nomor}\n`
+    + `Tanggal   : ${tgl}\n`
+    + `Nama      : ${nama}\n\n`
+    + `Pokok diterima : ${fmt(pokok)}\n`
+    + `Total bunga    : ${fmt(totalBunga)}\n`
+    + `Total tagihan  : ${fmt(totalTagihan)}\n`
+    + `Cicilan        : ${fmt(cicilan)} × ${tenor} (${labelJenis})\n`
+    + `Jatuh tempo    : ${jatuhTempo ? fmtDate(jatuhTempo) : '-'}\n`
+    + `\nUang pinjaman telah diterima oleh anggota yang bersangkutan.`;
+
+  const namaFile = `TandaTerima-Pinjaman-${String(nama).replace(/[^\w]+/g,'-')}-${nomor}`;
+  return { opsi, teks, namaFile };
 }
 
 // Menyusun bukti pembayaran cicilan. Dipakai dua kali: sesaat setelah
@@ -6002,7 +6042,7 @@ async function doCairanSimpanan() {
   const ket = sisa === 0 ? 'Seluruh simpanan akan dicairkan.' : `Sisa simpanan menjadi ${fmt(sisa)}.`;
   if (!confirm(`Cairkan ${fmt(nominal)} dari simpanan ${fmt(saldo)}?\n\n${ket}`)) return;
 
-  const { error: e1 } = await dbInsert('savings', {
+  const { data: barisCair, error: e1 } = await dbInsert('savings', {
     member_id: memberId, type: 'withdraw', amount: nominal,
     balance_after: sisa, recorded_by: currentUser.id,
     note: catatan ? `Pencairan simpanan — ${catatan}` : 'Pencairan simpanan'
@@ -6014,6 +6054,16 @@ async function doCairanSimpanan() {
   showToast(`Pencairan ${fmt(nominal)} berhasil diproses` + (sisa > 0 ? ` · sisa ${fmt(sisa)}` : ''));
   closeModal('modal-tarik');
   loadSimpanan(); loadDashboard();
+
+  // Tanda terima untuk uang yang KELUAR justru yang paling melindungi:
+  // ia membuktikan anggota sudah benar-benar menerima uangnya.
+  const namaCair = allMembers.find(m => m.id === memberId)?.full_name || 'Anggota';
+  const idCair = Array.isArray(barisCair) ? barisCair[0]?.id : barisCair?.id;
+  const buktiCair = susunBuktiSimpanan({
+    id: idCair, nama: namaCair, tanggal: new Date(), jenis: 'withdraw',
+    jumlah: nominal, saldoSesudah: sisa, catatan: catatan || null
+  });
+  await tampilkanKwitansi(buktiCair.opsi, buktiCair.teks, buktiCair.namaFile);
 }
 
 // ══════════════════════════════════════════════════════════════

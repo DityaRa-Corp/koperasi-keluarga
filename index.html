@@ -1484,18 +1484,33 @@ tbody tr:hover { background: var(--surface2); }
 <div class="modal-overlay" id="modal-tarik">
   <div class="modal" style="max-width:500px">
     <div class="modal-title">Cairkan Simpanan</div>
-    <div class="modal-sub">Proses pencairan simpanan anggota</div>
+    <div class="modal-sub">Anggota bisa mencairkan sebagian atau seluruh simpanannya</div>
     <div class="form-group">
       <label class="form-label">Anggota</label>
       <select class="form-input form-select" id="tarik-member" onchange="updateCairanInfo()"></select>
     </div>
     <!-- Info saldo anggota -->
     <div id="cairan-info" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px;font-size:13px">
-      <div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Saldo Simpanan yang Akan Dicairkan</div>
+      <div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Saldo Simpanan Saat Ini</div>
       <div id="cairan-saldo" style="font-weight:700;color:var(--green);font-size:20px">-</div>
-      <div style="color:var(--text2);font-size:12px;margin-top:8px;line-height:1.6">
-        Anggota menerima saldo simpanannya. Keuntungan koperasi tetap tinggal
-        di kas dan dinikmati bersama, misalnya untuk membiayai event keluarga.
+    </div>
+
+    <!-- Nominal yang dicairkan -->
+    <div id="cairan-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Jumlah yang Dicairkan (Rp)</label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="isiCairan(0.25)">25%</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="isiCairan(0.5)">50%</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="isiCairan(1)">Semua</button>
+        </div>
+        <input class="form-input" type="number" id="cairan-nominal" min="1" placeholder="Contoh: 1000000" oninput="previewCairan()">
+        <div class="form-hint">Boleh sebagian, tidak harus seluruh simpanan.</div>
+      </div>
+      <div id="cairan-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
+      <div class="form-group">
+        <label class="form-label">Keterangan (opsional)</label>
+        <input class="form-input" type="text" id="cairan-note" placeholder="Contoh: untuk keperluan sekolah">
       </div>
     </div>
     <div id="cairan-alert" class="alert alert-error"></div>
@@ -1901,7 +1916,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.19.2';
+const APP_VERSION = 'v4.20.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5230,13 +5245,59 @@ async function hitungKasTersedia() {
 }
 
 
+let _cairanSaldo = 0;
+
 async function updateCairanInfo() {
   const memberId = document.getElementById('tarik-member').value;
   const infoEl = document.getElementById('cairan-info');
-  if (!memberId) { infoEl.style.display = 'none'; return; }
-  const saldo = await getMemberBalance(memberId);
-  document.getElementById('cairan-saldo').textContent = fmt(saldo);
+  const formEl = document.getElementById('cairan-form');
+  if (!memberId) { infoEl.style.display = 'none'; formEl.style.display = 'none'; return; }
+
+  _cairanSaldo = await getMemberBalance(memberId);
+  document.getElementById('cairan-saldo').textContent = fmt(_cairanSaldo);
   infoEl.style.display = 'block';
+  formEl.style.display = _cairanSaldo > 0 ? 'block' : 'none';
+  document.getElementById('cairan-nominal').value = '';
+  document.getElementById('cairan-note').value = '';
+  document.getElementById('cairan-preview').style.display = 'none';
+  document.getElementById('cairan-alert').style.display = 'none';
+}
+
+// Tombol cepat 25% / 50% / Semua. Dibulatkan ke ribuan terdekat ke bawah
+// supaya nominalnya enak diserahkan dalam bentuk uang tunai.
+function isiCairan(bagian) {
+  if (_cairanSaldo <= 0) return;
+  const nilai = bagian >= 1 ? _cairanSaldo : Math.floor(_cairanSaldo * bagian / 1000) * 1000;
+  document.getElementById('cairan-nominal').value = nilai;
+  previewCairan();
+}
+
+function previewCairan() {
+  const el = document.getElementById('cairan-preview');
+  const nominal = parseInt(document.getElementById('cairan-nominal').value) || 0;
+  if (!nominal) { el.style.display = 'none'; return; }
+
+  el.style.display = 'block';
+  if (nominal > _cairanSaldo) {
+    el.innerHTML = `<span style="color:var(--red);font-weight:600">Melebihi saldo — maksimal ${fmt(_cairanSaldo)}</span>`;
+    return;
+  }
+
+  const sisa = _cairanSaldo - nominal;
+  const habis = sisa === 0;
+  // Saldo minimal Rp 100.000 adalah syarat mengajukan pinjaman. Menariknya
+  // sampai di bawah itu boleh saja, tetapi anggota perlu tahu akibatnya.
+  const dibawahMinimum = sisa > 0 && sisa < 100000;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div style="color:var(--text3);font-size:11px">Diterima anggota</div>
+           <div style="font-weight:700;color:var(--green);font-size:14px">${fmt(nominal)}</div></div>
+      <div><div style="color:var(--text3);font-size:11px">Sisa simpanan</div>
+           <div style="font-weight:700;font-size:14px">${fmt(sisa)}</div></div>
+    </div>
+    ${habis ? '<div style="margin-top:8px;color:var(--amber-text)">Simpanan akan habis. Anggota tetap terdaftar dan bisa menabung lagi kapan saja.</div>' : ''}
+    ${dibawahMinimum ? '<div style="margin-top:8px;color:var(--amber-text)">Sisa di bawah Rp 100.000 — anggota belum bisa mengajukan pinjaman sampai menabung lagi.</div>' : ''}`;
 }
 async function doCairanSimpanan() {
   const memberId = document.getElementById('tarik-member').value;
@@ -5244,16 +5305,33 @@ async function doCairanSimpanan() {
   alertEl.style.display = 'none';
   if (!memberId) { alertEl.textContent = 'Pilih anggota terlebih dahulu'; alertEl.style.display = 'block'; return; }
 
+  // Saldo dibaca ulang di sini, bukan memakai angka saat modal dibuka —
+  // bisa saja ada setoran masuk di sela waktu.
   const saldo = await getMemberBalance(memberId);
   if (saldo <= 0) {
-    alertEl.textContent = '❌ Saldo anggota ini sudah 0, tidak ada yang bisa dicairkan';
+    alertEl.textContent = 'Saldo anggota ini sudah 0, tidak ada yang bisa dicairkan';
+    alertEl.style.display = 'block'; return;
+  }
+
+  const nominal = parseInt(document.getElementById('cairan-nominal').value) || 0;
+  const catatan = document.getElementById('cairan-note').value.trim();
+  if (!nominal || nominal < 1) {
+    alertEl.textContent = 'Isi jumlah yang ingin dicairkan';
+    alertEl.style.display = 'block'; return;
+  }
+  if (nominal > saldo) {
+    alertEl.textContent = `Melebihi saldo. Maksimal ${fmt(saldo)}`
+      + (nominal > _cairanSaldo === false && saldo !== _cairanSaldo ? ' (saldo berubah sejak modal dibuka)' : '');
+    _cairanSaldo = saldo;
+    document.getElementById('cairan-saldo').textContent = fmt(saldo);
+    previewCairan();
     alertEl.style.display = 'block'; return;
   }
 
   const activeLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
   if (activeLoan === null) { alertEl.textContent = 'Gagal memeriksa pinjaman. Coba lagi.'; alertEl.style.display = 'block'; return; }
   if (activeLoan.length > 0) {
-    alertEl.textContent = '❌ Tidak bisa cairkan simpanan — anggota masih punya pinjaman aktif';
+    alertEl.textContent = 'Tidak bisa cairkan simpanan — anggota masih punya pinjaman aktif';
     alertEl.style.display = 'block'; return;
   }
 
@@ -5264,25 +5342,28 @@ async function doCairanSimpanan() {
     alertEl.textContent = 'Gagal memeriksa ketersediaan kas. Coba lagi.';
     alertEl.style.display = 'block'; return;
   }
-  if (saldo > kas2.tersedia) {
-    alertEl.innerHTML = `❌ Kas koperasi tidak cukup untuk pencairan ini.<br>`
+  if (nominal > kas2.tersedia) {
+    alertEl.innerHTML = `Kas koperasi tidak cukup untuk pencairan ini.<br>`
       + `Uang tersedia: <strong>${fmt(kas2.tersedia)}</strong><br>`
-      + `Yang perlu dibayar: <strong>${fmt(saldo)}</strong><br>`
+      + `Yang perlu dibayar: <strong>${fmt(nominal)}</strong><br>`
       + `<span style="font-size:12px">Sebagian uang koperasi sedang dipinjam (${fmt(kas2.piutangPokok)}). Tunggu cicilan masuk lalu coba lagi.</span>`;
     alertEl.style.display = 'block'; return;
   }
 
-  if (!confirm(`Cairkan simpanan ${fmt(saldo)}?\n\nAnggota menerima saldo simpanannya. Keuntungan koperasi tetap tinggal di kas.`)) return;
+  const sisa = saldo - nominal;
+  const ket = sisa === 0 ? 'Seluruh simpanan akan dicairkan.' : `Sisa simpanan menjadi ${fmt(sisa)}.`;
+  if (!confirm(`Cairkan ${fmt(nominal)} dari simpanan ${fmt(saldo)}?\n\n${ket}`)) return;
 
   const { error: e1 } = await dbInsert('savings', {
-    member_id: memberId, type: 'withdraw', amount: saldo,
-    balance_after: 0, recorded_by: currentUser.id,
-    note: 'Pencairan simpanan'
+    member_id: memberId, type: 'withdraw', amount: nominal,
+    balance_after: sisa, recorded_by: currentUser.id,
+    note: catatan ? `Pencairan simpanan — ${catatan}` : 'Pencairan simpanan'
   });
   if (e1) { alertEl.textContent = 'Gagal: ' + (e1.message || JSON.stringify(e1)); alertEl.style.display = 'block'; return; }
 
-  await logActivity('CAIRKAN_SIMPANAN', `Pencairan simpanan ${fmt(saldo)}`, memberId);
-  showToast(`✅ Pencairan ${fmt(saldo)} berhasil diproses`);
+  await logActivity('CAIRKAN_SIMPANAN',
+    `Pencairan ${fmt(nominal)}, sisa ${fmt(sisa)}` + (catatan ? ` (${catatan})` : ''), memberId);
+  showToast(`Pencairan ${fmt(nominal)} berhasil diproses` + (sisa > 0 ? ` · sisa ${fmt(sisa)}` : ''));
   closeModal('modal-tarik');
   loadSimpanan(); loadDashboard();
 }

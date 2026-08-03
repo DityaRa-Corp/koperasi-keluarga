@@ -1044,8 +1044,8 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-title">Simpanan</div>
         <div class="page-sub">Kelola setoran dan penarikan simpanan anggota</div>
         <div class="page-actions">
-          <button class="btn btn-success admin-only" style="display:none" onclick="openModal('modal-setor')">+ Setor</button>
-          <button class="btn btn-danger admin-only" style="display:none" onclick="openModal('modal-tarik')">💸 Cairkan Simpanan</button>
+          <button class="btn btn-success admin-only" style="display:none" onclick="bukaModalSetor()">+ Setor</button>
+          <button class="btn btn-danger admin-only" style="display:none" onclick="bukaModalCairkan()">💸 Cairkan Simpanan</button>
         </div>
       </div>
       <div class="card" style="margin-bottom:14px">
@@ -1162,7 +1162,7 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-title">Manajemen Anggota</div>
         <div class="page-sub">Kelola data anggota koperasi</div>
         <div class="page-actions">
-          <button class="btn btn-primary" onclick="openModal('modal-tambah-anggota')">+ Tambah Anggota</button>
+          <button class="btn btn-primary" onclick="bukaModalTambahAnggota()">+ Tambah Anggota</button>
         </div>
       </div>
       <div class="card">
@@ -1916,7 +1916,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.20.1';
+const APP_VERSION = 'v4.20.2';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5251,6 +5251,56 @@ async function hitungKasTersedia() {
 
 let _cairanSaldo = 0;
 
+// ══════════════════════════════════════════════════════════════
+// MEMBUKA MODAL DENGAN KEADAAN BERSIH
+//
+// Modal yang dibuka langsung lewat openModal() akan menampilkan isi
+// terakhir kali dipakai. Kalau admin membatalkan lalu membuka lagi, angka
+// lama masih tertera — termasuk saldo yang sudah berubah karena ada
+// setoran masuk di sela waktu. Ketiga fungsi ini mengosongkan isian dan
+// memaksa datanya dibaca ulang.
+// ══════════════════════════════════════════════════════════════
+function bersihkan(id, nilai = '') {
+  const el = document.getElementById(id);
+  if (el) el.value = nilai;
+}
+function sembunyikan(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
+function bukaModalSetor() {
+  bersihkan('setor-member');
+  bersihkan('setor-amount');
+  bersihkan('setor-note');
+  openModal('modal-setor');
+}
+
+function bukaModalCairkan() {
+  // Pilihan anggota ikut dikosongkan supaya admin harus memilih ulang —
+  // pemilihan itulah yang memicu pembacaan saldo terbaru.
+  bersihkan('tarik-member');
+  bersihkan('cairan-nominal');
+  bersihkan('cairan-note');
+  _cairanSaldo = 0;
+  _cairanSisaTagihan = 0;
+  sembunyikan('cairan-info');
+  sembunyikan('cairan-form');
+  sembunyikan('cairan-preview');
+  sembunyikan('cairan-alert');
+  openModal('modal-tarik');
+}
+
+function bukaModalTambahAnggota() {
+  bersihkan('anggota-nama');
+  bersihkan('anggota-username');
+  bersihkan('anggota-password');
+  const role = document.getElementById('anggota-role');
+  if (role) role.value = 'member';
+  sembunyikan('anggota-modal-alert');
+  openModal('modal-tambah-anggota');
+}
+
 let _cairanSisaTagihan = 0;
 
 async function updateCairanInfo() {
@@ -5258,6 +5308,12 @@ async function updateCairanInfo() {
   const infoEl = document.getElementById('cairan-info');
   const formEl = document.getElementById('cairan-form');
   if (!memberId) { infoEl.style.display = 'none'; formEl.style.display = 'none'; return; }
+
+  // Menampilkan tanda sedang memuat lebih dulu. Tanpa ini, pada koneksi lambat
+  // angka lama sempat terlihat beberapa saat sebelum tergantikan yang baru.
+  document.getElementById('cairan-saldo').textContent = 'Memuat...';
+  infoEl.style.display = 'block';
+  formEl.style.display = 'none';
 
   // Sisa tagihan dibaca lebih awal supaya batasnya terlihat di pratinjau,
   // bukan baru ketahuan setelah tombol simpan ditekan.

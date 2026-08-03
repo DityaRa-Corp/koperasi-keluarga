@@ -1916,7 +1916,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.20.0';
+const APP_VERSION = 'v4.20.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2375,7 +2375,11 @@ async function loadDashboard() {
 
   // Recent transactions — filter by member jika bukan admin
   const recentFilter = isAdmin() ? '' : `&member_id=eq.${currentUser.id}`;
-  const recent = isAdmin() ? (savings || []).slice(0, 8) : (savings || []).filter(s => s.member_id === currentUser.id).slice(0, 8);
+  // Baris yang sudah dikoreksi beserta pembatalannya tidak ditampilkan di sini.
+  // Tanpa penyaringan ini, satu koreksi setoran memunculkan tiga baris sekaligus
+  // — salah satunya nominal yang justru sudah dibatalkan.
+  const savingsTampil = (savings || []).filter(isBarisSimpananEfektif);
+  const recent = isAdmin() ? savingsTampil.slice(0, 8) : savingsTampil.filter(s => s.member_id === currentUser.id).slice(0, 8);
   const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name,avatar_url)&is_reversed=is.false&order=created_at.desc&limit=5${recentFilter}`);
   const combined = [
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
@@ -2394,7 +2398,7 @@ async function loadDashboard() {
       const name = pData.full_name || t.profiles?.full_name || '-';
       const av = pData.avatar_url || t.profiles?.avatar_url;
       const avatarEl = av
-        ? `<img src="${av}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
+        ? `<img src="${escapeHtml(av)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
         : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(name[0]||'?').toUpperCase()}</div>`;
       return `<tr>
         <td style="white-space:nowrap">${fmtDate(t.created_at)}</td>
@@ -2438,7 +2442,7 @@ async function loadSimpanan() {
       <tbody>${rows.map((r, i) => {
         const saldo = r.deposit - r.withdraw;
         const avatarEl = r.avatar
-          ? `<img src="${r.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
+          ? `<img src="${escapeHtml(r.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
           : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(r.name[0]||'?').toUpperCase()}</div>`;
         return `<tr>
           <td>${i+1}</td>
@@ -4299,7 +4303,7 @@ function renderAnggotaTable(data) {
     <tbody>${data.map((a, i) => `<tr>
       <td>
         ${a.avatar_url
-          ? `<img src="${a.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">`
+          ? `<img src="${escapeHtml(a.avatar_url)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">`
           : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">${escapeHtml((a.full_name||'?')[0].toUpperCase())}</div>`}
       </td>
       <td style="font-weight:500">${escapeHtml(a.full_name)}</td>
@@ -5247,11 +5251,18 @@ async function hitungKasTersedia() {
 
 let _cairanSaldo = 0;
 
+let _cairanSisaTagihan = 0;
+
 async function updateCairanInfo() {
   const memberId = document.getElementById('tarik-member').value;
   const infoEl = document.getElementById('cairan-info');
   const formEl = document.getElementById('cairan-form');
   if (!memberId) { infoEl.style.display = 'none'; formEl.style.display = 'none'; return; }
+
+  // Sisa tagihan dibaca lebih awal supaya batasnya terlihat di pratinjau,
+  // bukan baru ketahuan setelah tombol simpan ditekan.
+  const pinjaman = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=remaining_amount`);
+  _cairanSisaTagihan = (pinjaman || []).reduce((a, l) => a + Number(l.remaining_amount || 0), 0);
 
   _cairanSaldo = await getMemberBalance(memberId);
   document.getElementById('cairan-saldo').textContent = fmt(_cairanSaldo);
@@ -5285,6 +5296,13 @@ function previewCairan() {
 
   const sisa = _cairanSaldo - nominal;
   const habis = sisa === 0;
+  // Sisa simpanan wajib tetap menutup sisa tagihan pinjaman yang berjalan
+  if (_cairanSisaTagihan > 0 && sisa < _cairanSisaTagihan) {
+    const maksimal = Math.max(0, _cairanSaldo - _cairanSisaTagihan);
+    el.innerHTML = `<span style="color:var(--red);font-weight:600">Sisa simpanan harus tetap menutup pinjaman berjalan ${fmt(_cairanSisaTagihan)}</span>`
+      + (maksimal > 0 ? `<div style="margin-top:6px">Maksimal yang bisa dicairkan: <strong>${fmt(maksimal)}</strong></div>` : '');
+    return;
+  }
   // Saldo minimal Rp 100.000 adalah syarat mengajukan pinjaman. Menariknya
   // sampai di bawah itu boleh saja, tetapi anggota perlu tahu akibatnya.
   const dibawahMinimum = sisa > 0 && sisa < 100000;
@@ -5320,19 +5338,36 @@ async function doCairanSimpanan() {
     alertEl.style.display = 'block'; return;
   }
   if (nominal > saldo) {
+    // Kalau nominalnya tadi masih muat tetapi sekarang tidak, berarti saldonya
+    // berubah di sela waktu — perlu disebutkan supaya tidak membingungkan.
+    const tadiMuat = nominal <= _cairanSaldo;
+    const saldoBerubah = saldo !== _cairanSaldo;
     alertEl.textContent = `Melebihi saldo. Maksimal ${fmt(saldo)}`
-      + (nominal > _cairanSaldo === false && saldo !== _cairanSaldo ? ' (saldo berubah sejak modal dibuka)' : '');
+      + (tadiMuat && saldoBerubah ? ' (saldo berubah sejak modal dibuka)' : '');
     _cairanSaldo = saldo;
     document.getElementById('cairan-saldo').textContent = fmt(saldo);
     previewCairan();
     alertEl.style.display = 'block'; return;
   }
 
-  const activeLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
+  // Simpanan berfungsi sebagai jaminan tidak langsung selama pinjaman berjalan.
+  // Pencairan sebagian diizinkan asalkan sisa simpanan masih menutup sisa
+  // tagihan — jadi anggota tetap bisa memakai uangnya tanpa koperasi kehilangan
+  // jaminannya.
+  const activeLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id,remaining_amount`);
   if (activeLoan === null) { alertEl.textContent = 'Gagal memeriksa pinjaman. Coba lagi.'; alertEl.style.display = 'block'; return; }
   if (activeLoan.length > 0) {
-    alertEl.textContent = 'Tidak bisa cairkan simpanan — anggota masih punya pinjaman aktif';
-    alertEl.style.display = 'block'; return;
+    const sisaTagihan = activeLoan.reduce((a, l) => a + Number(l.remaining_amount || 0), 0);
+    const sisaSimpanan = saldo - nominal;
+    if (sisaSimpanan < sisaTagihan) {
+      const maksimal = Math.max(0, saldo - sisaTagihan);
+      alertEl.innerHTML = `Anggota masih punya pinjaman berjalan ${fmt(sisaTagihan)}.<br>`
+        + `Simpanan yang tersisa harus tetap menutup sisa tagihan itu.<br>`
+        + (maksimal > 0
+            ? `Maksimal yang bisa dicairkan sekarang: <strong>${fmt(maksimal)}</strong>`
+            : `Belum ada yang bisa dicairkan sampai cicilannya berkurang.`);
+      alertEl.style.display = 'block'; return;
+    }
   }
 
   // Kas tidak boleh tercatat negatif. Kalau uang koperasi sedang banyak
@@ -5798,7 +5833,7 @@ async function loadDashboardCharts(savings, memberBalances) {
   elAnggota.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:4px 0;width:100%';
   elAnggota.innerHTML = items.map((x, i) => {
     const avatarEl = x.avatar
-      ? `<img src="${x.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+      ? `<img src="${escapeHtml(x.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0">`
       : `<div style="width:28px;height:28px;border-radius:50%;background:${colors[i%colors.length]};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;flex-shrink:0">${(x.name[0]||'?').toUpperCase()}</div>`;
     return `<div style="display:flex;align-items:center;gap:8px">
       ${avatarEl}
@@ -6010,7 +6045,7 @@ async function loadPoinData() {
       ${profiles.map((p, i) => {
         const isMe = p.id === currentUser.id;
         const avatarEl = p.avatar_url
-          ? `<img src="${p.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+          ? `<img src="${escapeHtml(p.avatar_url)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">`
           : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;flex-shrink:0">${escapeHtml(p.full_name[0])}</div>`;
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:${isMe?'var(--accent-bg)':'var(--surface2)'};border-radius:var(--radius-sm);${isMe?'border:1px solid var(--accent)':''}">
           <div style="width:28px;text-align:center;font-size:18px">${medals[i] || '#'+(i+1)}</div>

@@ -1822,6 +1822,11 @@ tbody tr:hover { background: var(--surface2); }
       </div>
     </div>
     <div class="form-group">
+      <label class="form-label">Nomor WhatsApp <span style="color:var(--text3);font-weight:400">(opsional)</span></label>
+      <input class="form-input" type="tel" id="edit-anggota-phone" placeholder="Contoh: 081234567890">
+      <div class="form-hint">Untuk pengingat cicilan. Boleh dikosongkan.</div>
+    </div>
+    <div class="form-group">
       <label class="form-label">Role</label>
       <select class="form-input form-select" id="edit-anggota-role">
         <option value="member">Anggota</option>
@@ -1854,6 +1859,11 @@ tbody tr:hover { background: var(--surface2); }
         <label class="form-label">Username <span style="color:var(--red)">*</span></label>
         <input class="form-input" type="text" id="anggota-username" placeholder="Contoh: budi123" autocapitalize="none" autocorrect="off">
         <div class="form-hint">Huruf kecil, angka, tanpa spasi</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nomor WhatsApp <span style="color:var(--text3);font-weight:400">(opsional)</span></label>
+        <input class="form-input" type="tel" id="anggota-phone" placeholder="Contoh: 081234567890">
+        <div class="form-hint">Untuk pengingat cicilan. Boleh dikosongkan.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Role</label>
@@ -1936,7 +1946,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.25.0';
+const APP_VERSION = 'v4.26.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3281,7 +3291,8 @@ async function loadCicilan() {
           : todayDue ? '<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>'
           : '<span class="badge badge-blue">Aktif</span>';
         const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-        const catatBtn = isAdmin() ? `<button class="btn btn-success btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>` : '';
+        const catatBtn = isAdmin() ? `<button class="btn btn-success btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>
+        <button class="btn btn-ghost btn-sm" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')">💬</button>` : '';
         const dueDateColor = overdue ? 'var(--red)' : todayDue ? 'var(--amber)' : 'var(--text2)';
         return `<div class="card" style="margin-bottom:10px;padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
@@ -4396,7 +4407,7 @@ function renderAnggotaTable(data) {
       <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
       <td style="display:flex;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${escapeAttr(a.full_name)}','${a.role}','${escapeAttr(a.username||'')}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${escapeAttr(a.full_name)}','${a.role}','${escapeAttr(a.username||'')}','${escapeAttr(a.phone||'')}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${escapeAttr(a.full_name)}',false)" title="Reset Password">🔑</button>
           <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${escapeAttr(a.full_name)}')" title="Bypass Masa Tunggu Pinjaman">⏩</button>
           <button class="btn btn-ghost btn-sm" onclick="openTambahPoin('${a.id}','${escapeAttr(a.full_name)}')" title="Tambah Poin">⭐</button>
@@ -4419,12 +4430,19 @@ async function doTambahAnggota() {
   const username = document.getElementById('anggota-username').value.trim().toLowerCase();
   const password = document.getElementById('anggota-password').value;
   const role = document.getElementById('anggota-role').value;
+  const phoneRaw = document.getElementById('anggota-phone').value.trim();
   const alertEl = document.getElementById('anggota-modal-alert');
   alertEl.style.display = 'none';
 
   if (!nama || !username || !password) { alertEl.textContent = 'Nama, username, dan password wajib diisi.'; alertEl.style.display = 'block'; return; }
   if (!/^[a-z0-9_]+$/.test(username)) { alertEl.textContent = 'Username hanya boleh huruf kecil, angka, dan underscore.'; alertEl.style.display = 'block'; return; }
   if (password.length < 6) { alertEl.textContent = 'Password minimal 6 karakter.'; alertEl.style.display = 'block'; return; }
+  // Nomor boleh kosong, tetapi kalau diisi harus berbentuk nomor Indonesia yang wajar
+  const phone = phoneRaw ? normalkanNomorWA(phoneRaw) : null;
+  if (phoneRaw && !phone) {
+    alertEl.textContent = 'Nomor WhatsApp tidak dikenali. Contoh yang benar: 081234567890';
+    alertEl.style.display = 'block'; return;
+  }
 
   // Cek username unik
   const existingUser = await dbQuery('profiles', `username=eq.${encodeURIComponent(username)}&select=id&limit=1`);
@@ -4448,7 +4466,8 @@ async function doTambahAnggota() {
     await dbUpdate('profiles', `id=eq.${newUserId}`, {
       role: role === 'admin' ? 'admin' : 'member',
       username,
-      email_ref: dummyEmail
+      email_ref: dummyEmail,
+      phone
     });
     // Auto-confirm email via Admin API agar bisa langsung login
     await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${newUserId}`, {
@@ -4568,11 +4587,12 @@ async function doResetPassword() {
 // ── EDIT ANGGOTA ──
 let editAnggotaOriginal = {};
 
-function openEditAnggota(id, nama, role, username) {
-  editAnggotaOriginal = { nama, role, username };
+function openEditAnggota(id, nama, role, username, phone) {
+  editAnggotaOriginal = { nama, role, username, phone: phone || '' };
   document.getElementById('edit-anggota-id').value = id;
   document.getElementById('edit-anggota-nama').value = nama;
   document.getElementById('edit-anggota-username').value = username || '';
+  document.getElementById('edit-anggota-phone').value = phone || '';
   document.getElementById('edit-anggota-role').value = role;
   document.getElementById('edit-anggota-reason').value = '';
   document.getElementById('edit-anggota-alert').style.display = 'none';
@@ -4584,6 +4604,7 @@ async function doEditAnggota() {
   const nama = document.getElementById('edit-anggota-nama').value.trim();
   const username = document.getElementById('edit-anggota-username').value.trim().toLowerCase();
   const role = document.getElementById('edit-anggota-role').value;
+  const phoneRaw = document.getElementById('edit-anggota-phone').value.trim();
   const reason = document.getElementById('edit-anggota-reason').value.trim();
   const alertEl = document.getElementById('edit-anggota-alert');
   alertEl.style.display = 'none';
@@ -4591,6 +4612,11 @@ async function doEditAnggota() {
   if (!nama) { alertEl.textContent = 'Nama wajib diisi.'; alertEl.style.display = 'block'; return; }
   if (username && !/^[a-z0-9_]+$/.test(username)) { alertEl.textContent = 'Username hanya boleh huruf kecil, angka, dan underscore.'; alertEl.style.display = 'block'; return; }
   if (!reason) { alertEl.textContent = 'Alasan perubahan wajib diisi.'; alertEl.style.display = 'block'; return; }
+  const phone = phoneRaw ? normalkanNomorWA(phoneRaw) : null;
+  if (phoneRaw && !phone) {
+    alertEl.textContent = 'Nomor WhatsApp tidak dikenali. Contoh yang benar: 081234567890';
+    alertEl.style.display = 'block'; return;
+  }
 
   // Check username uniqueness (if changed)
   if (username && username !== editAnggotaOriginal.username) {
@@ -4605,13 +4631,16 @@ async function doEditAnggota() {
   if (nama !== editAnggotaOriginal.nama) changes.push(`Nama: "${editAnggotaOriginal.nama}" → "${nama}"`);
   if (username && username !== editAnggotaOriginal.username) changes.push(`Username: "${editAnggotaOriginal.username}" → "${username}"`);
   if (role !== editAnggotaOriginal.role) changes.push(`Role: "${editAnggotaOriginal.role}" → "${role}"`);
+  if ((phone || '') !== (editAnggotaOriginal.phone || '')) {
+    changes.push(`Nomor WA: "${editAnggotaOriginal.phone || '-'}" → "${phone || '-'}"`);
+  }
 
   if (changes.length === 0) {
     alertEl.textContent = 'Tidak ada perubahan yang dilakukan.'; alertEl.style.display = 'block'; return;
   }
 
   // Update profile
-  const updateData = { full_name: nama, role };
+  const updateData = { full_name: nama, role, phone };
   if (username) updateData.username = username;
   const { error } = await dbUpdate('profiles', `id=eq.${id}`, updateData);
   if (error) { alertEl.textContent = 'Gagal: ' + JSON.stringify(error); alertEl.style.display = 'block'; return; }
@@ -5619,6 +5648,80 @@ async function cetakUlangBuktiSimpanan(savingsId) {
     catatan: s.note
   });
   await tampilkanKwitansi(opsi, teks, namaFile);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PENGINGAT CICILAN LEWAT WHATSAPP
+//
+// Memakai tautan wa.me yang dibuka peramban — tanpa API berbayar dan tanpa
+// server. Yang terbuka adalah aplikasi WhatsApp milik admin sendiri dengan
+// pesan sudah terisi; admin tinggal menekan kirim. Aplikasi ini tidak pernah
+// mengirim pesan atas nama siapa pun.
+// ══════════════════════════════════════════════════════════════
+
+// Menormalkan nomor Indonesia ke bentuk internasional tanpa plus.
+// 0812xxx → 62812xxx, +62812xxx → 62812xxx, spasi dan tanda hubung dibuang.
+function normalkanNomorWA(nomor) {
+  if (!nomor) return null;
+  let n = String(nomor).replace(/[^0-9]/g, '');
+  if (!n) return null;
+  if (n.startsWith('0')) n = '62' + n.slice(1);
+  else if (n.startsWith('8')) n = '62' + n;
+  // Nomor Indonesia yang wajar: 62 diikuti 9–13 angka
+  if (!/^62\d{9,13}$/.test(n)) return null;
+  return n;
+}
+
+function susunPesanPengingat({ nama, cicilan, sisa, jatuhTempo, telatHari }) {
+  const sapa = `Assalamualaikum ${nama} 🙏\n\n`;
+  const inti = telatHari > 0
+    ? `Pengingat cicilan Koperasi Keluarga.\n\n`
+      + `Jatuh tempo ${fmtDate(jatuhTempo)} sudah lewat ${telatHari} hari.\n\n`
+    : `Pengingat cicilan Koperasi Keluarga.\n\n`
+      + `Jatuh tempo: ${fmtDate(jatuhTempo)}\n\n`;
+  const rincian = `Cicilan      : ${fmt(cicilan)}\n`
+                + `Sisa tagihan : ${fmt(sisa)}\n\n`;
+  const tutup = telatHari > 0
+    ? `Mohon dapat diselesaikan ya. Kalau ada kendala, boleh dibicarakan bersama.\n\nTerima kasih 🌾`
+    : `Terima kasih 🌾`;
+  return sapa + inti + rincian + tutup;
+}
+
+async function ingatkanCicilan(loanId) {
+  const rows = await dbQuery('loans',
+    `id=eq.${loanId}&select=*,profiles!loans_member_id_fkey(full_name,phone)&limit=1`);
+  if (rows === null) { showToast('Gagal memuat data. Periksa koneksi lalu coba lagi.'); return; }
+  const loan = rows[0];
+  if (!loan) { showToast('Pinjaman tidak ditemukan'); return; }
+
+  const nama = loan.profiles?.full_name || 'Anggota';
+  const due  = loan.next_due_date ? loan.next_due_date.split('T')[0] : null;
+  const telat = due && due < getTodayStr()
+    ? Math.floor((new Date(getTodayStr()) - new Date(due)) / 86400000)
+    : 0;
+
+  const pesan = susunPesanPengingat({
+    nama,
+    cicilan: Number(loan.installment_amount || 0),
+    sisa: Number(loan.remaining_amount || 0),
+    jatuhTempo: loan.next_due_date,
+    telatHari: telat
+  });
+
+  const nomor = normalkanNomorWA(loan.profiles?.phone);
+  if (nomor) {
+    // Membuka WhatsApp dengan percakapan orang yang tepat dan pesan terisi
+    window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`, '_blank');
+    return;
+  }
+
+  // Tanpa nomor, pesannya tetap berguna — tinggal ditempel manual
+  try {
+    await navigator.clipboard.writeText(pesan);
+    showToast(`Nomor WhatsApp ${nama} belum diisi. Pesannya sudah disalin — tempel manual di WhatsApp.`, 7000);
+  } catch(e) {
+    showToast(`Nomor WhatsApp ${nama} belum diisi. Isi lewat menu Anggota agar bisa langsung terkirim.`, 7000);
+  }
 }
 
 // Menyusun bukti transaksi simpanan — setoran maupun pencairan.

@@ -613,11 +613,10 @@ tbody tr:hover { background: var(--surface2); }
 }
 /* ── Print styles ── */
 @media print {
-  /* Ukuran & orientasi kertas.
-     Laporan Pinjaman punya 14 kolom — pada A4 tegak, kolomnya pasti
-     terpotong. Mendatar memberi ruang yang cukup untuk semua tab, dan
-     ini juga berlaku saat menyimpan sebagai PDF lewat dialog cetak. */
-  @page { size: A4 landscape; margin: 12mm 10mm 14mm 10mm; }
+  /* A4 tegak. Tab Pinjaman punya 13 kolom yang tidak muat di lebar ini,
+     jadi empat kolom disembunyikan saat mencetak (lihat aturan .lap-pinjaman
+     di bawah) — bukan dipaksa mengecil sampai tidak terbaca. */
+  @page { size: A4 portrait; margin: 14mm 10mm 14mm 10mm; }
 
   .sidebar, .page-header .page-actions, .tabs, .btn, .filter-input,
   #laporan-date-from, #laporan-date-to, .modal-overlay,
@@ -669,6 +668,25 @@ tbody tr:hover { background: var(--surface2); }
 
   /* Ringkasan angka tetap menyatu, tidak terbelah antar halaman */
   .laporan-summary { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Tab Pinjaman: empat kolom disembunyikan agar sembilan sisanya terbaca.
+     Yang dibuang adalah yang bisa disimpulkan dari kolom lain:
+       1  No. Pinjaman  — kode panjang, tidak berguna di atas kertas
+       5  Bunga %       — turunan dari Total Bunga
+       6  Total Bunga   — Total Tagihan dikurangi Pokok
+       8  Jenis Cicilan — sudah tersirat pada Cicilan/Periode
+     Rinciannya tetap ada di layar dan di berkas Excel. */
+  .lap-pinjaman th:nth-child(1), .lap-pinjaman td:nth-child(1),
+  .lap-pinjaman th:nth-child(5), .lap-pinjaman td:nth-child(5),
+  .lap-pinjaman th:nth-child(6), .lap-pinjaman td:nth-child(6),
+  .lap-pinjaman th:nth-child(8), .lap-pinjaman td:nth-child(8) { display: none !important; }
+
+  /* Kolom keterangan panjang dibatasi agar tidak mendorong kolom lain keluar */
+  .lap-cicilan td:last-child, .lap-adjustment td:nth-child(7) {
+    max-width: 34mm; word-break: break-word;
+  }
+  table { font-size: 9.5px; }
+  th, td { padding: 2.5px 4px !important; }
 }
 .print-header { display: none; }
 </style>
@@ -1883,7 +1901,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.19.1';
+const APP_VERSION = 'v4.19.2';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3992,7 +4010,7 @@ async function renderLaporanPinjaman() {
       <div class="card lap-stat"><div class="lap-stat-label">Pinjaman Aktif</div><div class="lap-stat-value amber">${active.length} pinjaman</div></div>
       <div class="card lap-stat"><div class="lap-stat-label">Total Sisa Tagihan</div><div class="lap-stat-value amber">${fmt(totalPinjaman)}</div></div>
     </div>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="lap-pinjaman">
       <thead><tr><th>No. Pinjaman</th><th>Anggota</th><th>Tgl Cair</th><th>Pokok</th><th>Bunga%</th><th>Total Bunga</th><th>Total Tagihan</th><th>Jenis Cicilan</th><th>Cicilan/Periode</th><th>Dibayar</th><th>Sisa</th><th>Jatuh Tempo</th><th>Status</th></tr></thead>
       <tbody>${(loans || []).map((l, i) => `<tr>
         <td class="td-mono" style="font-size:11px">${l.id.substring(0,8)}...</td>
@@ -4027,7 +4045,7 @@ async function renderLaporanCicilan() {
       <div class="card lap-stat"><div class="lap-stat-label">Total Cicilan Diterima</div><div class="lap-stat-value green">${fmt(totalDibayar)}</div></div>
       <div class="card lap-stat"><div class="lap-stat-label">Jumlah Transaksi</div><div class="lap-stat-value">${(data||[]).length}x</div></div>
     </div>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="lap-cicilan">
       <thead><tr><th>Tanggal</th><th>Anggota</th><th>Pembayaran Ke-</th><th>Dibayar</th><th>Komponen Pokok</th><th>Komponen Bunga</th><th>Sisa Tagihan</th><th>Keterangan</th></tr></thead>
       <tbody>${(data||[]).map(p => `<tr>
         <td>${fmtDate(p.created_at)}</td>
@@ -4048,7 +4066,7 @@ async function renderLaporanAdjustment() {
   if (data === null) { document.getElementById('laporan-content').innerHTML = laporanGagal(); return; }
   const typeLabel = { savings: 'Simpanan', loan: 'Pinjaman', installment: 'Cicilan' };
   document.getElementById('laporan-content').innerHTML = `
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="lap-adjustment">
       <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis Koreksi</th><th>Nilai Sebelum</th><th>Nilai Sesudah</th><th>Selisih</th><th>Alasan</th><th>Admin</th></tr></thead>
       <tbody>${(data||[]).length ? (data||[]).map(a => `<tr>
         <td>${fmtDateTime(a.created_at)}</td>

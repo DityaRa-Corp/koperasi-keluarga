@@ -1274,7 +1274,11 @@ tbody tr:hover { background: var(--surface2); }
       <div class="card">
         <div class="section-title">📥 Restore Data</div>
         <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
-          ⚠️ <strong>Perhatian:</strong> Saat ini restore baru memulihkan sheet <strong>Simpanan</strong> saja. Sheet Pinjaman, Cicilan, Event, dan Poin belum dipulihkan otomatis. Data yang sudah ada tidak akan dihapus. Pastikan file backup berasal dari aplikasi ini.
+          ⚠️ <strong>Perhatian:</strong> Restore memulihkan Pinjaman, Simpanan, Event, Cicilan, Pengeluaran Kas, dan Poin.
+          Baris yang sudah ada <strong>tidak ditimpa</strong> — hanya yang belum ada yang ditambahkan, jadi aman dijalankan berulang.
+          <br><br>
+          <strong>Akun anggota tidak bisa dibuat ulang dari berkas backup</strong>, karena identitasnya tersimpan di sistem login, bukan di tabel biasa.
+          Kalau seluruh data hilang, buat dulu akun anggotanya lewat menu Anggota, baru jalankan restore.
         </div>
         <div class="form-group">
           <label class="form-label">Pilih File Backup (.xlsx)</label>
@@ -1946,7 +1950,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.27.0';
+const APP_VERSION = 'v4.28.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -7102,53 +7106,267 @@ async function previewRestore(input) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// RESTORE DATA
+//
+// KETERBATASAN YANG PERLU DISADARI
+//   Akun anggota TIDAK bisa dibuat ulang dari berkas backup, karena
+//   identitasnya tersimpan di sistem autentikasi Supabase — bukan di
+//   tabel biasa. Kalau seluruh database hilang, admin harus membuat
+//   ulang akunnya lewat menu Anggota lebih dulu, baru menjalankan
+//   restore untuk mengisi transaksinya.
+//
+//   Sheet Anggota di berkas backup dipakai untuk MENCOCOKKAN nama
+//   dengan akun yang ada sekarang, bukan untuk membuat akun baru.
+//
+// URUTAN PEMULIHAN
+//   Ditentukan oleh ketergantungan antar tabel, bukan urutan sheet:
+//     Pinjaman → Simpanan → Event → Cicilan → Pengeluaran → Poin
+//   Cicilan menunjuk ke pinjaman, pengeluaran menunjuk ke event.
+//   Memulihkan yang menunjuk sebelum yang ditunjuk pasti gagal.
+// ══════════════════════════════════════════════════════════════
+
+// Mencocokkan anggota di berkas backup dengan akun yang ada sekarang.
+// Dicocokkan lewat id lebih dulu; kalau id-nya sudah tidak ada — misalnya
+// akun dibuat ulang setelah database hilang — dicocokkan lewat nama.
+async function bangunPetaAnggota(wb) {
+  const kini = await dbQuery('profiles', 'select=id,full_name');
+  if (kini === null) return null;
+
+  const idKini = new Set(kini.map(p => p.id));
+  const namaKeId = new Map(kini.map(p => [String(p.full_name || '').trim().toLowerCase(), p.id]));
+
+  const peta = new Map();      // id di backup → id sekarang
+  const hilang = [];
+
+  const barisAnggota = wb.SheetNames.includes('Anggota')
+    ? XLSX.utils.sheet_to_json(wb.Sheets['Anggota']) : [];
+
+  barisAnggota.forEach(r => {
+    const idLama = r['ID'];
+    const nama = String(r['Nama'] || '').trim();
+    if (!idLama) return;
+    if (idKini.has(idLama)) { peta.set(idLama, idLama); return; }
+    const cocok = namaKeId.get(nama.toLowerCase());
+    if (cocok) peta.set(idLama, cocok);
+    else hilang.push(nama || idLama);
+  });
+
+  return { peta, namaKeId, hilang, jumlahBackup: barisAnggota.length };
+}
+
+// Memulihkan satu sheet. Melewati baris yang sudah ada, menghitung
+// keberhasilan dan kegagalan secara terpisah — penghitung lama naik walau
+// penyimpanannya gagal, sehingga laporannya menyesatkan.
+async function pulihkanSheet({ wb, namaSheet, tabel, ubah, status }) {
+  if (!wb.SheetNames.includes(namaSheet)) {
+    return { nama: namaSheet, ada: false, berhasil: 0, lewat: 0, gagal: 0, galat: [] };
+  }
+  if (status) status.innerHTML = `<span style="color:var(--text2)">⏳ Memulihkan ${escapeHtml(namaSheet)}...</span>`;
+
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[namaSheet]);
+  let berhasil = 0, lewat = 0, gagal = 0;
+  const galat = [];
+
+  for (const row of rows) {
+    const id = row['ID'];
+    if (!id) { lewat++; continue; }
+
+    const ada = await dbQuery(tabel, `id=eq.${id}&select=id&limit=1`);
+    if (ada === null) { gagal++; galat.push(`${namaSheet} ${id}: gagal memeriksa data lama`); continue; }
+    if (ada.length > 0) { lewat++; continue; }   // sudah ada, tidak ditimpa
+
+    let data;
+    try { data = ubah(row); }
+    catch (e) { gagal++; galat.push(`${namaSheet} ${id}: ${e.message}`); continue; }
+    if (!data) { gagal++; galat.push(`${namaSheet} ${id}: anggota atau acuannya tidak ditemukan`); continue; }
+
+    const { error } = await dbInsert(tabel, data);
+    if (error) { gagal++; galat.push(`${namaSheet} ${id}: ${error.message || JSON.stringify(error)}`); }
+    else berhasil++;
+  }
+  return { nama: namaSheet, ada: true, berhasil, lewat, gagal, galat };
+}
+
 async function doRestore() {
   const file = document.getElementById('restore-file').files[0];
   const status = document.getElementById('restore-status');
   const btn = document.getElementById('btn-restore');
   if (!file) return;
 
-  if (!confirm('Yakin ingin restore data dari file ini?\n\nData dari file akan ditambahkan ke database. Pastikan Anda sudah melakukan backup data terbaru sebelum restore.')) return;
+  if (!confirm('Yakin ingin memulihkan data dari berkas ini?\n\n'
+    + 'Baris yang sudah ada TIDAK akan ditimpa — hanya yang belum ada yang ditambahkan.\n\n'
+    + 'Akun anggota tidak bisa dibuat ulang dari berkas backup. Pastikan akunnya sudah ada lebih dulu.')) return;
 
   btn.disabled = true;
-  status.innerHTML = '<span style="color:var(--text2)">⏳ Memulai restore...</span>';
+  status.innerHTML = '<span style="color:var(--text2)">⏳ Membaca berkas...</span>';
 
   try {
-    const data = await file.arrayBuffer();
-    const wb = XLSX.read(data);
+    const wb = XLSX.read(await file.arrayBuffer());
 
-    let totalRestored = 0;
-    let errors = [];
-
-    // Restore simpanan
-    if (wb.SheetNames.includes('Simpanan')) {
-      status.innerHTML = '<span style="color:var(--text2)">⏳ Restore simpanan...</span>';
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets['Simpanan']);
-      for (const row of rows) {
-        if (!row['ID'] || !row['Anggota']) continue;
-        // Cek apakah sudah ada (by ID)
-        const exists = await dbQuery('savings', `id=eq.${row['ID']}&select=id&limit=1`);
-        if (exists && exists.length > 0) continue; // Skip jika sudah ada
-
-        // Cari member_id dari nama
-        const member = await dbQuery('profiles', `full_name=eq.${encodeURIComponent(row['Anggota'])}&select=id&limit=1`);
-        if (!member || !member.length) { errors.push(`Anggota tidak ditemukan: ${row['Anggota']}`); continue; }
-
-        try {
-          await dbInsert('savings', {
-            id: row['ID'], member_id: member[0].id,
-            type: row['Tipe'], amount: row['Jumlah'],
-            balance_after: row['Saldo Setelah'], note: row['Keterangan'] || '',
-            recorded_by: currentUser.id,
-            created_at: row['Tanggal']
-          });
-          totalRestored++;
-        } catch(e) { errors.push(`Simpanan ${row['ID']}: ${e.message}`); }
-      }
+    const petaHasil = await bangunPetaAnggota(wb);
+    if (!petaHasil) {
+      status.innerHTML = '<span style="color:var(--red)">❌ Gagal membaca daftar anggota. Periksa koneksi lalu coba lagi.</span>';
+      return;
     }
+    const { peta, namaKeId, hilang } = petaHasil;
 
-    status.innerHTML = `<span style="color:var(--green)">✅ Restore selesai! ${totalRestored} transaksi berhasil dipulihkan.${errors.length > 0 ? '<br>⚠️ ' + errors.length + ' error: ' + errors.slice(0,3).join(', ') : ''}</span>`;
-    await logActivity('RESTORE', `Restore dari file: ${file.name}, ${totalRestored} records`);
+    // Mencari id anggota: lewat id di backup, lalu lewat namanya
+    const cariAnggota = (row) => {
+      const idLama = row['Member ID'] || row['ID Anggota'];
+      if (idLama && peta.has(idLama)) return peta.get(idLama);
+      const nama = String(row['Anggota'] || '').trim().toLowerCase();
+      return namaKeId.get(nama) || null;
+    };
+
+    const hasil = [];
+
+    // 1. Pinjaman — harus lebih dulu karena cicilan menunjuk ke sini
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Pinjaman', tabel: 'loans', status,
+      ubah: (r) => {
+        const mid = cariAnggota(r);
+        if (!mid) return null;
+        return {
+          id: r['ID'], member_id: mid,
+          principal: Number(r['Pokok']) || 0,
+          total_amount: Number(r['Total']) || 0,
+          interest_rate: Number(r['Bunga Rate']) || 0,
+          installment_type: r['Jenis'] || 'monthly',
+          installment_amount: Number(r['Cicilan']) || 0,
+          installment_count: Number(r['Jumlah Cicilan']) || 0,
+          amount_paid: Number(r['Terbayar']) || 0,
+          remaining_amount: Number(r['Sisa']) || 0,
+          status: r['Status'] || 'active',
+          disbursed_at: r['Tgl Cair'] || null,
+          next_due_date: r['Jatuh Tempo Berikut'] || null
+        };
+      }
+    }));
+
+    // 2. Simpanan
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Simpanan', tabel: 'savings', status,
+      ubah: (r) => {
+        const mid = cariAnggota(r);
+        if (!mid) return null;
+        return {
+          id: r['ID'], member_id: mid,
+          type: r['Tipe'], amount: Number(r['Jumlah']) || 0,
+          balance_after: Number(r['Saldo Setelah']) || 0,
+          note: r['Keterangan'] || '',
+          recorded_by: currentUser.id,
+          created_at: r['Tanggal']
+        };
+      }
+    }));
+
+    // 3. Event — harus lebih dulu karena pengeluaran kas menunjuk ke sini
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Event', tabel: 'events', status,
+      ubah: (r) => ({
+        id: r['ID'], judul: r['Judul'] || '-',
+        tanggal: r['Tanggal'] || null,
+        deskripsi: r['Deskripsi'] || '',
+        status: r['Status'] || 'draft',
+        total_biaya: Number(r['Total Biaya']) || 0,
+        created_by: currentUser.id
+      })
+    }));
+
+    // 4. Cicilan
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Cicilan', tabel: 'loan_payments', status,
+      ubah: (r) => {
+        const mid = cariAnggota(r);
+        if (!mid || !r['Loan ID']) return null;
+        return {
+          id: r['ID'], loan_id: r['Loan ID'], member_id: mid,
+          amount_paid: Number(r['Dibayar']) || 0,
+          principal_component: Number(r['Pokok']) || 0,
+          interest_component: Number(r['Bunga']) || 0,
+          remaining_after: Number(r['Sisa']) || 0,
+          payment_number: Number(r['Cicilan Ke']) || 1,
+          note: r['Keterangan'] || '',
+          recorded_by: currentUser.id,
+          created_at: r['Tanggal']
+        };
+      }
+    }));
+
+    // 5. Pengeluaran kas
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Pengeluaran Kas', tabel: 'org_expenses', status,
+      ubah: (r) => ({
+        id: r['ID'], event_id: r['Event ID'] || null,
+        description: r['Keterangan'] || '-',
+        amount: Number(r['Jumlah']) || 0,
+        category: r['Event ID'] ? 'event' : 'lain',
+        recorded_by: currentUser.id,
+        created_at: r['Tanggal']
+      })
+    }));
+
+    // 6. Poin
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Poin Reward', tabel: 'member_points', status,
+      ubah: (r) => {
+        const mid = cariAnggota(r);
+        if (!mid) return null;
+        return {
+          id: r['ID'], member_id: mid,
+          points: Number(r['Poin']) || 0,
+          type: r['Tipe'] || 'credit',
+          reason: r['Alasan'] || '-',
+          created_at: r['Tanggal']
+        };
+      }
+    }));
+
+    // ── Laporan hasil ──
+    const totalBerhasil = hasil.reduce((a, h) => a + h.berhasil, 0);
+    const totalLewat    = hasil.reduce((a, h) => a + h.lewat, 0);
+    const totalGagal    = hasil.reduce((a, h) => a + h.gagal, 0);
+    const semuaGalat    = hasil.flatMap(h => h.galat);
+
+    const rincian = hasil.map(h => {
+      if (!h.ada) return `<div style="color:var(--text3)">— ${escapeHtml(h.nama)}: tidak ada di berkas</div>`;
+      const warna = h.gagal > 0 ? 'var(--red)' : 'var(--text2)';
+      return `<div style="color:${warna}">${escapeHtml(h.nama)}: `
+        + `<strong>${h.berhasil}</strong> dipulihkan`
+        + (h.lewat > 0 ? `, ${h.lewat} sudah ada` : '')
+        + (h.gagal > 0 ? `, <strong>${h.gagal} gagal</strong>` : '')
+        + `</div>`;
+    }).join('');
+
+    const peringatanAnggota = hilang.length > 0
+      ? `<div style="margin-top:8px;color:var(--amber-text)">⚠️ ${hilang.length} anggota di berkas belum ada akunnya: `
+        + escapeHtml(hilang.slice(0, 5).join(', ')) + (hilang.length > 5 ? ', dan lainnya' : '')
+        + `. Buat akunnya lewat menu Anggota, lalu jalankan restore lagi.</div>`
+      : '';
+
+    const daftarGalat = semuaGalat.length > 0
+      ? `<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--red)">Lihat ${semuaGalat.length} kegagalan</summary>`
+        + `<div style="font-size:11px;color:var(--text2);margin-top:6px;max-height:160px;overflow:auto">`
+        + semuaGalat.map(g => escapeHtml(g)).join('<br>') + `</div></details>`
+      : '';
+
+    const judul = totalGagal > 0
+      ? `<span style="color:var(--amber-text)">⚠️ Restore selesai dengan ${totalGagal} kegagalan</span>`
+      : `<span style="color:var(--green)">✅ Restore selesai</span>`;
+
+    status.innerHTML = `<div style="font-weight:600;margin-bottom:8px">${judul}</div>`
+      + `<div style="font-size:12px;line-height:1.8">${rincian}</div>`
+      + `<div style="margin-top:8px;font-size:12px">Total: <strong>${totalBerhasil}</strong> dipulihkan`
+      + (totalLewat > 0 ? `, ${totalLewat} dilewati karena sudah ada` : '')
+      + (totalGagal > 0 ? `, <strong style="color:var(--red)">${totalGagal} gagal</strong>` : '') + `</div>`
+      + peringatanAnggota + daftarGalat;
+
+    await logActivity('RESTORE',
+      `Restore dari ${file.name}: ${totalBerhasil} dipulihkan, ${totalLewat} dilewati, ${totalGagal} gagal`);
+
+    await loadAllMembers();
+    loadDashboard();
   } catch(e) {
     status.innerHTML = `<span style="color:var(--red)">❌ Restore gagal: ${escapeHtml(e.message)}</span>`;
   } finally {

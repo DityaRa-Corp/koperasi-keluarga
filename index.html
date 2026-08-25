@@ -1950,7 +1950,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.29.0';
+const APP_VERSION = 'v4.30.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2236,7 +2236,7 @@ async function doLogin() {
 
     // Check if locked in DB
     if (profile.status === 'locked') {
-      alertEl.textContent = '🔒 Akun Anda terkunci setelah terlalu banyak percobaan gagal. Hubungi Admin untuk membuka kunci.';
+      alertEl.textContent = '🔒 Akun Anda terkunci setelah terlalu banyak percobaan gagal. Kunci terbuka sendiri 15 menit setelah percobaan terakhir — atau hubungi Admin bila perlu segera.';
       alertEl.style.display = 'block'; return;
     }
 
@@ -2251,8 +2251,12 @@ async function doLogin() {
       authToken = loginResult.access_token;
       const user = loginResult.user || jwtDecode(loginResult.access_token);
       if (user && user.id) {
-        // Reset hitungan percobaan gagal lewat RPC (bukan PATCH tabel langsung)
-        await dbRpc('record_login_attempt', { p_username: username, p_success: true }, true);
+        // Reset hitungan percobaan gagal lewat RPC (bukan PATCH tabel langsung).
+        // Dikirim memakai token hasil login, BUKAN kunci anon: fungsi di
+        // database memastikan pemanggilnya benar-benar akun yang bersangkutan
+        // sebelum menihilkan hitungan. Tanpa itu, siapa pun bisa mengirim
+        // p_success=true berulang kali dan melumpuhkan penguncian 5x-gagal.
+        await dbRpc('record_login_attempt', { p_username: username, p_success: true }, false);
         localStorage.setItem('kk_auth_token', authToken);
         localStorage.setItem('kk_auth_user', JSON.stringify(user));
         localStorage.setItem('kk_auth_username', username);

@@ -1950,7 +1950,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.28.0';
+const APP_VERSION = 'v4.29.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3123,7 +3123,19 @@ function getNextDueDate(type, fromDate) {
   const d = fromDate ? new Date(fromDate) : new Date();
   if (type === 'weekly') d.setDate(d.getDate() + 7);
   else if (type === 'biweekly') d.setDate(d.getDate() + 14);
-  else d.setMonth(d.getMonth() + 1);
+  else {
+    // setMonth() polos meluap di akhir bulan: 31 Jan + 1 bulan menjadi
+    // 3 Maret karena "31 Februari" dinormalkan maju — Februari terlewati
+    // seluruhnya. Karena itu tanggalnya dijepit ke hari terakhir bulan
+    // tujuan: 31 Jan → 28/29 Feb. Sekali terjepit ke 28, jatuh tempo
+    // berikutnya tetap 28 — konvensi yang sama dipakai perbankan, dan
+    // lebih baik dapat tanggal yang konsisten daripada yang meleset.
+    const hari = d.getDate();
+    d.setDate(1);                       // ke tanggal aman dulu, baru pindah bulan
+    d.setMonth(d.getMonth() + 1);
+    const akhirBulan = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(hari, akhirBulan));
+  }
 // Gunakan local date components untuk hindari UTC timezone shift
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');

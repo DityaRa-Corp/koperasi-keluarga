@@ -1,0 +1,37 @@
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # Tiap 5 hari (tanggal 1,6,11,16,21,26,31) jam 04:00 WIB (21:00 UTC).
+    # Catatan: sintaks cron tidak punya "tiap 5 hari" murni — pola tanggal ini
+    # membuat jeda maksimal 5 hari, kecuali pergantian bulan yang justru lebih rapat.
+    - cron: '0 21 */5 * *'
+  workflow_dispatch: {}   # bisa juga dijalankan manual dari tab Actions
+
+permissions:
+  actions: write   # untuk langkah anti-nonaktif di bawah
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (query ringan, dihitung sebagai aktivitas)
+        run: |
+          # Anon key memang publik (ada di index.html); RLS yang menjaga data.
+          URL="https://iwxxjkyalqrzolligvrs.supabase.co"
+          KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI"
+          CODE=$(curl -s -o /tmp/resp -w "%{http_code}" --max-time 30 \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+            "$URL/rest/v1/app_settings?select=*&limit=1")
+          echo "HTTP $CODE"
+          cat /tmp/resp
+          # 200 = hidup. Selain itu: gagal → job merah → GitHub kirim email.
+          [ "$CODE" = "200" ]
+
+      - name: Cegah GitHub menonaktifkan cron ini (repo sepi 60 hari)
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT \
+            "repos/${{ github.repository }}/actions/workflows/supabase-keepalive.yml/enable"

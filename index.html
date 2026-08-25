@@ -1249,7 +1249,9 @@ tbody tr:hover { background: var(--surface2); }
               ✅ Riwayat cicilan<br>
               ✅ Data event<br>
               ✅ Poin reward<br>
-              ✅ Pengeluaran kas
+              ✅ Pengeluaran kas<br>
+              ✅ Denda keterlambatan<br>
+              ✅ Pengaturan (rujukan)
             </div>
           </div>
           <div class="card" style="padding:14px;background:var(--surface2)">
@@ -1279,6 +1281,8 @@ tbody tr:hover { background: var(--surface2); }
           <br><br>
           <strong>Akun anggota tidak bisa dibuat ulang dari berkas backup</strong>, karena identitasnya tersimpan di sistem login, bukan di tabel biasa.
           Kalau seluruh data hilang, buat dulu akun anggotanya lewat menu Anggota, baru jalankan restore.
+          <br><br>
+          Sheet <strong>Pengaturan</strong> (bunga, plafon, denda) sengaja <strong>tidak</strong> dipulihkan otomatis — isi ulang lewat menu Pengaturan sesudah restore.
         </div>
         <div class="form-group">
           <label class="form-label">Pilih File Backup (.xlsx)</label>
@@ -1950,7 +1954,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.30.0';
+const APP_VERSION = 'v4.31.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -7000,37 +7004,45 @@ async function doBackup() {
     // Sheet 1: Anggota
     status.textContent = '📊 Mengambil data anggota...';
     const profiles = await dbQuery('profiles', 'select=*&order=full_name.asc');
-    const profRows = [['ID','Nama','Username','Role','Status','Total Poin','Bergabung']];
-    (profiles||[]).forEach(p => profRows.push([p.id, p.full_name, p.username||'', p.role, p.status, p.total_points||0, p.created_at]));
+    const profRows = [['ID','Nama','Username','No. WhatsApp','Role','Status','Total Poin','Bergabung']];
+    (profiles||[]).forEach(p => profRows.push([p.id, p.full_name, p.username||'', p.phone||'', p.role, p.status, p.total_points||0, p.created_at]));
     const wsProf = XLSX.utils.aoa_to_sheet(profRows);
-    wsProf['!cols'] = [{wch:36},{wch:25},{wch:20},{wch:10},{wch:10},{wch:10},{wch:25}];
+    wsProf['!cols'] = [{wch:36},{wch:25},{wch:20},{wch:16},{wch:10},{wch:10},{wch:10},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsProf, 'Anggota');
 
     // Sheet 2: Simpanan
     status.textContent = '💰 Mengambil data simpanan...';
     const savings = await dbQuery('savings', 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.asc');
-    const savRows = [['ID','Anggota','Tipe','Jumlah','Saldo Setelah','Keterangan','Tanggal']];
-    (savings||[]).forEach(s => savRows.push([s.id, s.profiles?.full_name||'', s.type, s.amount, s.balance_after, s.note||'', s.created_at]));
+    // Member ID ikut disimpan supaya pencocokan saat restore tidak bergantung
+    // pada nama (dua anggota bisa sama namanya). Penanda koreksi WAJIB ikut:
+    // tanpa is_reversed, setoran yang pernah dikoreksi akan terhitung DUA KALI
+    // setelah restore — baris aslinya dan baris penggantinya sama-sama berlaku.
+    const savRows = [['ID','Member ID','Anggota','Tipe','Jumlah','Saldo Setelah','Keterangan','Dikoreksi','Koreksi Dari','Tanggal']];
+    (savings||[]).forEach(s => savRows.push([s.id, s.member_id||'', s.profiles?.full_name||'', s.type, s.amount, s.balance_after, s.note||'', s.is_reversed === true, s.corrects_id||'', s.created_at]));
     const wsSav = XLSX.utils.aoa_to_sheet(savRows);
-    wsSav['!cols'] = [{wch:36},{wch:25},{wch:10},{wch:15},{wch:15},{wch:20},{wch:25}];
+    wsSav['!cols'] = [{wch:36},{wch:36},{wch:25},{wch:10},{wch:15},{wch:15},{wch:20},{wch:11},{wch:36},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsSav, 'Simpanan');
 
     // Sheet 3: Pinjaman
     status.textContent = '🏦 Mengambil data pinjaman...';
     const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.asc');
-    const loanRows = [['ID','Anggota','Pokok','Total','Bunga Rate','Jenis','Cicilan','Jumlah Cicilan','Terbayar','Sisa','Status','Tgl Cair','Jatuh Tempo Berikut']];
-    (loans||[]).forEach(l => loanRows.push([l.id, l.profiles?.full_name||'', l.principal, l.total_amount, l.interest_rate, l.installment_type, l.installment_amount, l.installment_count, l.amount_paid, l.remaining_amount, l.status, l.disbursed_at||'', l.next_due_date||'']));
+    // 'Total Bunga' dan 'Cicilan Terlunasi' WAJIB ikut. Tanpa total_interest,
+    // pinjaman hasil restore mengalokasikan seluruh pembayaran sebagai pokok
+    // (bunga nol). Tanpa paid_count, pembayaran pertama sesudah restore
+    // memberi poin sebanyak SELURUH periode sekaligus.
+    const loanRows = [['ID','Member ID','Anggota','Pokok','Total','Total Bunga','Bunga Rate','Jenis','Cicilan','Jumlah Cicilan','Terbayar','Cicilan Terlunasi','Sisa','Status','Catatan','Tgl Cair','Jatuh Tempo Berikut']];
+    (loans||[]).forEach(l => loanRows.push([l.id, l.member_id||'', l.profiles?.full_name||'', l.principal, l.total_amount, l.total_interest, l.interest_rate, l.installment_type, l.installment_amount, l.installment_count, l.amount_paid, l.paid_count||0, l.remaining_amount, l.status, l.note||'', l.disbursed_at||'', l.next_due_date||'']));
     const wsLoan = XLSX.utils.aoa_to_sheet(loanRows);
-    wsLoan['!cols'] = [{wch:36},{wch:20},{wch:15},{wch:15},{wch:10},{wch:12},{wch:15},{wch:14},{wch:12},{wch:12},{wch:12},{wch:20},{wch:15}];
+    wsLoan['!cols'] = [{wch:36},{wch:36},{wch:20},{wch:15},{wch:15},{wch:15},{wch:10},{wch:12},{wch:15},{wch:14},{wch:12},{wch:16},{wch:12},{wch:12},{wch:25},{wch:20},{wch:15}];
     XLSX.utils.book_append_sheet(wb, wsLoan, 'Pinjaman');
 
     // Sheet 4: Cicilan
     status.textContent = '📅 Mengambil data cicilan...';
     const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc');
-    const payRows = [['ID','Loan ID','Anggota','Dibayar','Pokok','Bunga','Sisa','Cicilan Ke','Keterangan','Tanggal']];
-    (payments||[]).forEach(p => payRows.push([p.id, p.loan_id, p.profiles?.full_name||'', p.amount_paid, p.principal_component, p.interest_component, p.remaining_after, p.payment_number, p.note||'', p.created_at]));
+    const payRows = [['ID','Loan ID','Member ID','Anggota','Dibayar','Pokok','Bunga','Sisa','Cicilan Ke','Keterangan','Dikoreksi','Koreksi Dari','Tanggal']];
+    (payments||[]).forEach(p => payRows.push([p.id, p.loan_id, p.member_id||'', p.profiles?.full_name||'', p.amount_paid, p.principal_component, p.interest_component, p.remaining_after, p.payment_number, p.note||'', p.is_reversed === true, p.corrects_id||'', p.created_at]));
     const wsPay = XLSX.utils.aoa_to_sheet(payRows);
-    wsPay['!cols'] = [{wch:36},{wch:36},{wch:20},{wch:12},{wch:12},{wch:12},{wch:12},{wch:10},{wch:20},{wch:25}];
+    wsPay['!cols'] = [{wch:36},{wch:36},{wch:36},{wch:20},{wch:12},{wch:12},{wch:12},{wch:12},{wch:10},{wch:20},{wch:11},{wch:36},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsPay, 'Cicilan');
 
     // Sheet 5: Event
@@ -7045,20 +7057,52 @@ async function doBackup() {
     // Sheet 6: Poin
     status.textContent = '⭐ Mengambil data poin...';
     const points = await dbQuery('member_points', 'select=*,profiles!member_points_member_id_fkey(full_name)&order=created_at.asc');
-    const pointRows = [['ID','Anggota','Poin','Tipe','Alasan','Tanggal']];
-    (points||[]).forEach(p => pointRows.push([p.id, p.profiles?.full_name||'', p.points, p.type, p.reason, p.created_at]));
+    const pointRows = [['ID','Member ID','Anggota','Poin','Tipe','Alasan','Tanggal']];
+    (points||[]).forEach(p => pointRows.push([p.id, p.member_id||'', p.profiles?.full_name||'', p.points, p.type, p.reason, p.created_at]));
     const wsPoint = XLSX.utils.aoa_to_sheet(pointRows);
-    wsPoint['!cols'] = [{wch:36},{wch:25},{wch:8},{wch:10},{wch:40},{wch:25}];
+    wsPoint['!cols'] = [{wch:36},{wch:36},{wch:25},{wch:8},{wch:10},{wch:40},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsPoint, 'Poin Reward');
 
     // Sheet 7: Pengeluaran Kas Organisasi
     status.textContent = '🎉 Mengambil data pengeluaran kas...';
     const orgExpB = await dbQuery('org_expenses', 'select=*&order=created_at.asc');
-    const expRows = [['ID','Event ID','Keterangan','Jumlah','Dicatat Oleh','Tanggal']];
-    (orgExpB||[]).forEach(e => expRows.push([e.id, e.event_id||'', e.description, e.amount, e.recorded_by||'', e.created_at]));
+    // 'Kategori' membedakan pengeluaran event dari pembagian keuntungan
+    // (profit_share) yang dipakai dashboard. Tanpa itu, semuanya kembali
+    // sebagai 'event' dan kartu Keuntungan Bunga jadi keliru setelah restore.
+    const expRows = [['ID','Event ID','Keterangan','Kategori','Jumlah','Dicatat Oleh','Tanggal']];
+    (orgExpB||[]).forEach(e => expRows.push([e.id, e.event_id||'', e.description, e.category||'', e.amount, e.recorded_by||'', e.created_at]));
     const wsExp = XLSX.utils.aoa_to_sheet(expRows);
-    wsExp['!cols'] = [{wch:36},{wch:36},{wch:35},{wch:15},{wch:36},{wch:25}];
+    wsExp['!cols'] = [{wch:36},{wch:36},{wch:35},{wch:14},{wch:15},{wch:36},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsExp, 'Pengeluaran Kas');
+
+    // Sheet 8: Pendapatan Lain (denda keterlambatan)
+    // Sebelumnya tidak pernah dibackup sama sekali — seluruh denda yang pernah
+    // diterima hilang saat restore, dan kas hasil pemulihan lebih kecil
+    // daripada kenyataannya.
+    status.textContent = '⚠️ Mengambil data denda...';
+    const lainB = await dbQuery('pendapatan_lain', 'select=*,profiles!pendapatan_lain_member_id_fkey(full_name)&order=created_at.asc');
+    const lainRows = [['ID','Loan ID','Member ID','Anggota','Jenis','Jumlah','Keterangan','Tanggal']];
+    (lainB||[]).forEach(x => lainRows.push([x.id, x.loan_id||'', x.member_id||'', x.profiles?.full_name||'', x.jenis||'denda', x.amount, x.note||'', x.created_at]));
+    const wsLain = XLSX.utils.aoa_to_sheet(lainRows);
+    wsLain['!cols'] = [{wch:36},{wch:36},{wch:36},{wch:20},{wch:12},{wch:15},{wch:30},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsLain, 'Pendapatan Lain');
+
+    // Sheet 9: Pengaturan — disimpan sebagai rujukan, TIDAK dipulihkan
+    // otomatis. Nilainya sedikit dan lebih aman diisi ulang sadar-sadar oleh
+    // admin daripada tertimpa diam-diam saat restore.
+    status.textContent = '⚙️ Mengambil pengaturan...';
+    const [bungaB, setB] = await Promise.all([
+      dbQuery('interest_settings', 'select=rate,updated_at&order=updated_at.desc'),
+      dbQuery('app_settings', 'select=key,value')
+    ]);
+    const setRows = [['Pengaturan','Nilai','Diperbarui']];
+    (bungaB||[]).forEach((b, i) => setRows.push([i === 0 ? 'Bunga per bulan (%) — BERLAKU' : 'Bunga per bulan (%) — riwayat', b.rate, b.updated_at||'']));
+    (setB||[]).forEach(s => setRows.push([s.key, JSON.stringify(s.value), '']));
+    setRows.push([]);
+    setRows.push(['Catatan', 'Sheet ini TIDAK dipulihkan otomatis. Isi ulang lewat menu Pengaturan setelah restore.', '']);
+    const wsSet = XLSX.utils.aoa_to_sheet(setRows);
+    wsSet['!cols'] = [{wch:38},{wch:46},{wch:25}];
+    XLSX.utils.book_append_sheet(wb, wsSet, 'Pengaturan');
 
     // Tulis file
     status.textContent = '💾 Menyimpan file...';
@@ -7235,6 +7279,10 @@ async function doRestore() {
       return namaKeId.get(nama) || null;
     };
 
+    // Excel mengembalikan boolean sebagai true/false, tetapi berkas yang
+    // pernah dibuka & disimpan ulang bisa mengubahnya jadi teks atau angka.
+    const yaTidak = (v) => v === true || v === 'true' || v === 'TRUE' || v === 1;
+
     const hasil = [];
 
     // 1. Pinjaman — harus lebih dulu karena cicilan menunjuk ke sini
@@ -7243,17 +7291,33 @@ async function doRestore() {
       ubah: (r) => {
         const mid = cariAnggota(r);
         if (!mid) return null;
+        const pokok = Number(r['Pokok']) || 0;
+        const total = Number(r['Total']) || 0;
+        const cicil = Number(r['Cicilan']) || 0;
+        const bayar = Number(r['Terbayar']) || 0;
+        // Berkas backup lama belum punya kedua kolom ini. Diturunkan dari
+        // angka lain supaya pinjaman lama tetap pulih dengan benar, bukan
+        // dibiarkan nol yang membuat seluruh pembayaran dianggap pokok.
+        const bunga = r['Total Bunga'] !== undefined && r['Total Bunga'] !== ''
+          ? Number(r['Total Bunga']) || 0
+          : Math.max(0, total - pokok);
+        const lunasKe = r['Cicilan Terlunasi'] !== undefined && r['Cicilan Terlunasi'] !== ''
+          ? Number(r['Cicilan Terlunasi']) || 0
+          : (cicil > 0 ? Math.floor(bayar / cicil) : 0);
         return {
           id: r['ID'], member_id: mid,
-          principal: Number(r['Pokok']) || 0,
-          total_amount: Number(r['Total']) || 0,
+          principal: pokok,
+          total_amount: total,
+          total_interest: bunga,
           interest_rate: Number(r['Bunga Rate']) || 0,
           installment_type: r['Jenis'] || 'monthly',
-          installment_amount: Number(r['Cicilan']) || 0,
+          installment_amount: cicil,
           installment_count: Number(r['Jumlah Cicilan']) || 0,
-          amount_paid: Number(r['Terbayar']) || 0,
+          amount_paid: bayar,
+          paid_count: lunasKe,
           remaining_amount: Number(r['Sisa']) || 0,
           status: r['Status'] || 'active',
+          note: r['Catatan'] || '',
           disbursed_at: r['Tgl Cair'] || null,
           next_due_date: r['Jatuh Tempo Berikut'] || null
         };
@@ -7271,6 +7335,8 @@ async function doRestore() {
           type: r['Tipe'], amount: Number(r['Jumlah']) || 0,
           balance_after: Number(r['Saldo Setelah']) || 0,
           note: r['Keterangan'] || '',
+          is_reversed: yaTidak(r['Dikoreksi']),
+          corrects_id: r['Koreksi Dari'] || null,
           recorded_by: currentUser.id,
           created_at: r['Tanggal']
         };
@@ -7304,6 +7370,8 @@ async function doRestore() {
           remaining_after: Number(r['Sisa']) || 0,
           payment_number: Number(r['Cicilan Ke']) || 1,
           note: r['Keterangan'] || '',
+          is_reversed: yaTidak(r['Dikoreksi']),
+          corrects_id: r['Koreksi Dari'] || null,
           recorded_by: currentUser.id,
           created_at: r['Tanggal']
         };
@@ -7317,7 +7385,22 @@ async function doRestore() {
         id: r['ID'], event_id: r['Event ID'] || null,
         description: r['Keterangan'] || '-',
         amount: Number(r['Jumlah']) || 0,
-        category: r['Event ID'] ? 'event' : 'lain',
+        category: r['Kategori'] || (r['Event ID'] ? 'event' : 'lain'),
+        recorded_by: currentUser.id,
+        created_at: r['Tanggal']
+      })
+    }));
+
+    // 5b. Pendapatan lain (denda) — setelah Pinjaman karena menunjuk ke sana
+    hasil.push(await pulihkanSheet({
+      wb, namaSheet: 'Pendapatan Lain', tabel: 'pendapatan_lain', status,
+      ubah: (r) => ({
+        id: r['ID'],
+        member_id: cariAnggota(r),
+        loan_id: r['Loan ID'] || null,
+        jenis: r['Jenis'] || 'denda',
+        amount: Number(r['Jumlah']) || 0,
+        note: r['Keterangan'] || '',
         recorded_by: currentUser.id,
         created_at: r['Tanggal']
       })

@@ -1954,7 +1954,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.31.0';
+const APP_VERSION = 'v4.32.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3905,21 +3905,30 @@ async function exportLaporan() {
 
     // ── Sheet 5: Jurnal Kas (admin only) ──
     if (isAdmin()) {
-      const [savJ, payJ, loanJ, expJ] = await Promise.all([
+      const [savJ, payJ, loanJ, expJ, lainJ] = await Promise.all([
         dbQuery('savings', `select=type,amount,created_at,note,member_id,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`),
         dbQuery('loan_payments', `select=amount_paid,principal_component,interest_component,created_at,note,member_id,profiles!loan_payments_member_id_fkey(full_name)&is_reversed=is.false&order=created_at.asc${dateFilter}`),
         dbQuery('loans', `select=principal,disbursed_at,member_id,profiles!loans_member_id_fkey(full_name)&disbursed_at=not.is.null&order=disbursed_at.asc${dateFilterD}`),
-        dbQuery('org_expenses', `select=description,amount,created_at&order=created_at.asc${dateFilter}`)
+        dbQuery('org_expenses', `select=description,amount,created_at&order=created_at.asc${dateFilter}`),
+        dbQuery('pendapatan_lain', `select=jenis,amount,created_at,note,profiles!pendapatan_lain_member_id_fkey(full_name)&order=created_at.asc${dateFilter}`)
       ]);
       const jEntries = [];
       (savJ||[]).forEach(s => jEntries.push({ date: new Date(s.created_at), ket: `${s.type==='deposit'?'Setoran Simpanan':'Penarikan Simpanan'} — ${s.profiles?.full_name||'-'}${s.note?' ('+s.note+')':''}`, masuk: s.type==='deposit'?Number(s.amount):0, keluar: s.type==='withdraw'?Number(s.amount):0 }));
       (payJ||[]).forEach(p => jEntries.push({ date: new Date(p.created_at), ket: `Bayar Cicilan — ${p.profiles?.full_name||'-'}`, masuk: Number(p.amount_paid), keluar: 0 }));
       (loanJ||[]).forEach(l => { if(l.disbursed_at) jEntries.push({ date: new Date(l.disbursed_at), ket: `Cair Pinjaman — ${l.profiles?.full_name||'-'}`, masuk: 0, keluar: Number(l.principal) }); });
       (expJ||[]).forEach(e => jEntries.push({ date: new Date(e.created_at), ket: `Pengeluaran Kas — ${e.description||'-'}`, masuk: 0, keluar: Number(e.amount) }));
+      // Denda keterlambatan — sebelumnya hilang dari berkas Excel, sehingga
+      // total pemasukannya tidak cocok dengan yang tampil di layar.
+      (lainJ||[]).forEach(x => jEntries.push({ date: new Date(x.created_at), ket: `Denda Keterlambatan — ${x.profiles?.full_name||'-'}${x.note?' ('+x.note+')':''}`, masuk: Number(x.amount), keluar: 0 }));
       jEntries.sort((a,b) => a.date - b.date);
-      let jSaldo = 0;
+      // Saldo awal memakai fungsi yang SAMA dengan tampilan di layar, supaya
+      // berkas yang diunduh tidak mungkin berbeda angkanya.
+      const jDariTgl   = document.getElementById('laporan-date-from')?.value;
+      const jSaldoAwal = (await hitungSaldoAwalKas(waktuLokalKeUTC(jDariTgl, '00:00:00'))) || 0;
+      let jSaldo = jSaldoAwal;
       const jurnalRows = kepalaSheet('JURNAL KAS KOPERASI', periode);
-    jurnalRows.push(['Tanggal','Keterangan','Uang Masuk (Rp)','Uang Keluar (Rp)','Saldo Kas (Rp)']);
+      jurnalRows.push(['Tanggal','Keterangan','Uang Masuk (Rp)','Uang Keluar (Rp)','Saldo Kas (Rp)']);
+      if (jDariTgl) jurnalRows.push(['', 'Saldo awal per ' + fmtDate(jDariTgl), '', '', jSaldoAwal]);
       jEntries.forEach(e => { jSaldo += e.masuk - e.keluar; jurnalRows.push([e.date.toLocaleDateString('id-ID'), e.ket, e.masuk||'', e.keluar||'', jSaldo]); });
       jurnalRows.push(['','TOTAL', jEntries.reduce((a,e)=>a+e.masuk,0), jEntries.reduce((a,e)=>a+e.keluar,0), jSaldo]);
       const wsJurnal = XLSX.utils.aoa_to_sheet(jurnalRows);
@@ -4240,6 +4249,38 @@ async function renderLaporanAdjustment() {
     </table></div>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+// SALDO KAS SEBELUM SEBUAH BATAS WAKTU
+//
+// Dipakai BERSAMA oleh Jurnal Kas di layar dan di berkas Excel. Sebelumnya
+// keduanya menghitung sendiri-sendiri: yang di layar punya saldo awal tetapi
+// batas waktunya salah, yang di Excel tidak punya saldo awal sama sekali dan
+// melewatkan denda. Angka yang sama tampil berbeda di dua tempat.
+//
+// `batasUTC` WAJIB hasil waktuLokalKeUTC(). Memakai "YYYY-MM-DDT00:00:00"
+// polos membuat transaksi pukul 00:00–07:00 WIB pada tanggal awal ikut
+// terhitung di saldo awal SEKALIGUS muncul sebagai baris entri — terhitung
+// dua kali, dan seluruh kolom Saldo Kas di bawahnya ikut meleset.
+// ══════════════════════════════════════════════════════════════
+async function hitungSaldoAwalKas(batasUTC) {
+  if (!batasUTC) return 0;
+  const [sav, pay, loan, exp, lain] = await Promise.all([
+    dbQuery('savings',         `select=type,amount&created_at=lt.${batasUTC}`),
+    dbQuery('loan_payments',   `select=amount_paid&is_reversed=is.false&created_at=lt.${batasUTC}`),
+    dbQuery('loans',           `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${batasUTC}`),
+    dbQuery('org_expenses',    `select=amount&created_at=lt.${batasUTC}`),
+    dbQuery('pendapatan_lain', `select=amount&created_at=lt.${batasUTC}`)
+  ]);
+  if ([sav, pay, loan, exp, lain].some(x => x === null)) return null;
+  let s = 0;
+  sav.forEach(x  => { s += x.type === 'deposit' ? Number(x.amount || 0) : -Number(x.amount || 0); });
+  pay.forEach(x  => { s += Number(x.amount_paid || 0); });
+  loan.forEach(x => { s -= Number(x.principal || 0); });
+  exp.forEach(x  => { s -= Number(x.amount || 0); });
+  lain.forEach(x => { s += Number(x.amount || 0); });
+  return s;
+}
+
 async function renderLaporanJurnal() {
   if (!isAdmin()) { document.getElementById('laporan-content').innerHTML = '<div class="empty-state"><div class="empty-state-title">Akses ditolak</div></div>'; return; }
   document.getElementById('laporan-content').innerHTML = '<div class="loading"><div class="spinner"></div> Memuat jurnal kas...</div>';
@@ -4326,23 +4367,12 @@ async function renderLaporanJurnal() {
     return;
   }
 
-  // Hitung saldo awal (semua transaksi sebelum filter dari) untuk running balance
-  let saldoAwal = 0;
+  // Saldo awal memakai batas waktu WIB yang sudah dikonversi ke UTC, sama
+  // persis dengan batas yang dipakai untuk menyaring entri di atas.
   const dateFrom = document.getElementById('laporan-date-from')?.value;
-  if (dateFrom) {
-    // Ambil semua transaksi sebelum dateFrom untuk hitung saldo awal
-    const [savBefore, payBefore, loanBefore, expBefore, lainBefore] = await Promise.all([
-      dbQuery('savings', `select=type,amount&created_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('loan_payments', `select=amount_paid&is_reversed=is.false&created_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('loans', `select=principal&disbursed_at=not.is.null&disbursed_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('org_expenses', `select=amount&created_at=lt.${dateFrom}T00:00:00`),
-      dbQuery('pendapatan_lain', `select=amount&created_at=lt.${dateFrom}T00:00:00`)
-    ]);
-    (savBefore||[]).forEach(s => { saldoAwal += s.type==='deposit' ? Number(s.amount) : -Number(s.amount); });
-    (payBefore||[]).forEach(p => { saldoAwal += Number(p.amount_paid); });
-    (loanBefore||[]).forEach(l => { saldoAwal -= Number(l.principal); });
-    (expBefore||[]).forEach(e => { saldoAwal -= Number(e.amount); });
-    (lainBefore||[]).forEach(p => { saldoAwal += Number(p.amount); });
+  const saldoAwal = await hitungSaldoAwalKas(waktuLokalKeUTC(dateFrom, '00:00:00'));
+  if (saldoAwal === null) {
+    document.getElementById('laporan-content').innerHTML = laporanGagal(); return;
   }
 
   // Hitung running balance

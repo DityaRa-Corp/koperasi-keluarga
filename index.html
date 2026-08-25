@@ -1735,8 +1735,8 @@ tbody tr:hover { background: var(--surface2); }
 <!-- Koreksi Setoran -->
 <div class="modal-overlay" id="modal-koreksi-setoran">
   <div class="modal" style="max-width:440px">
-    <div class="modal-title">✏️ Perbaiki Setoran</div>
-    <div class="modal-sub">Setoran yang salah akan dibatalkan, lalu dicatat ulang dengan nominal yang benar. Keduanya tetap terlihat di riwayat.</div>
+    <div class="modal-title" id="koreksi-judul">✏️ Perbaiki Setoran</div>
+    <div class="modal-sub" id="koreksi-sub">Setoran yang salah akan dibatalkan, lalu dicatat ulang dengan nominal yang benar. Keduanya tetap terlihat di riwayat.</div>
     <input type="hidden" id="koreksi-savings-id">
     <div id="koreksi-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px"></div>
     <div class="form-group">
@@ -1954,7 +1954,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.32.0';
+const APP_VERSION = 'v4.33.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2365,7 +2365,7 @@ async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const [savings, loans, members, allPayments, orgExpenses, pendapatanLain] = await Promise.all([
-    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
+    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
     dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
     dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
     dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
@@ -2482,7 +2482,7 @@ async function loadDashboard() {
 
 // SIMPANAN
 async function loadSimpanan() {
-  let savQ = 'select=member_id,type,amount,is_reversed,corrects_id';
+  let savQ = 'select=member_id,type,amount,is_reversed,corrects_id,is_pembatalan';
   let memQ = 'select=id,full_name,avatar_url&status=eq.active&order=full_name.asc';
   if (!isAdmin()) {
     savQ += `&member_id=eq.${currentUser.id}`;
@@ -2682,13 +2682,22 @@ async function doKoreksiCicilan() {
 // ══════════════════════════════════════════════════════════════
 let _koreksiCtx = null;
 
-function openKoreksiSetoran(savingsId, nama, amountLama, tanggal) {
-  _koreksiCtx = { id: savingsId, nama, amountLama: Number(amountLama), tanggal };
+async function openKoreksiSimpanan(savingsId, nama, amountLama, tanggal, tipe) {
+  const setoran = tipe === 'deposit';
+  _koreksiCtx = { id: savingsId, nama, amountLama: Number(amountLama), tanggal,
+                  tipe, saldo: 0, sisaTagihan: 0 };
+
+  document.getElementById('koreksi-judul').textContent =
+    setoran ? '✏️ Perbaiki Setoran' : '✏️ Perbaiki Pencairan';
+  document.getElementById('koreksi-sub').textContent = setoran
+    ? 'Setoran yang salah akan dibatalkan, lalu dicatat ulang dengan nominal yang benar. Keduanya tetap terlihat di riwayat.'
+    : 'Pencairan yang salah akan dibatalkan, lalu dicatat ulang dengan nominal yang benar. Isi sesuai uang yang BENAR-BENAR diterima anggota.';
+
   document.getElementById('koreksi-savings-id').value = savingsId;
   document.getElementById('koreksi-info').innerHTML =
     `<div style="font-weight:600;margin-bottom:6px">${escapeHtml(nama)}</div>
      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
-       <div><div style="color:var(--text3)">Tanggal setoran</div><div style="font-weight:600">${fmtDate(tanggal)}</div></div>
+       <div><div style="color:var(--text3)">Tanggal ${setoran ? 'setoran' : 'pencairan'}</div><div style="font-weight:600">${fmtDate(tanggal)}</div></div>
        <div><div style="color:var(--text3)">Nominal tercatat</div><div style="font-weight:700;color:var(--red)">${fmt(amountLama)}</div></div>
      </div>`;
   document.getElementById('koreksi-amount').value = '';
@@ -2696,6 +2705,29 @@ function openKoreksiSetoran(savingsId, nama, amountLama, tanggal) {
   document.getElementById('koreksi-preview').style.display = 'none';
   document.getElementById('koreksi-alert').style.display = 'none';
   openModal('modal-koreksi-setoran');
+
+  // Untuk pencairan, saldo dan sisa tagihan dipakai pratinjau agar admin tahu
+  // akibatnya sebelum menyimpan — koreksi ke atas berarti uang yang keluar
+  // lebih banyak daripada yang tercatat selama ini.
+  if (!setoran) {
+    const baris = await dbQuery('savings', `member_id=eq.${await idAnggotaDariBaris(savingsId)}&select=type,amount,is_reversed,is_pembatalan`);
+    if (baris) {
+      _koreksiCtx.saldo = baris.filter(isBarisSimpananEfektif)
+        .reduce((a, s) => a + (s.type === 'deposit' ? Number(s.amount) : -Number(s.amount)), 0);
+    }
+  }
+}
+
+// Mengambil member_id dari satu baris simpanan. Dipisah supaya pratinjau
+// koreksi tidak perlu ikut membawa id anggota lewat atribut tombol.
+async function idAnggotaDariBaris(savingsId) {
+  const r = await dbQuery('savings', `id=eq.${savingsId}&select=member_id&limit=1`);
+  const mid = r?.[0]?.member_id || null;
+  if (mid) {
+    const pinjaman = await dbQuery('loans', `member_id=eq.${mid}&status=eq.active&select=remaining_amount`);
+    _koreksiCtx.sisaTagihan = (pinjaman || []).reduce((a, l) => a + Number(l.remaining_amount || 0), 0);
+  }
+  return mid;
 }
 
 function previewKoreksi() {
@@ -2704,21 +2736,41 @@ function previewKoreksi() {
   const baru = parseInt(document.getElementById('koreksi-amount').value) || 0;
   if (!baru) { el.style.display = 'none'; return; }
 
-  const lama     = _koreksiCtx.amountLama;
-  const selisih  = baru - lama;
-  const poinLama = hitungPoinSetor(lama);
-  const poinBaru = hitungPoinSetor(baru);
-  const dPoin    = poinBaru - poinLama;
-
+  const lama    = _koreksiCtx.amountLama;
+  const setoran = _koreksiCtx.tipe === 'deposit';
   el.style.display = 'block';
+
+  if (setoran) {
+    const selisih  = baru - lama;
+    const dPoin    = hitungPoinSetor(baru) - hitungPoinSetor(lama);
+    el.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="color:var(--text3)">Perubahan saldo</div>
+             <div style="font-weight:700;color:${selisih >= 0 ? 'var(--green)' : 'var(--red)'}">${selisih >= 0 ? '+' : ''}${fmt(selisih)}</div></div>
+        <div><div style="color:var(--text3)">Perubahan poin</div>
+             <div style="font-weight:700;color:${dPoin >= 0 ? 'var(--green)' : 'var(--red)'}">${dPoin >= 0 ? '+' : ''}${dPoin} poin</div></div>
+      </div>
+      <div style="margin-top:8px;color:var(--text2)">Riwayat akan menampilkan pembatalan ${fmt(lama)} lalu setoran ${fmt(baru)}.</div>`;
+    return;
+  }
+
+  // Pencairan: menaikkan nominal berarti uang yang keluar lebih banyak,
+  // sehingga saldo anggota justru BERKURANG. Arah tandanya dibalik.
+  const selisihSaldo = lama - baru;
+  const saldoBaru    = _koreksiCtx.saldo + selisihSaldo;
+  const sisaTagihan  = _koreksiCtx.sisaTagihan || 0;
+  const dibawahJaminan = sisaTagihan > 0 && saldoBaru < sisaTagihan;
+
   el.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><div style="color:var(--text3)">Perubahan saldo</div>
-           <div style="font-weight:700;color:${selisih >= 0 ? 'var(--green)' : 'var(--red)'}">${selisih >= 0 ? '+' : ''}${fmt(selisih)}</div></div>
-      <div><div style="color:var(--text3)">Perubahan poin</div>
-           <div style="font-weight:700;color:${dPoin >= 0 ? 'var(--green)' : 'var(--red)'}">${dPoin >= 0 ? '+' : ''}${dPoin} poin</div></div>
+           <div style="font-weight:700;color:${selisihSaldo >= 0 ? 'var(--green)' : 'var(--red)'}">${selisihSaldo >= 0 ? '+' : ''}${fmt(selisihSaldo)}</div></div>
+      <div><div style="color:var(--text3)">Saldo simpanan menjadi</div>
+           <div style="font-weight:700;color:${saldoBaru < 0 ? 'var(--red)' : 'var(--text1)'}">${fmt(saldoBaru)}</div></div>
     </div>
-    <div style="margin-top:8px;color:var(--text2)">Riwayat akan menampilkan pembatalan ${fmt(lama)} lalu setoran ${fmt(baru)}.</div>`;
+    ${saldoBaru < 0 ? '<div style="margin-top:8px;color:var(--red);font-weight:600">❌ Saldo menjadi minus — nominal ini tidak mungkin benar.</div>' : ''}
+    ${dibawahJaminan ? `<div style="margin-top:8px;color:var(--amber-text)">⚠️ Sisa simpanan di bawah pinjaman berjalan ${fmt(sisaTagihan)}. Koreksi tetap bisa disimpan karena mencatat kenyataan, tetapi catat bahwa jaminannya jadi kurang.</div>` : ''}
+    <div style="margin-top:8px;color:var(--text2)">Riwayat akan menampilkan pembatalan ${fmt(lama)} lalu pencairan ${fmt(baru)}.</div>`;
 }
 
 async function doKoreksiSetoran() {
@@ -2738,7 +2790,10 @@ async function doKoreksiSetoran() {
       alertEl.style.display = 'block'; return;
     }
 
-    const { data, error } = await dbRpc('koreksi_setoran', {
+    // Setoran dan pencairan punya fungsi database masing-masing: arah baris
+    // pembatalan dan penggantinya berlawanan, dan hanya setoran yang berpoin.
+    const setoran = _koreksiCtx.tipe === 'deposit';
+    const { data, error } = await dbRpc(setoran ? 'koreksi_setoran' : 'koreksi_pencairan', {
       p_savings_id: _koreksiCtx.id,
       p_amount_baru: baru,
       p_alasan: alasan
@@ -2751,18 +2806,21 @@ async function doKoreksiSetoran() {
 
     // Poin dikoreksi menyusul. Ini di luar transaksi karena poin bukan uang —
     // kalau gagal, saldo tetap benar dan poin bisa disesuaikan manual.
+    // Pencairan tidak pernah memberi poin, jadi tidak ada yang disesuaikan.
     const memberId = data?.member_id || null;
-    const dPoin = hitungPoinSetor(baru) - hitungPoinSetor(_koreksiCtx.amountLama);
+    const dPoin = setoran
+      ? hitungPoinSetor(baru) - hitungPoinSetor(_koreksiCtx.amountLama)
+      : 0;
     if (memberId && dPoin !== 0) {
       await simpanPoin(memberId, Math.abs(dPoin),
         `[KOREKSI] Setoran ${fmt(_koreksiCtx.amountLama)} → ${fmt(baru)}`,
         dPoin > 0 ? 'credit' : 'debit');
     }
 
-    await logActivity('KOREKSI_SETORAN',
-      `Setoran ${fmt(_koreksiCtx.amountLama)} → ${fmt(baru)} (${alasan})`, memberId);
+    await logActivity(setoran ? 'KOREKSI_SETORAN' : 'KOREKSI_PENCAIRAN',
+      `${setoran ? 'Setoran' : 'Pencairan'} ${fmt(_koreksiCtx.amountLama)} → ${fmt(baru)} (${alasan})`, memberId);
 
-    showToast(`✅ Setoran dikoreksi menjadi ${fmt(baru)}` + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
+    showToast(`✅ ${setoran ? 'Setoran' : 'Pencairan'} dikoreksi menjadi ${fmt(baru)}` + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
     closeModal('modal-koreksi-setoran');
     _koreksiCtx = null;
     loadSimpanan(); loadDashboard();
@@ -2792,9 +2850,10 @@ async function loadSimpananHistory() {
       const tanda = s.is_reversed
         ? '<span class="badge badge-gray" title="Nominalnya sudah diperbaiki">Dikoreksi</span>'
         : (s.corrects_id ? '<span class="badge badge-amber" title="Baris hasil koreksi">Koreksi</span>' : '');
-      // Hanya setoran yang belum pernah dikoreksi yang bisa diperbaiki.
-      // Penarikan & pencairan dihitung otomatis sistem, jadi tidak ada risiko salah ketik.
-      const bisaKoreksi = isAdmin() && s.type === 'deposit' && !s.is_reversed;
+      // Setoran MAUPUN pencairan bisa diperbaiki: keduanya nominalnya diketik
+      // manual oleh admin, jadi sama-sama bisa salah ketik. Yang tidak bisa
+      // diperbaiki hanyalah baris yang sudah dikoreksi dan baris pembatalan.
+      const bisaKoreksi = isAdmin() && !s.is_reversed && !s.is_pembatalan;
       // Bukti bisa diambil ulang kapan saja. Tanpa ini, admin yang tidak sengaja
       // menutup kwitansi kehilangan buktinya — padahal seluruh datanya masih ada
       // di baris ini dan bisa digambar ulang persis sama.
@@ -2803,7 +2862,7 @@ async function loadSimpananHistory() {
         : `<button class="btn btn-ghost btn-sm" title="Lihat bukti transaksi" onclick="cetakUlangBuktiSimpanan('${s.id}')">🧾</button>`;
       const tombol = `<td style="white-space:nowrap">${tombolBukti}${
         bisaKoreksi
-          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal setoran ini" onclick="openKoreksiSetoran('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}')">✏️</button>`
+          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal transaksi ini" onclick="openKoreksiSimpanan('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}','${s.type}')">✏️</button>`
           : ''}</td>`;
       return `<tr${s.is_reversed ? ' style="opacity:0.55"' : ''}>
         <td>${fmtDate(s.created_at)}</td>
@@ -2819,16 +2878,20 @@ async function loadSimpananHistory() {
 }
 
 // Baris simpanan yang dihitung untuk pelaporan bruto (Total Setor / Total
-// Tarik / grafik tren). Dua jenis baris dikecualikan:
-//   - setoran yang sudah dikoreksi (nominalnya tidak pernah benar)
-//   - baris pembatalan pasangannya (bukan penarikan sungguhan)
-// Yang tersisa hanya setoran pengganti dengan nominal yang benar.
+// Tarik / grafik tren). Dua jenis baris dikecualikan: transaksi yang sudah
+// diperbaiki, dan baris pembatalan pasangannya.
+//
+// Dulu baris pembatalan dikenali dari jenisnya (`corrects_id && withdraw`).
+// Cara itu hanya benar bila yang dikoreksi selalu SETORAN. Begitu pencairan
+// ikut bisa dikoreksi, arahnya terbalik — pembatalannya menjadi 'deposit' dan
+// akan terbaca sebagai setoran sungguhan. Karena itu sekarang ditandai
+// eksplisit lewat kolom is_pembatalan yang diisi otomatis oleh database.
 //
 // Saldo tetap sama baik dihitung dengan maupun tanpa penyaringan ini,
-// karena pembatalan selalu mengimbangi setoran yang dibatalkan.
+// karena pembatalan selalu mengimbangi transaksi yang dibatalkan.
 function isBarisSimpananEfektif(s) {
-  if (s.is_reversed) return false;
-  if (s.corrects_id && s.type === 'withdraw') return false;
+  if (s.is_reversed)   return false;   // baris yang sudah diperbaiki
+  if (s.is_pembatalan) return false;   // baris pembatalannya
   return true;
 }
 
@@ -3796,9 +3859,9 @@ async function exportLaporan() {
     // periode ini akan tampil bersaldo nol padahal simpanannya utuh.
     const batasAwal = waktuLokalKeUTC(document.getElementById('laporan-date-from')?.value, '00:00:00');
     const [savings, members, sebelum] = await Promise.all([
-      dbQuery('savings', `select=member_id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`),
+      dbQuery('savings', `select=member_id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`),
       dbQuery('profiles', 'select=id,full_name&status=eq.active&order=full_name.asc'),
-      batasAwal ? dbQuery('savings', `select=member_id,type,amount,is_reversed,corrects_id&created_at=lt.${batasAwal}`) : Promise.resolve([])
+      batasAwal ? dbQuery('savings', `select=member_id,type,amount,is_reversed,corrects_id,is_pembatalan&created_at=lt.${batasAwal}`) : Promise.resolve([])
     ]);
     const balances = {};
     (members||[]).forEach(m => balances[m.id] = { name: m.full_name, awal: 0, deposit: 0, withdraw: 0, last: null });
@@ -4076,9 +4139,9 @@ async function renderLaporanSimpanan() {
   const from  = document.getElementById('laporan-date-from')?.value;
   const batas = waktuLokalKeUTC(from, '00:00:00');   // awal periode, untuk saldo awal
 
-  let savingsQ = `select=member_id,type,amount,created_at,is_reversed,corrects_id,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`;
+  let savingsQ = `select=member_id,type,amount,created_at,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`;
   let membersQ = 'select=id,full_name&order=full_name.asc';
-  let awalQ    = batas ? `select=member_id,type,amount,is_reversed,corrects_id&created_at=lt.${batas}` : null;
+  let awalQ    = batas ? `select=member_id,type,amount,is_reversed,corrects_id,is_pembatalan&created_at=lt.${batas}` : null;
   if (!isAdmin()) {
     savingsQ += `&member_id=eq.${currentUser.id}`;
     membersQ += `&id=eq.${currentUser.id}`;
@@ -7047,10 +7110,10 @@ async function doBackup() {
     // pada nama (dua anggota bisa sama namanya). Penanda koreksi WAJIB ikut:
     // tanpa is_reversed, setoran yang pernah dikoreksi akan terhitung DUA KALI
     // setelah restore — baris aslinya dan baris penggantinya sama-sama berlaku.
-    const savRows = [['ID','Member ID','Anggota','Tipe','Jumlah','Saldo Setelah','Keterangan','Dikoreksi','Koreksi Dari','Tanggal']];
-    (savings||[]).forEach(s => savRows.push([s.id, s.member_id||'', s.profiles?.full_name||'', s.type, s.amount, s.balance_after, s.note||'', s.is_reversed === true, s.corrects_id||'', s.created_at]));
+    const savRows = [['ID','Member ID','Anggota','Tipe','Jumlah','Saldo Setelah','Keterangan','Dikoreksi','Pembatalan','Koreksi Dari','Tanggal']];
+    (savings||[]).forEach(s => savRows.push([s.id, s.member_id||'', s.profiles?.full_name||'', s.type, s.amount, s.balance_after, s.note||'', s.is_reversed === true, s.is_pembatalan === true, s.corrects_id||'', s.created_at]));
     const wsSav = XLSX.utils.aoa_to_sheet(savRows);
-    wsSav['!cols'] = [{wch:36},{wch:36},{wch:25},{wch:10},{wch:15},{wch:15},{wch:20},{wch:11},{wch:36},{wch:25}];
+    wsSav['!cols'] = [{wch:36},{wch:36},{wch:25},{wch:10},{wch:15},{wch:15},{wch:20},{wch:11},{wch:12},{wch:36},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsSav, 'Simpanan');
 
     // Sheet 3: Pinjaman
@@ -7366,6 +7429,7 @@ async function doRestore() {
           balance_after: Number(r['Saldo Setelah']) || 0,
           note: r['Keterangan'] || '',
           is_reversed: yaTidak(r['Dikoreksi']),
+          is_pembatalan: yaTidak(r['Pembatalan']),
           corrects_id: r['Koreksi Dari'] || null,
           recorded_by: currentUser.id,
           created_at: r['Tanggal']

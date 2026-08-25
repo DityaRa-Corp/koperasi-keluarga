@@ -2,10 +2,10 @@ name: Supabase keep-alive
 
 on:
   schedule:
-    # Tiap 5 hari (tanggal 1,6,11,16,21,26,31) jam 04:00 WIB (21:00 UTC).
+    # Tiap 5 hari (tanggal 1,6,11,16,21,26,31) jam 02:00 WIB (19:00 UTC).
     # Catatan: sintaks cron tidak punya "tiap 5 hari" murni — pola tanggal ini
     # membuat jeda maksimal 5 hari, kecuali pergantian bulan yang justru lebih rapat.
-    - cron: '0 21 */5 * *'
+    - cron: '0 19 */5 * *'
   workflow_dispatch: {}   # bisa juga dijalankan manual dari tab Actions
 
 permissions:

@@ -880,7 +880,7 @@ tbody tr:hover { background: var(--surface2); }
       <button id="pwa-install-btn" onclick="installPWA()" style="display:none;width:100%;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;margin-bottom:6px">
         📱 Install Aplikasi
       </button>
-      <button class="btn btn-ghost btn-full btn-sm" onclick="doLogout()">
+      <button class="btn btn-ghost btn-full btn-sm" onclick="doLogout(true)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Keluar
       </button>
@@ -1992,7 +1992,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.37.0';
+const APP_VERSION = 'v4.38.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2324,10 +2324,16 @@ async function doLogin() {
   }
 }
 
-async function doLogout() {
+// `sengaja` = pengguna menekan tombol Keluar. Sesi yang berakhir sendiri
+// karena diam 1 jam BUKAN sengaja: push sengaja dibiarkan hidup, justru
+// supaya pemberitahuan tetap sampai dan orangnya kembali. Yang dicabut hanya
+// saat orang menyatakan selesai memakai perangkat itu — misalnya HP dipinjam
+// orang lain — supaya notifikasi keuangannya tidak lagi muncul di sana.
+async function doLogout(sengaja = false) {
   clearTimeout(idleTimer);
   clearTimeout(idleWarningTimer);
   hentikanPantauNotifikasi();
+  if (sengaja) await cabutPushPerangkatIni();
   authToken = null;
   currentUser = null; currentProfile = null;
   localStorage.removeItem('kk_auth_token');
@@ -2365,7 +2371,7 @@ async function initApp(user) {
   await loadAllMembers();
   loadDashboard();
   mulaiPantauNotifikasi();
-  daftarkanServiceWorker();
+  daftarkanServiceWorker().then(sinkronkanPushDiamDiam);
   resetIdleTimer(); // Start idle timer
 }
 
@@ -5822,6 +5828,23 @@ async function aktifkanPush() {
   await navigator.serviceWorker.ready;
 
   try {
+    // Satu peramban hanya punya SATU langganan push. Kalau perangkat ini
+    // pernah dipakai anggota lain, langganan yang ada masih tercatat atas
+    // nama orang itu — dan endpoint-nya unik, sehingga pendaftaran anggota
+    // baru akan bentrok dan diam-diam gagal. Akibatnya orang kedua menerima
+    // notifikasi milik orang pertama.
+    //
+    // Kepemilikan diuji lewat RLS: baris hanya terbaca oleh pemiliknya. Kalau
+    // langganan yang ada tidak terbaca, berarti bukan milik kita — dilepas
+    // dulu supaya peramban menerbitkan endpoint baru atas nama yang login.
+    const lama = await reg.pushManager.getSubscription();
+    if (lama) {
+      const jl = lama.toJSON();
+      const milikku = await dbQuery('push_subscriptions',
+        `endpoint=eq.${encodeURIComponent(jl.endpoint)}&select=id&limit=1`);
+      if (!milikku || milikku.length === 0) await lama.unsubscribe();
+    }
+
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: b64ToUint8(VAPID_PUBLIC_KEY)
@@ -5845,19 +5868,57 @@ async function aktifkanPush() {
   renderTombolPush();
 }
 
-async function matikanPush() {
-  const reg = _swReg || await navigator.serviceWorker.getRegistration();
-  const sub = reg ? await reg.pushManager.getSubscription() : null;
-  if (sub) {
+// Melepas langganan perangkat ini, di peramban maupun di database.
+// Dipakai tombol "Matikan" dan juga saat pengguna keluar dengan sengaja.
+async function cabutPushPerangkatIni() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = _swReg || await navigator.serviceWorker.getRegistration();
+    const sub = reg ? await reg.pushManager.getSubscription() : null;
+    if (!sub) return;
     const j = sub.toJSON();
     await sub.unsubscribe();
     await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(j.endpoint)}`, {
       method: 'DELETE',
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
     });
-  }
+  } catch (e) { console.warn('cabutPushPerangkatIni:', e); }
+}
+
+async function matikanPush() {
+  await cabutPushPerangkatIni();
   showToast('Notifikasi dimatikan di perangkat ini');
   renderTombolPush();
+}
+
+// Dipanggil setiap kali masuk. Kalau izinnya sudah pernah diberikan di
+// perangkat ini, langganannya dipulihkan tanpa perlu menekan apa pun —
+// sehingga keluar-masuk akun tidak menuntut pengaturan ulang.
+async function sinkronkanPushDiamDiam() {
+  try {
+    if (!pushDidukung() || Notification.permission !== 'granted') return;
+    const reg = _swReg || await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      // Sudah ada langganan: pastikan tercatat atas nama yang sedang masuk
+      const j = sub.toJSON();
+      const milikku = await dbQuery('push_subscriptions',
+        `endpoint=eq.${encodeURIComponent(j.endpoint)}&select=id&limit=1`);
+      if (milikku && milikku.length > 0) return;      // sudah benar
+      await sub.unsubscribe();                        // milik orang lain
+    }
+    const baru = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64ToUint8(VAPID_PUBLIC_KEY)
+    });
+    const j2 = baru.toJSON();
+    await dbInsert('push_subscriptions', {
+      member_id: currentUser.id, endpoint: j2.endpoint,
+      p256dh: j2.keys.p256dh, auth: j2.keys.auth,
+      user_agent: (navigator.userAgent || '').slice(0, 200)
+    });
+  } catch (e) { console.warn('sinkronkanPushDiamDiam:', e); }
 }
 
 async function renderTombolPush() {

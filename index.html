@@ -1993,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.41.0';
+const APP_VERSION = 'v4.42.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3187,8 +3187,8 @@ async function doAjukanPinjaman() {
 
   // Rule 4: Masa tunggu 1 bulan setelah pinjaman terakhir lunas (bisa di-bypass admin)
   const memberProfile = await dbQuery('profiles', `id=eq.${memberId}&select=bypass_waiting&limit=1`);
-  const hasBypass = memberProfile?.[0]?.bypass_waiting === true;
-  if (!hasBypass) {
+  const pakaiBypass = memberProfile?.[0]?.bypass_waiting === true;
+  if (!pakaiBypass) {
     const lastCompleted = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=disbursed_at&order=disbursed_at.desc&limit=1`);
     if (lastCompleted && lastCompleted.length > 0 && lastCompleted[0].disbursed_at) {
       const lastLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.completed&select=id&order=disbursed_at.desc&limit=1`);
@@ -3206,14 +3206,9 @@ async function doAjukanPinjaman() {
         }
       }
     }
-  } else {
-    // Reset bypass flag setelah dipakai
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-      method: 'PATCH',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bypass_waiting: false })
-    });
   }
+  // Bypass TIDAK dihapus di sini. Ia baru dianggap terpakai setelah
+  // pengajuannya benar-benar tersimpan — lihat sesudah dbInsert di bawah.
 
   await getBunga();
   const periodPerMonth = type === 'weekly' ? 4 : type === 'biweekly' ? 2 : 1;
@@ -3232,6 +3227,21 @@ async function doAjukanPinjaman() {
     next_due_date: null
   });
   if (error) { showToast('Gagal: ' + error.message); return; }
+
+  // Izin sekali-pakai baru dihanguskan SESUDAH pengajuannya tersimpan.
+  // Sebelumnya ia dihapus lebih awal, sehingga kalau insert-nya gagal —
+  // koneksi putus, atau ditolak aturan lain — izin itu hangus percuma dan
+  // admin harus memberikannya lagi tanpa ada pengajuan yang jadi.
+  if (pakaiBypass) {
+    const { error: eBypass } = await dbUpdate('profiles', `id=eq.${memberId}`, { bypass_waiting: false });
+    if (eBypass) {
+      showToast('⚠️ Pengajuan tersimpan, tetapi penanda bypass gagal dihapus. Beri tahu admin agar tidak terpakai dua kali.', 8000);
+    } else {
+      // Menutup jejak audit: pemberian bypass sudah dicatat saat admin
+      // memberikannya, pemakaiannya dicatat di sini.
+      await logActivity('BYPASS_TUNGGU', 'Bypass masa tunggu dipakai untuk pengajuan baru', memberId);
+    }
+  }
 
   if (isAdmin()) {
     // Admin langsung buka modal approve supaya bisa set bunga nominal

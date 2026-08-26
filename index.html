@@ -1972,6 +1972,7 @@ tbody tr:hover { background: var(--surface2); }
   <div class="modal" style="max-width:460px">
     <div class="modal-title">🔔 Perlu Perhatian</div>
     <div class="modal-sub" id="notif-sub">Hal-hal yang menunggu tindakan Anda</div>
+    <div id="notif-push-baris" style="margin-bottom:14px"></div>
     <div id="notif-list" style="max-height:60vh;overflow:auto"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-notifikasi')">Tutup</button>
@@ -1991,7 +1992,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.36.0';
+const APP_VERSION = 'v4.37.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2364,6 +2365,7 @@ async function initApp(user) {
   await loadAllMembers();
   loadDashboard();
   mulaiPantauNotifikasi();
+  daftarkanServiceWorker();
   resetIdleTimer(); // Start idle timer
 }
 
@@ -3229,6 +3231,11 @@ async function doAjukanPinjaman() {
     showToast('Pengajuan berhasil dikirim ✓');
     closeModal('modal-ajukan');
     loadPinjaman();
+    // Beri tahu admin. Id pinjaman yang baru dibuat diambil dari respons
+    // insert, bukan dicari ulang — pencarian ulang bisa mengambil milik
+    // pengajuan lain bila ada dua permintaan berdekatan.
+    const idBaru = Array.isArray(insertData) ? insertData[0]?.id : insertData?.id;
+    if (idBaru) kirimPush('pengajuan_baru', idBaru);
   }
   document.getElementById('ajukan-pokok').value = '';
   document.getElementById('ajukan-tenor').value = '';
@@ -3567,6 +3574,7 @@ async function doApprovePinjaman() {
   }
 
   if (perluKonfirmasi) {
+    kirimPush('perlu_konfirmasi', currentLoanId);
     showToast(`Syarat dikirim ke ${_pengajuanAcuan?.nama || 'anggota'} untuk dikonfirmasi. Pinjaman belum cair.`, 6000);
     closeModal('modal-approve-pinjaman');
     loadPinjaman();
@@ -3682,6 +3690,7 @@ async function doKonfirmasiPinjaman(setuju) {
   await logActivity(setuju ? 'PINJAMAN_DIKONFIRMASI' : 'PINJAMAN_SYARAT_DITOLAK',
     setuju ? 'Anggota menyetujui syarat final' : 'Anggota menolak syarat final', currentUser.id);
 
+  if (setuju) kirimPush('dikonfirmasi', currentLoanId);
   closeModal('modal-detail-pinjaman');
   showToast(setuju ? '✅ Syarat disetujui — pinjaman berjalan' : 'Syarat ditolak');
   loadPinjaman(); loadDashboard();
@@ -5739,6 +5748,154 @@ function bungkusSekaliJalan(nama) {
 // (pemasangan pembungkus dipindah ke akhir skrip — lihat bagian paling bawah)
 
 
+
+// ══════════════════════════════════════════════════════════════
+// PUSH NOTIFICATION
+//
+// Kunci VAPID publik memang dirancang untuk terbuka — ia hanya menyatakan
+// "pesan ini dari server yang sah". Yang menandatangani adalah kunci PRIVAT,
+// dan itu hidup di Edge Function, tidak pernah menyentuh peramban.
+//
+// Aplikasi TIDAK pernah mengirim teks notifikasi. Ia hanya melapor
+// "kejadian X terjadi pada pinjaman Y"; Edge Function yang memutuskan siapa
+// penerimanya dan apa bunyinya, setelah memeriksa pemanggilnya berhak.
+//
+// Catatan iOS: push hanya sampai bila aplikasinya sudah dipasang ke
+// homescreen (iOS 16.4+). Di Safari biasa, izinnya tidak akan pernah bisa
+// diminta — karena itu keadaannya dijelaskan apa adanya, bukan disembunyikan.
+// ══════════════════════════════════════════════════════════════
+const VAPID_PUBLIC_KEY = 'BC25inHP4RMq6QWm32vaoYICvQ4Tw6cOJn9RaJa_8F1nvCD7_6Ajbb9froDaHLUcKI9j_q22hRFGfPztnZ1-Efk';
+let _swReg = null;
+
+function b64ToUint8(base64) {
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+function pushDidukung() {
+  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+}
+
+// Terpasang ke homescreen? Menentukan apakah iOS bisa menerima push.
+function terpasangSebagaiApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+async function daftarkanServiceWorker() {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    _swReg = await navigator.serviceWorker.register('/sw.js');
+    return _swReg;
+  } catch (e) {
+    console.warn('Service worker gagal didaftarkan:', e);
+    return null;
+  }
+}
+
+async function statusPush() {
+  if (!pushDidukung()) {
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    return { bisa: false, aktif: false,
+      alasan: iOS && !terpasangSebagaiApp()
+        ? 'Di iPhone, notifikasi hanya bisa setelah aplikasi dipasang ke layar utama.'
+        : 'Peramban ini tidak mendukung notifikasi.' };
+  }
+  const reg = _swReg || await navigator.serviceWorker.getRegistration();
+  const sub = reg ? await reg.pushManager.getSubscription() : null;
+  return { bisa: true, aktif: !!sub && Notification.permission === 'granted',
+           ditolak: Notification.permission === 'denied' };
+}
+
+async function aktifkanPush() {
+  if (!pushDidukung()) { showToast('Peramban ini tidak mendukung notifikasi', 5000); return; }
+  const izin = await Notification.requestPermission();
+  if (izin !== 'granted') {
+    showToast(izin === 'denied'
+      ? 'Notifikasi diblokir. Aktifkan lewat pengaturan situs di peramban.'
+      : 'Notifikasi belum diizinkan', 6000);
+    renderTombolPush(); return;
+  }
+  const reg = _swReg || await daftarkanServiceWorker();
+  if (!reg) { showToast('Gagal menyiapkan notifikasi', 5000); return; }
+  await navigator.serviceWorker.ready;
+
+  try {
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64ToUint8(VAPID_PUBLIC_KEY)
+    });
+    const j = sub.toJSON();
+    // endpoint unik: perangkat yang sama tidak menghasilkan baris ganda
+    const { error } = await dbInsert('push_subscriptions', {
+      member_id: currentUser.id,
+      endpoint: j.endpoint,
+      p256dh: j.keys.p256dh,
+      auth: j.keys.auth,
+      user_agent: (navigator.userAgent || '').slice(0, 200)
+    });
+    if (error && !String(error.message || '').includes('duplicate')) {
+      showToast('Gagal mendaftarkan perangkat: ' + (error.message || ''), 6000); return;
+    }
+    showToast('✅ Notifikasi aktif di perangkat ini');
+  } catch (e) {
+    showToast('Gagal mengaktifkan notifikasi: ' + e.message, 6000);
+  }
+  renderTombolPush();
+}
+
+async function matikanPush() {
+  const reg = _swReg || await navigator.serviceWorker.getRegistration();
+  const sub = reg ? await reg.pushManager.getSubscription() : null;
+  if (sub) {
+    const j = sub.toJSON();
+    await sub.unsubscribe();
+    await fetch(`${SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(j.endpoint)}`, {
+      method: 'DELETE',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
+    });
+  }
+  showToast('Notifikasi dimatikan di perangkat ini');
+  renderTombolPush();
+}
+
+async function renderTombolPush() {
+  const el = document.getElementById('notif-push-baris');
+  if (!el) return;
+  const s = await statusPush();
+  if (!s.bisa) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text2);padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">🔕 ${escapeHtml(s.alasan)}</div>`;
+    return;
+  }
+  if (s.ditolak) {
+    el.innerHTML = `<div style="font-size:12px;color:var(--text2);padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">🔕 Notifikasi diblokir untuk situs ini. Ubah lewat pengaturan peramban.</div>`;
+    return;
+  }
+  el.innerHTML = s.aktif
+    ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">
+         <span style="font-size:12px">🔔 Notifikasi aktif di perangkat ini</span>
+         <button class="btn btn-ghost btn-sm" onclick="matikanPush()">Matikan</button>
+       </div>`
+    : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;background:var(--accent-bg);border-radius:var(--radius-sm)">
+         <span style="font-size:12px">Dapatkan pemberitahuan walau aplikasi tertutup</span>
+         <button class="btn btn-primary btn-sm" onclick="aktifkanPush()">Aktifkan</button>
+       </div>`;
+}
+
+// Melapor ke Edge Function bahwa sebuah kejadian terjadi. Kegagalan di sini
+// TIDAK boleh menggagalkan transaksinya — notifikasi adalah pelengkap.
+async function kirimPush(kejadian, loanId) {
+  try {
+    await fetch(SUPABASE_URL + '/functions/v1/kirim-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY,
+                 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ kejadian, loan_id: loanId })
+    });
+  } catch (e) { console.warn('kirimPush:', e); }
+}
+
 // ══════════════════════════════════════════════════════════════
 // LONCENG NOTIFIKASI
 //
@@ -5865,6 +6022,7 @@ function bukaNotifikasi() {
         <div style="color:var(--text3);font-size:18px">›</div>
       </div>`).join('');
   }
+  renderTombolPush();
   openModal('modal-notifikasi');
 }
 

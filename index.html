@@ -7,7 +7,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Koperasi Keluarga</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
@@ -1994,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.48.0';
+const APP_VERSION = 'v4.49.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2054,18 +2053,12 @@ async function panggilAdminAnggota(aksi, userId) {
     return { error: e.message };
   }
 }
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-    storage: window.localStorage
-  },
-  global: {
-    headers: {}
-  }
-});
+// Pustaka supabase-js SENGAJA tidak dipakai. Seluruh aplikasi berbicara ke
+// PostgREST lewat fetch mentah (dbQuery/dbInsert/dbUpdate/dbRpc), dan klien
+// yang dulu dibuat di sini tidak pernah dipanggil sekali pun — tetapi baris
+// pembuatannya melempar ReferenceError bila CDN-nya gagal dimuat, mematikan
+// SELURUH aplikasi. Persis kejadian yang komentar kwitansi peringatkan:
+// "pernah kehilangan seluruh tampilan karena satu CDN gagal."
 
 // Auth token storage
 let authToken = null;
@@ -4357,7 +4350,29 @@ function barisTotal(label, kolomKe, nilai, jumlahKolom) {
   return [[], baris];
 }
 
+// XLSX dimuat dari CDN dan hanya dibutuhkan tiga fitur (export, backup,
+// restore). Bila CDN-nya gagal saat halaman dimuat, aplikasi TETAP hidup —
+// pemeriksaan ini mengubah kegagalan teknis ("XLSX is not defined") menjadi
+// penjelasan yang bisa ditindaklanjuti, dan mencoba memuat ulang sekali.
+async function pastikanXLSX() {
+  if (typeof XLSX !== 'undefined') return true;
+  showToast('Memuat komponen Excel...');
+  const ok = await new Promise((selesai) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = () => selesai(true);
+    s.onerror = () => selesai(false);
+    document.head.appendChild(s);
+  });
+  if (!ok || typeof XLSX === 'undefined') {
+    showToast('Komponen Excel gagal dimuat. Periksa koneksi internet lalu muat ulang halaman.', 7000);
+    return false;
+  }
+  return true;
+}
+
 async function exportLaporan() {
+  if (!(await pastikanXLSX())) return;
   showToast('Menyiapkan Excel...');
   try {
     const wb = XLSX.utils.book_new();
@@ -6104,6 +6119,7 @@ async function sinkronkanPushDiamDiam() {
     if (localStorage.getItem('kk_push_optin_' + currentUser.id) !== '1') return;
     const reg = _swReg || await navigator.serviceWorker.getRegistration();
     if (!reg) return;
+    await navigator.serviceWorker.ready;   // subscribe pada SW yang belum aktif bisa ditolak
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
       // Sudah ada langganan: pastikan tercatat atas nama yang sedang masuk
@@ -7619,9 +7635,14 @@ async function doFinalEvent() {
     recorded_by: currentUser.id
   });
   if (expErr) {
-    // Kembalikan status ke draft supaya kas dan status tetap sinkron
-    await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'draft' });
-    showToast('❌ Gagal mencatat pengeluaran kas. Event dikembalikan ke status Draft, silakan coba lagi.');
+    // Kembalikan status ke draft supaya kas dan status tetap sinkron.
+    // Hasil rollback-nya sendiri WAJIB diperiksa: kalau ikut gagal, event
+    // berstatus Final tanpa pengeluaran tercatat — kas tampak lebih besar
+    // dari kenyataan — dan pesan "dikembalikan ke Draft" menjadi bohong.
+    const { error: eRollback } = await dbUpdate('events', `id=eq.${currentEventId}`, { status: 'draft' });
+    showToast(eRollback
+      ? '❌ Gagal mencatat pengeluaran kas DAN gagal mengembalikan status. Event masih Final tanpa potongan kas — muat ulang halaman dan periksa event ini.'
+      : '❌ Gagal mencatat pengeluaran kas. Event dikembalikan ke status Draft, silakan coba lagi.', 9000);
     return;
   }
 
@@ -8116,6 +8137,7 @@ function loadBackupPage() {
 }
 
 async function doBackup() {
+  if (!(await pastikanXLSX())) return;
   const btn = document.getElementById('btn-backup');
   const status = document.getElementById('backup-status');
   btn.disabled = true;
@@ -8249,6 +8271,7 @@ async function doBackup() {
 }
 
 async function previewRestore(input) {
+  if (!(await pastikanXLSX())) return;
   const file = input.files[0];
   const preview = document.getElementById('restore-preview');
   const previewContent = document.getElementById('restore-preview-content');
@@ -8378,6 +8401,7 @@ async function pulihkanSheet({ wb, namaSheet, tabel, ubah, status }) {
 }
 
 async function doRestore() {
+  if (!(await pastikanXLSX())) return;
   const file = document.getElementById('restore-file').files[0];
   const status = document.getElementById('restore-status');
   const btn = document.getElementById('btn-restore');

@@ -1226,6 +1226,7 @@ tbody tr:hover { background: var(--surface2); }
           <br>• Setoran salah nominal → <strong>Simpanan → Riwayat Simpanan</strong>
           <br>• Cicilan salah nominal → <strong>Cicilan → Riwayat Cicilan</strong>
           <br>Dengan cara itu koreksinya menempel pada transaksi yang bersangkutan dan saldo terhitung otomatis.
+          <br><br>Halaman ini khusus <strong>koreksi nominal</strong>. Perubahan profil, reset password, unlock akun, dan pemberian bypass masa tunggu ada di <strong>Anggota → Log Perubahan</strong>.
         </div>
       </div>
       <div class="card">
@@ -1993,7 +1994,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.42.0';
+const APP_VERSION = 'v4.43.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -4065,7 +4066,7 @@ async function doCatatCicilan() {
     // ── Langkah 1: catat pembayaran dulu ──
     // dbInsert TIDAK melempar exception, jadi error wajib diperiksa manual.
     // Kalau langkah ini gagal, saldo pinjaman tidak boleh disentuh sama sekali.
-    const { error: payErr } = await dbInsert('loan_payments', {
+    const { data: barisBayar, error: payErr } = await dbInsert('loan_payments', {
       loan_id: loan.id, member_id: loan.member_id,
       payment_number: paymentSeq, amount_paid: amount,
       principal_component: principal, interest_component: interest,
@@ -4100,10 +4101,15 @@ async function doCatatCicilan() {
     const telatBayar = dueLama && dueLama < getTodayStr();
     const terimaDenda = document.getElementById('cicilan-denda-terima')?.checked;
     let dendaTercatat = 0;
+    const idBayar = Array.isArray(barisBayar) ? barisBayar[0]?.id : barisBayar?.id;
     if (nDenda > 0 && telatBayar && terimaDenda) {
       const { error: eDenda } = await dbInsert('pendapatan_lain', {
         member_id: loan.member_id,
         loan_id: loan.id,
+        // Menunjuk langsung ke pembayarannya. Tanpa ini, denda hanya bisa
+        // dicocokkan lewat tebakan selisih waktu — dan dua pembayaran
+        // berdekatan pada pinjaman yang sama bisa tertukar dendanya.
+        payment_id: idBayar || null,
         jenis: 'denda',
         amount: nDenda,
         note: `Terlambat dari jatuh tempo ${fmtDate(loan.next_due_date)}`,
@@ -4418,7 +4424,7 @@ async function exportLaporan() {
 
     // ── Sheet 5: Adjustment (admin only) ──
     if (isAdmin()) {
-      const adjustments = await dbQuery('adjustments', `select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
+      const adjustments = await dbQuery('adjustments', `select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc${dateFilter}${SARING_NONKEUANGAN}`);
       const adjTypeLabel = { savings:'Simpanan', loan:'Pinjaman', installment:'Cicilan' };
       const adjRows = kepalaSheet('LOG PERUBAHAN DATA', periode);
     adjRows.push(['Tanggal','Anggota','Jenis Koreksi','Nilai Sebelum (Rp)','Nilai Sesudah (Rp)','Selisih (Rp)','Alasan','Admin']);
@@ -4708,9 +4714,33 @@ async function renderLaporanCicilan() {
     </table></div>`;
 }
 
+// ══════════════════════════════════════════════════════════════
+// MEMISAHKAN KOREKSI UANG DARI CATATAN NON-KEUANGAN
+//
+// Tabel `adjustments` dipakai ganda: selain koreksi nominal, ia juga menampung
+// jejak ubah profil, reset password, unlock akun, dan pemberian bypass masa
+// tunggu. Baris-baris itu ditulis dengan nilai 0 → 0, sehingga di laporan
+// keuangan tampil sebagai deretan "Rp 0 → Rp 0" yang mengaburkan koreksi
+// uang yang sesungguhnya.
+//
+// Disaring dengan DAFTAR TOLAK, bukan daftar izin. Kalau suatu saat ada jenis
+// koreksi uang baru yang belum terdaftar, ia akan tetap MUNCUL di laporan —
+// mengganggu, tapi terlihat. Daftar izin akan menyembunyikannya diam-diam,
+// dan koreksi uang yang tak terlihat jauh lebih berbahaya.
+//
+// Jejak non-keuangannya tidak hilang: semuanya tetap tampil lengkap di
+// Anggota → Log Perubahan.
+// ══════════════════════════════════════════════════════════════
+const SARING_NONKEUANGAN =
+    '&reason=not.like.*EDIT ANGGOTA*'
+  + '&reason=not.like.*BYPASS MASA TUNGGU*'
+  + '&reason=not.like.*RESET PASSWORD*'
+  + '&reason=not.like.*UNLOCK*'
+  + '&reason=not.like.*LOCK AKUN*';
+
 async function renderLaporanAdjustment() {
   const dateFilter = getLaporanDateFilter();
-  const data = await dbQuery('adjustments', `select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
+  const data = await dbQuery('adjustments', `select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc${dateFilter}${SARING_NONKEUANGAN}`);
   if (data === null) { document.getElementById('laporan-content').innerHTML = laporanGagal(); return; }
   const typeLabel = { savings: 'Simpanan', loan: 'Pinjaman', installment: 'Cicilan' };
   document.getElementById('laporan-content').innerHTML = `
@@ -5379,7 +5409,7 @@ async function toggleMemberStatus(id, currentStatus) {
 
 // ADJUSTMENT
 async function loadAdjustment() {
-  const data = await dbQuery('adjustments', 'select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc');
+  const data = await dbQuery('adjustments', 'select=*,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)&order=created_at.desc' + SARING_NONKEUANGAN);
   const el = document.getElementById('adjustment-list');
   const typeLabel = { savings: 'Simpanan', loan: 'Pinjaman', installment: 'Cicilan' };
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada log adjustment</div></div>'; return; }
@@ -6846,12 +6876,19 @@ async function cetakUlangBuktiCicilan(paymentId) {
   const p = rows[0];
   if (!p) { showToast('Pembayaran tidak ditemukan'); return; }
 
-  // Denda dicatat di tabel terpisah, jadi dicari berdasarkan pinjaman dan waktunya
+  // Denda dicatat di tabel terpisah. Baris baru menunjuk langsung ke
+  // pembayarannya lewat payment_id, jadi pencocokannya pasti. Tebakan selisih
+  // waktu hanya dipakai untuk baris LAMA yang belum punya penunjuk itu —
+  // dan hanya bila tidak ada satu pun yang cocok secara pasti, supaya denda
+  // milik pembayaran lain tidak ikut tertarik.
   const dendaRows = await dbQuery('pendapatan_lain',
-    `loan_id=eq.${p.loan_id}&jenis=eq.denda&select=amount,created_at`);
-  const denda = (dendaRows || [])
-    .filter(d => Math.abs(new Date(d.created_at) - new Date(p.created_at)) < 180000)
-    .reduce((a, d) => a + Number(d.amount || 0), 0);
+    `loan_id=eq.${p.loan_id}&jenis=eq.denda&select=amount,created_at,payment_id`);
+  const cocokPasti = (dendaRows || []).filter(d => d.payment_id === p.id);
+  const dipakai = cocokPasti.length > 0
+    ? cocokPasti
+    : (dendaRows || []).filter(d => !d.payment_id
+        && Math.abs(new Date(d.created_at) - new Date(p.created_at)) < 180000);
+  const denda = dipakai.reduce((a, d) => a + Number(d.amount || 0), 0);
 
   const { opsi, teks, namaFile } = susunBuktiCicilan({
     id: p.id,
@@ -8026,10 +8063,10 @@ async function doBackup() {
     // daripada kenyataannya.
     status.textContent = '⚠️ Mengambil data denda...';
     const lainB = await dbQuery('pendapatan_lain', 'select=*,profiles!pendapatan_lain_member_id_fkey(full_name)&order=created_at.asc');
-    const lainRows = [['ID','Loan ID','Member ID','Anggota','Jenis','Jumlah','Keterangan','Tanggal']];
-    (lainB||[]).forEach(x => lainRows.push([x.id, x.loan_id||'', x.member_id||'', x.profiles?.full_name||'', x.jenis||'denda', x.amount, x.note||'', x.created_at]));
+    const lainRows = [['ID','Loan ID','Payment ID','Member ID','Anggota','Jenis','Jumlah','Keterangan','Tanggal']];
+    (lainB||[]).forEach(x => lainRows.push([x.id, x.loan_id||'', x.payment_id||'', x.member_id||'', x.profiles?.full_name||'', x.jenis||'denda', x.amount, x.note||'', x.created_at]));
     const wsLain = XLSX.utils.aoa_to_sheet(lainRows);
-    wsLain['!cols'] = [{wch:36},{wch:36},{wch:36},{wch:20},{wch:12},{wch:15},{wch:30},{wch:25}];
+    wsLain['!cols'] = [{wch:36},{wch:36},{wch:36},{wch:36},{wch:20},{wch:12},{wch:15},{wch:30},{wch:25}];
     XLSX.utils.book_append_sheet(wb, wsLain, 'Pendapatan Lain');
 
     // Sheet 9: Pengaturan — disimpan sebagai rujukan, TIDAK dipulihkan
@@ -8344,6 +8381,7 @@ async function doRestore() {
         id: r['ID'],
         member_id: cariAnggota(r),
         loan_id: r['Loan ID'] || null,
+        payment_id: r['Payment ID'] || null,
         jenis: r['Jenis'] || 'denda',
         amount: Number(r['Jumlah']) || 0,
         note: r['Keterangan'] || '',

@@ -1,0 +1,13 @@
+# Catatan kerja internal — JANGAN di-commit, repo ini public
+CLAUDE.md
+.claude/
+
+# Salinan base64 (redundan dengan index.html / manifest.json)
+*.b64
+
+# macOS / iCloud
+.DS_Store
+.icloud
+
+# Berkas sementara Supabase CLI
+supabase/.temp/

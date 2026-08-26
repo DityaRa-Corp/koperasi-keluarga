@@ -801,6 +801,10 @@ tbody tr:hover { background: var(--surface2); }
       <div class="sidebar-user">
         <span id="sidebar-name">-</span>
         <span class="role-pill" id="sidebar-role">member</span>
+        <button onclick="bukaNotifikasi()" style="position:relative;background:none;border:none;cursor:pointer;padding:2px;color:var(--text2);margin-left:auto" title="Notifikasi">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span id="notif-badge-sidebar" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red);color:white;border-radius:9px;min-width:16px;height:16px;font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 3px"></span>
+        </button>
       </div>
     </div>
 
@@ -894,7 +898,10 @@ tbody tr:hover { background: var(--surface2); }
         </div>
         <div style="font-size:14px;font-weight:700;color:#2A3568"><span>Koperasi</span><span style="color:#9b9ea6">Keluarga</span></div>
       </div>
-      <div style="width:30px"></div>
+      <button onclick="bukaNotifikasi()" style="position:relative;background:none;border:none;cursor:pointer;padding:4px;color:#2A3568" title="Notifikasi">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span id="notif-badge-mobile" style="display:none;position:absolute;top:0;right:0;background:var(--red);color:white;border-radius:9px;min-width:16px;height:16px;font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 3px"></span>
+      </button>
     </div>
 
     <!-- DASHBOARD -->
@@ -1952,8 +1959,22 @@ tbody tr:hover { background: var(--surface2); }
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
       <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
       <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="doRejectPinjaman()">Tolak</button>
+      <button class="btn btn-ghost" style="display:none" id="btn-wa-konfirmasi" onclick="ingatkanKonfirmasi()" title="Kirim pengingat lewat WhatsApp">💬 Ingatkan lewat WA</button>
+      <button class="btn btn-ghost" style="display:none" id="btn-wa-admin" onclick="beriTahuAdmin()" title="Beri tahu admin lewat WhatsApp">💬 Beri Tahu Admin</button>
       <button class="btn btn-success" style="display:none" id="btn-konfirmasi-setuju" onclick="doKonfirmasiPinjaman(true)">✅ Saya Setuju</button>
       <button class="btn btn-danger" style="display:none" id="btn-konfirmasi-tolak" onclick="doKonfirmasiPinjaman(false)">Tolak Syarat Ini</button>
+    </div>
+  </div>
+</div>
+
+<!-- Daftar hal yang perlu perhatian -->
+<div class="modal-overlay" id="modal-notifikasi">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title">🔔 Perlu Perhatian</div>
+    <div class="modal-sub" id="notif-sub">Hal-hal yang menunggu tindakan Anda</div>
+    <div id="notif-list" style="max-height:60vh;overflow:auto"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-notifikasi')">Tutup</button>
     </div>
   </div>
 </div>
@@ -1970,7 +1991,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.35.0';
+const APP_VERSION = 'v4.36.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2305,6 +2326,7 @@ async function doLogin() {
 async function doLogout() {
   clearTimeout(idleTimer);
   clearTimeout(idleWarningTimer);
+  hentikanPantauNotifikasi();
   authToken = null;
   currentUser = null; currentProfile = null;
   localStorage.removeItem('kk_auth_token');
@@ -2341,6 +2363,7 @@ async function initApp(user) {
   await muatPengaturan();
   await loadAllMembers();
   loadDashboard();
+  mulaiPantauNotifikasi();
   resetIdleTimer(); // Start idle timer
 }
 
@@ -3308,6 +3331,14 @@ async function showDetailPinjaman(loanId) {
   if (bSetuju) bSetuju.style.display = perluKonfirmasi ? '' : 'none';
   if (bTolak)  bTolak.style.display  = perluKonfirmasi ? '' : 'none';
 
+  // Jalur WhatsApp: admin mengingatkan anggota yang syaratnya menunggu
+  // persetujuan, dan anggota memberi tahu admin bahwa ia baru mengajukan.
+  const bWaKonf  = document.getElementById('btn-wa-konfirmasi');
+  const bWaAdmin = document.getElementById('btn-wa-admin');
+  if (bWaKonf)  bWaKonf.style.display  = (isAdmin() && loan.status === 'menunggu_konfirmasi') ? '' : 'none';
+  if (bWaAdmin) bWaAdmin.style.display = (!isAdmin() && loan.status === 'pending'
+                                          && loan.member_id === currentUser.id) ? '' : 'none';
+
   if (loan.status === 'menunggu_konfirmasi') {
     const a = loan.pengajuan_awal || {};
     const brs = (label, lama, baru) => (lama === undefined || Number(lama) === Number(baru)) ? '' : `
@@ -3571,6 +3602,72 @@ async function doApprovePinjaman() {
 // tanggal cair dan jatuh tempo. Tanggal tidak boleh datang dari peramban —
 // yang menekan tombol adalah pihak yang berkepentingan atas tanggal itu.
 // ══════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════
+// PEMBERITAHUAN LEWAT WHATSAPP
+//
+// Memakai pola yang sudah dipakai pengingat cicilan: tautan wa.me dengan
+// pesan terisi, dibuka di WhatsApp milik pengirim sendiri. Aplikasi tidak
+// pernah mengirim apa pun atas nama siapa pun — orangnya yang menekan kirim.
+//
+// Jalur ini penting karena satu-satunya yang benar-benar sampai ke HP saat
+// aplikasi tertutup, selama push sejati belum dibangun.
+// ══════════════════════════════════════════════════════════════
+function bukaWA(nomorMentah, pesan, namaTujuan) {
+  const nomor = normalkanNomorWA(nomorMentah);
+  if (nomor) {
+    window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`, '_blank');
+    return;
+  }
+  navigator.clipboard.writeText(pesan).then(
+    () => showToast(`Nomor WhatsApp ${namaTujuan} belum diisi. Pesannya sudah disalin — tempel manual.`, 7000),
+    () => showToast(`Nomor WhatsApp ${namaTujuan} belum diisi. Isi lewat menu Anggota.`, 7000)
+  );
+}
+
+// Admin → anggota: syarat pinjaman menunggu persetujuan
+async function ingatkanKonfirmasi() {
+  if (!currentLoanId) return;
+  const rows = await dbQuery('loans',
+    `id=eq.${currentLoanId}&select=*,profiles!loans_member_id_fkey(full_name,phone)&limit=1`);
+  const l = rows?.[0];
+  if (!l) { showToast('Pinjaman tidak ditemukan'); return; }
+  const nama = l.profiles?.full_name || 'Anggota';
+  const a = l.pengajuan_awal || {};
+  const brs = (label, lama, baru) =>
+    (lama === undefined || Number(lama) === Number(baru)) ? '' : `${label} : ${fmt(lama)} → ${fmt(baru)}\n`;
+
+  const pesan = `Assalamualaikum ${nama} 🙏\n\n`
+    + `Pengajuan pinjaman Anda sudah diproses, tetapi syaratnya berbeda dari yang diajukan:\n\n`
+    + brs('Pokok  ', a.principal, l.principal)
+    + brs('Total  ', a.total_amount, l.total_amount)
+    + brs('Cicilan', a.installment_amount, l.installment_amount)
+    + `\nUang BELUM dicairkan. Mohon buka aplikasinya untuk menyetujui atau menolak syarat ini.\n\n`
+    + `${location.origin}\n\nTerima kasih 🌾`;
+  bukaWA(l.profiles?.phone, pesan, nama);
+}
+
+// Anggota → admin: pengajuan baru menunggu diproses
+async function beriTahuAdmin() {
+  if (!currentLoanId) return;
+  const [rows, admins] = await Promise.all([
+    dbQuery('loans', `id=eq.${currentLoanId}&select=principal,installment_count,installment_type&limit=1`),
+    dbQuery('profiles', 'role=eq.admin&status=eq.active&select=full_name,phone&order=full_name.asc')
+  ]);
+  const l = rows?.[0];
+  if (!l) { showToast('Pinjaman tidak ditemukan'); return; }
+  // Nomor admin pertama yang terisi; kalau tidak ada, pesannya tetap disalin
+  const adm = (admins || []).find(a => normalkanNomorWA(a.phone)) || (admins || [])[0] || {};
+  const labelJenis = { weekly: 'Mingguan', biweekly: 'Dua mingguan', monthly: 'Bulanan' }[l.installment_type] || 'Bulanan';
+
+  const pesan = `Assalamualaikum 🙏\n\n`
+    + `Saya ${currentProfile?.full_name || 'anggota'} baru saja mengajukan pinjaman di Koperasi Keluarga.\n\n`
+    + `Pokok   : ${fmt(l.principal)}\n`
+    + `Cicilan : ${l.installment_count}x (${labelJenis})\n\n`
+    + `Mohon dicek bila sempat ya.\n\n${location.origin}\n\nTerima kasih 🌾`;
+  bukaWA(adm.phone, pesan, adm.full_name || 'Admin');
+}
+
 async function doKonfirmasiPinjaman(setuju) {
   if (!currentLoanId) return;
   if (!setuju && !confirm('Tolak syarat pinjaman ini?\n\nPengajuan akan ditutup dan Anda perlu mengajukan ulang bila masih membutuhkannya.')) return;
@@ -5640,6 +5737,163 @@ function bungkusSekaliJalan(nama) {
 }
 
 // (pemasangan pembungkus dipindah ke akhir skrip — lihat bagian paling bawah)
+
+
+// ══════════════════════════════════════════════════════════════
+// LONCENG NOTIFIKASI
+//
+// Diperiksa berkala, bukan lewat Supabase Realtime. Realtime menuntut
+// perubahan publication di database dan penanganan token tersendiri,
+// sementara untuk koperasi keluarga jeda beberapa puluh detik tidak terasa.
+// Lebih sedikit bagian yang bisa rusak diam-diam.
+//
+// Yang ditampilkan hanya hal yang MENUNGGU TINDAKAN orang yang sedang
+// masuk — bukan riwayat kejadian. Daftar yang isinya campur aduk akan
+// diabaikan orang, dan notifikasi yang diabaikan sama saja tidak ada.
+// ══════════════════════════════════════════════════════════════
+const NOTIF_JEDA_MS = 45000;
+let _notifItems  = [];
+let _notifDikenal = new Set();
+let _notifTimer  = null;
+let _notifPertama = true;
+
+async function muatNotifikasi() {
+  if (!currentUser) return;
+  const hariIni = getTodayStr();
+  const items = [];
+
+  try {
+    if (isAdmin()) {
+      const [pengajuan, menunggu, jatuhTempo] = await Promise.all([
+        dbQuery('loans', 'status=eq.pending&select=id,principal,member_id,created_at,profiles!loans_member_id_fkey(full_name)&order=created_at.desc'),
+        dbQuery('loans', 'status=eq.menunggu_konfirmasi&select=id,principal,member_id,profiles!loans_member_id_fkey(full_name)'),
+        dbQuery('loans', `status=eq.active&next_due_date=lte.${hariIni}&select=id,installment_amount,next_due_date,member_id,profiles!loans_member_id_fkey(full_name)&order=next_due_date.asc`)
+      ]);
+      (pengajuan || []).forEach(l => items.push({
+        kunci: 'ajuan-' + l.id, ikon: '📝',
+        judul: `Pengajuan pinjaman baru — ${l.profiles?.full_name || 'Anggota'}`,
+        sub: `${fmt(l.principal)} · menunggu keputusan Anda`,
+        loanId: l.id
+      }));
+      (menunggu || []).forEach(l => items.push({
+        kunci: 'konfirmasi-' + l.id, ikon: '⏳',
+        judul: `Menunggu persetujuan ${l.profiles?.full_name || 'anggota'}`,
+        sub: 'Syarat sudah dikirim, uang belum cair',
+        loanId: l.id
+      }));
+      (jatuhTempo || []).forEach(l => {
+        const telat = (l.next_due_date || '').split('T')[0] < hariIni;
+        items.push({
+          kunci: 'tempo-' + l.id + '-' + (l.next_due_date || ''), ikon: telat ? '⚠️' : '📅',
+          judul: `${telat ? 'Menunggak' : 'Jatuh tempo hari ini'} — ${l.profiles?.full_name || 'Anggota'}`,
+          sub: `${fmt(l.installment_amount)} · ${fmtDate(l.next_due_date)}`,
+          loanId: l.id
+        });
+      });
+    } else {
+      const [perluSetuju, tempoSaya] = await Promise.all([
+        dbQuery('loans', `member_id=eq.${currentUser.id}&status=eq.menunggu_konfirmasi&select=id,principal,total_amount`),
+        dbQuery('loans', `member_id=eq.${currentUser.id}&status=eq.active&next_due_date=lte.${hariIni}&select=id,installment_amount,next_due_date`)
+      ]);
+      (perluSetuju || []).forEach(l => items.push({
+        kunci: 'setuju-' + l.id, ikon: '⚠️',
+        judul: 'Syarat pinjaman Anda berubah',
+        sub: 'Perlu persetujuan Anda sebelum uang dicairkan',
+        loanId: l.id
+      }));
+      (tempoSaya || []).forEach(l => {
+        const telat = (l.next_due_date || '').split('T')[0] < hariIni;
+        items.push({
+          kunci: 'tempo-' + l.id + '-' + (l.next_due_date || ''), ikon: telat ? '⚠️' : '📅',
+          judul: telat ? 'Cicilan Anda menunggak' : 'Cicilan Anda jatuh tempo hari ini',
+          sub: `${fmt(l.installment_amount)} · ${fmtDate(l.next_due_date)}`,
+          loanId: l.id
+        });
+      });
+    }
+  } catch (e) {
+    // Notifikasi tidak boleh menjatuhkan aplikasi. Kalau gagal memuat,
+    // biarkan daftar yang lama dan coba lagi pada putaran berikutnya.
+    console.warn('muatNotifikasi:', e);
+    return;
+  }
+
+  // Hal yang BARU muncul sejak pemeriksaan terakhir diberi tahu sekali lewat
+  // toast, supaya terlihat tanpa perlu membuka loncengnya. Pemuatan pertama
+  // sesudah masuk sengaja diam — kalau tidak, setiap login akan memuntahkan
+  // seluruh daftar sekaligus.
+  const kunciBaru = items.map(i => i.kunci).filter(k => !_notifDikenal.has(k));
+  _notifItems = items;
+  items.forEach(i => _notifDikenal.add(i.kunci));
+
+  if (!_notifPertama && kunciBaru.length > 0) {
+    const pertama = items.find(i => i.kunci === kunciBaru[0]);
+    showToast(kunciBaru.length === 1
+      ? `🔔 ${pertama.judul}`
+      : `🔔 ${kunciBaru.length} hal baru perlu perhatian Anda`, 6000);
+  }
+  _notifPertama = false;
+  renderLonceng();
+}
+
+function renderLonceng() {
+  const n = _notifItems.length;
+  ['notif-badge-mobile', 'notif-badge-sidebar'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = n > 9 ? '9+' : String(n);
+    el.style.display = n > 0 ? 'block' : 'none';
+  });
+}
+
+function bukaNotifikasi() {
+  const el = document.getElementById('notif-list');
+  const sub = document.getElementById('notif-sub');
+  if (!el) return;
+  if (!_notifItems.length) {
+    sub.textContent = 'Tidak ada yang menunggu tindakan Anda';
+    el.innerHTML = '<div class="empty-state" style="padding:28px"><div class="empty-state-title">Semua beres 🎉</div><div class="empty-state-sub">Tidak ada pengajuan, persetujuan, atau cicilan yang perlu ditangani.</div></div>';
+  } else {
+    sub.textContent = `${_notifItems.length} hal menunggu tindakan Anda`;
+    el.innerHTML = _notifItems.map((i, idx) => `
+      <div onclick="bukaNotifItem(${idx})" style="display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:var(--radius-sm);cursor:pointer;background:var(--surface2);margin-bottom:8px">
+        <div style="font-size:20px;line-height:1">${i.ikon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px">${escapeHtml(i.judul)}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${escapeHtml(i.sub)}</div>
+        </div>
+        <div style="color:var(--text3);font-size:18px">›</div>
+      </div>`).join('');
+  }
+  openModal('modal-notifikasi');
+}
+
+function bukaNotifItem(idx) {
+  const i = _notifItems[idx];
+  if (!i) return;
+  closeModal('modal-notifikasi');
+  if (i.loanId) { showPage('pinjaman'); showDetailPinjaman(i.loanId); }
+}
+
+function mulaiPantauNotifikasi() {
+  hentikanPantauNotifikasi();
+  _notifPertama = true;
+  _notifDikenal = new Set();
+  muatNotifikasi();
+  _notifTimer = setInterval(muatNotifikasi, NOTIF_JEDA_MS);
+}
+
+function hentikanPantauNotifikasi() {
+  if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+  _notifItems = [];
+  renderLonceng();
+}
+
+// Peramban menghentikan timer pada tab yang tersembunyi. Saat tab kembali
+// aktif — misalnya HP dibuka lagi — daftarnya diperiksa ulang segera.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentUser) muatNotifikasi();
+});
 
 // ── AUTO LOGOUT AFTER 1 HOUR IDLE ──
 const IDLE_TIMEOUT_MS = 60 * 60 * 1000; // 1 jam

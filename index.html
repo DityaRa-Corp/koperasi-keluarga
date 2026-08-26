@@ -1994,7 +1994,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.45.0';
+const APP_VERSION = 'v4.46.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2440,6 +2440,8 @@ async function initApp(user) {
   loadDashboard();
   mulaiPantauNotifikasi();
   mulaiJagaToken();
+  // SW sudah terdaftar sejak halaman dimuat (Q10); panggilan ini idempoten
+  // dan memastikan _swReg terisi sebelum sinkronisasi push.
   daftarkanServiceWorker().then(sinkronkanPushDiamDiam);
   resetIdleTimer(); // Start idle timer
 }
@@ -2721,7 +2723,11 @@ function previewKoreksiCicilan() {
   const bayarTotal   = _kcCtx.bayarLain + baru;
   const sisa         = Math.max(0, total - bayarTotal);
   const lunas        = sisa <= 0;
-  const paidBaru     = Math.min(tenor, cicilan > 0 ? Math.floor(bayarTotal / cicilan) : Number(L.paid_count) || 0);
+  // Lunas berarti SELURUH periode selesai. Tanpa aturan ini, pinjaman yang
+  // cicilannya menyimpan residu negatif (cicilan × tenor > total) tampil
+  // "8/9 lunas" — pembagian floor tidak pernah mencapai tenor.
+  const paidBaru     = lunas ? tenor
+    : Math.min(tenor, cicilan > 0 ? Math.floor(bayarTotal / cicilan) : Number(L.paid_count) || 0);
   const paidLama     = Number(L.paid_count) || 0;
   const dPeriode     = paidBaru - paidLama;
   const dPoin        = 5 * dPeriode;
@@ -6351,6 +6357,12 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
+// Q10: service worker didaftarkan sejak halaman DIMUAT, bukan sejak login.
+// Chrome hanya menawarkan pemasangan PWA bila service worker sudah ada —
+// menundanya sampai login membuat tombol Install tidak pernah muncul di
+// layar masuk, padahal justru di situ orang pertama kali datang.
+daftarkanServiceWorker();
+
 // Check existing session from localStorage
 (async () => {
   const savedToken = localStorage.getItem('kk_auth_token');
@@ -8102,8 +8114,11 @@ async function doBackup() {
     // pinjaman hasil restore mengalokasikan seluruh pembayaran sebagai pokok
     // (bunga nol). Tanpa paid_count, pembayaran pertama sesudah restore
     // memberi poin sebanyak SELURUH periode sekaligus.
-    const loanRows = [['ID','Member ID','Anggota','Pokok','Total','Total Bunga','Bunga Rate','Jenis','Cicilan','Jumlah Cicilan','Terbayar','Cicilan Terlunasi','Sisa','Status','Catatan','Tgl Cair','Jatuh Tempo Berikut']];
-    (loans||[]).forEach(l => loanRows.push([l.id, l.member_id||'', l.profiles?.full_name||'', l.principal, l.total_amount, l.total_interest, l.interest_rate, l.installment_type, l.installment_amount, l.installment_count, l.amount_paid, l.paid_count||0, l.remaining_amount, l.status, l.note||'', l.disbursed_at||'', l.next_due_date||'']));
+    // 'Pengajuan Awal' (JSON) ikut dibackup: tanpa itu, pinjaman berstatus
+    // menunggu_konfirmasi yang di-restore kehilangan pembanding syaratnya —
+    // banner persetujuan anggota tampil tanpa rincian apa yang berubah.
+    const loanRows = [['ID','Member ID','Anggota','Pokok','Total','Total Bunga','Bunga Rate','Jenis','Cicilan','Jumlah Cicilan','Terbayar','Cicilan Terlunasi','Sisa','Status','Catatan','Pengajuan Awal','Tgl Cair','Jatuh Tempo Berikut']];
+    (loans||[]).forEach(l => loanRows.push([l.id, l.member_id||'', l.profiles?.full_name||'', l.principal, l.total_amount, l.total_interest, l.interest_rate, l.installment_type, l.installment_amount, l.installment_count, l.amount_paid, l.paid_count||0, l.remaining_amount, l.status, l.note||'', l.pengajuan_awal ? JSON.stringify(l.pengajuan_awal) : '', l.disbursed_at||'', l.next_due_date||'']));
     const wsLoan = XLSX.utils.aoa_to_sheet(loanRows);
     wsLoan['!cols'] = [{wch:36},{wch:36},{wch:20},{wch:15},{wch:15},{wch:15},{wch:10},{wch:12},{wch:15},{wch:14},{wch:12},{wch:16},{wch:12},{wch:12},{wch:25},{wch:20},{wch:15}];
     XLSX.utils.book_append_sheet(wb, wsLoan, 'Pinjaman');
@@ -8390,6 +8405,10 @@ async function doRestore() {
           remaining_amount: Number(r['Sisa']) || 0,
           status: r['Status'] || 'active',
           note: r['Catatan'] || '',
+          pengajuan_awal: (() => {
+            try { return r['Pengajuan Awal'] ? JSON.parse(r['Pengajuan Awal']) : null; }
+            catch (e) { return null; }   // berkas lama / sel rusak: banner tampil tanpa rincian, tidak fatal
+          })(),
           disbursed_at: r['Tgl Cair'] || null,
           next_due_date: r['Jatuh Tempo Berikut'] || null
         };
@@ -8677,7 +8696,12 @@ async function resetPoinTahunan() {
   'doKoreksiCicilan',
   'savePlafon',
   'saveDenda',
-  'saveBunga'
+  'saveBunga',
+  // Q7: keduanya menulis berulang dalam perulangan — klik ganda saat proses
+  // berjalan menggandakan poin seluruh anggota / mencatat reset dua kali.
+  'poinAktifBulanan',
+  'resetPoinTahunan',
+  'doKonfirmasiPinjaman'
 ].forEach(bungkusSekaliJalan);
 
 </script>

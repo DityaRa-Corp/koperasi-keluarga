@@ -1699,7 +1699,7 @@ tbody tr:hover { background: var(--surface2); }
 <div class="modal-overlay" id="modal-kwitansi">
   <div class="modal" style="max-width:460px">
     <div class="modal-title" id="kwitansi-judul">Bukti Transaksi</div>
-    <div class="modal-sub">Simpan gambarnya lalu kirim ke anggota lewat WhatsApp.</div>
+    <div class="modal-sub" id="kwitansi-sub">Simpan gambarnya lalu kirim ke anggota lewat WhatsApp.</div>
     <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px;margin-bottom:14px;text-align:center">
       <img id="kwitansi-gambar" alt="Bukti transaksi" style="max-width:100%;border-radius:6px;box-shadow:0 2px 10px rgba(30,34,56,.12)">
     </div>
@@ -1959,6 +1959,7 @@ tbody tr:hover { background: var(--surface2); }
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
       <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
       <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="doRejectPinjaman()">Tolak</button>
+      <button class="btn btn-ghost admin-only" style="display:none" id="btn-tanda-terima" onclick="cetakTandaTerimaPinjaman()" title="Cetak tanda terima saat uang diserahkan">🧾 Tanda Terima</button>
       <button class="btn btn-ghost" style="display:none" id="btn-wa-konfirmasi" onclick="ingatkanKonfirmasi()" title="Kirim pengingat lewat WhatsApp">💬 Ingatkan lewat WA</button>
       <button class="btn btn-ghost" style="display:none" id="btn-wa-admin" onclick="beriTahuAdmin()" title="Beri tahu admin lewat WhatsApp">💬 Beri Tahu Admin</button>
       <button class="btn btn-success" style="display:none" id="btn-konfirmasi-setuju" onclick="doKonfirmasiPinjaman(true)">✅ Saya Setuju</button>
@@ -1992,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.38.0';
+const APP_VERSION = 'v4.39.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3346,6 +3347,12 @@ async function showDetailPinjaman(loanId) {
 
   // Jalur WhatsApp: admin mengingatkan anggota yang syaratnya menunggu
   // persetujuan, dan anggota memberi tahu admin bahwa ia baru mengajukan.
+  // Tanda terima hanya masuk akal setelah pinjaman benar-benar cair.
+  const bTT = document.getElementById('btn-tanda-terima');
+  if (bTT) bTT.style.display = (isAdmin() && loan.status !== 'pending'
+                                && loan.status !== 'menunggu_konfirmasi'
+                                && loan.status !== 'rejected' && loan.disbursed_at) ? '' : 'none';
+
   const bWaKonf  = document.getElementById('btn-wa-konfirmasi');
   const bWaAdmin = document.getElementById('btn-wa-admin');
   if (bWaKonf)  bWaKonf.style.display  = (isAdmin() && loan.status === 'menunggu_konfirmasi') ? '' : 'none';
@@ -3584,12 +3591,14 @@ async function doApprovePinjaman() {
     showToast(`Syarat dikirim ke ${_pengajuanAcuan?.nama || 'anggota'} untuk dikonfirmasi. Pinjaman belum cair.`, 6000);
     closeModal('modal-approve-pinjaman');
     loadPinjaman();
+    muatNotifikasi();
     return;
   }
 
   showToast('Pinjaman disetujui dan dicairkan ✓');
   closeModal('modal-approve-pinjaman');
   loadPinjaman(); loadDashboard();
+  muatNotifikasi();
 
   // Tanda terima pencairan pinjaman — bukti bahwa uangnya sudah diserahkan.
   const namaPeminjam = allMembers.find(m => m.id === loan.member_id)?.full_name || 'Anggota';
@@ -3700,9 +3709,12 @@ async function doKonfirmasiPinjaman(setuju) {
   closeModal('modal-detail-pinjaman');
   showToast(setuju ? '✅ Syarat disetujui — pinjaman berjalan' : 'Syarat ditolak');
   loadPinjaman(); loadDashboard();
+  muatNotifikasi();   // hal yang barusan diselesaikan harus langsung hilang dari lonceng
 
   if (setuju && data) {
-    const bukti = susunBuktiPinjaman({
+    // Bukti PERSETUJUAN, bukan tanda terima uang: pada titik ini anggota baru
+    // menyatakan setuju, uangnya belum tentu sudah berpindah tangan.
+    const bukti = susunBuktiPersetujuan({
       id: currentLoanId, nama: currentProfile?.full_name || 'Anggota', tanggal: new Date(),
       pokok: Number(data.principal), totalBunga: Number(data.total_interest),
       totalTagihan: Number(data.total_amount), cicilan: Number(data.installment_amount),
@@ -3719,6 +3731,7 @@ async function doRejectPinjaman() {
   showToast('Pinjaman ditolak');
   closeModal('modal-detail-pinjaman');
   loadPinjaman();
+  muatNotifikasi();
 }
 
 // CICILAN
@@ -6683,6 +6696,74 @@ function susunBuktiPinjaman({ id, nama, tanggal, pokok, totalBunga, totalTagihan
   return { opsi, teks, namaFile };
 }
 
+// Menyusun BUKTI PERSETUJUAN SYARAT — bukan tanda terima uang.
+//
+// Sejak v4.35.0, persetujuan anggota dan penyerahan uang adalah dua peristiwa
+// terpisah: anggota bisa menyetujui dari rumahnya tengah malam, sementara
+// uangnya baru berpindah tangan esok hari. Menerbitkan "tanda terima" pada
+// saat persetujuan berarti dokumen itu membuktikan sesuatu yang belum
+// terjadi — dan justru menghancurkan nilainya sebagai bukti.
+//
+// Karena itu dokumen ini hanya menyatakan syarat apa yang disepakati.
+// Tanda terima uangnya dicetak terpisah oleh admin saat serah terima.
+function susunBuktiPersetujuan({ id, nama, tanggal, pokok, totalBunga, totalTagihan, cicilan, tenor, jenisCicilan, jatuhTempo }) {
+  const nomor = kwNomor('PS', id, tanggal);
+  const tgl   = new Date(tanggal).toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' });
+  const labelJenis = { weekly: 'Mingguan', biweekly: 'Dua mingguan', monthly: 'Bulanan' }[jenisCicilan] || 'Bulanan';
+
+  const opsi = {
+    judul: 'BUKTI PERSETUJUAN SYARAT PINJAMAN',
+    nomor, tanggal: tgl, nama,
+    baris: [
+      ['Total bunga', fmt(totalBunga)],
+      ['Total tagihan', fmt(totalTagihan)],
+      ['Cicilan', `${fmt(cicilan)} × ${tenor} (${labelJenis})`],
+      ['Jatuh tempo pertama', jatuhTempo ? fmtDate(jatuhTempo) : '-']
+    ],
+    labelUtama: 'POKOK PINJAMAN DISETUJUI',
+    nominal: fmt(pokok),
+    warna: 'navy',
+    catatan: null,
+    pesanKaki: 'Syarat di atas telah disetujui anggota. Penyerahan uang dicatat terpisah.'
+  };
+
+  const teks = `*BUKTI PERSETUJUAN SYARAT PINJAMAN*\n`
+    + `Koperasi Keluarga\n\n`
+    + `No. Bukti : ${nomor}\n`
+    + `Tanggal   : ${tgl}\n`
+    + `Nama      : ${nama}\n\n`
+    + `Pokok disetujui : ${fmt(pokok)}\n`
+    + `Total bunga     : ${fmt(totalBunga)}\n`
+    + `Total tagihan   : ${fmt(totalTagihan)}\n`
+    + `Cicilan         : ${fmt(cicilan)} × ${tenor} (${labelJenis})\n`
+    + `Jatuh tempo     : ${jatuhTempo ? fmtDate(jatuhTempo) : '-'}\n`
+    + `\nSyarat di atas telah disetujui anggota. Penyerahan uang dicatat terpisah.`;
+
+  const namaFile = `BuktiPersetujuan-${String(nama).replace(/[^\w]+/g,'-')}-${nomor}`;
+  return { opsi, teks, namaFile };
+}
+
+// Mencetak TANDA TERIMA pencairan dari data pinjaman yang tersimpan.
+// Dipakai admin pada saat uangnya benar-benar diserahkan — bukan saat
+// pinjamannya disetujui.
+async function cetakTandaTerimaPinjaman() {
+  if (!currentLoanId) return;
+  showToast('Menyiapkan tanda terima...');
+  const rows = await dbQuery('loans',
+    `id=eq.${currentLoanId}&select=*,profiles!loans_member_id_fkey(full_name)&limit=1`);
+  const l = rows?.[0];
+  if (!l) { showToast('Pinjaman tidak ditemukan'); return; }
+  const { opsi, teks, namaFile } = susunBuktiPinjaman({
+    id: l.id, nama: l.profiles?.full_name || 'Anggota',
+    tanggal: l.disbursed_at || new Date(),
+    pokok: Number(l.principal), totalBunga: Number(l.total_interest),
+    totalTagihan: Number(l.total_amount), cicilan: Number(l.installment_amount),
+    tenor: Number(l.installment_count), jenisCicilan: l.installment_type,
+    jatuhTempo: l.next_due_date
+  });
+  await tampilkanKwitansi(opsi, teks, namaFile);
+}
+
 // Menyusun bukti pembayaran cicilan. Dipakai dua kali: sesaat setelah
 // pembayaran dicatat, dan saat admin menekan tombol cetak ulang di riwayat.
 // Keduanya memakai fungsi yang sama agar hasilnya tidak pernah berbeda.
@@ -6767,6 +6848,12 @@ async function tampilkanKwitansi(opsi, teks, namaFile) {
   try {
     const dataURL = await gambarKwitansi(opsi);
     _kwitansiData = { dataURL, teks, namaFile };
+    // Sejak anggota bisa menyetujui sendiri, bukti tidak lagi selalu dilihat
+    // admin. Menyuruh anggota "kirim ke anggota" jelas salah alamat.
+    const subEl = document.getElementById('kwitansi-sub');
+    if (subEl) subEl.textContent = isAdmin()
+      ? 'Simpan gambarnya lalu kirim ke anggota lewat WhatsApp.'
+      : 'Simpan gambarnya sebagai bukti Anda.';
     document.getElementById('kwitansi-judul').textContent = opsi.judul;
     document.getElementById('kwitansi-gambar').src = dataURL;
     document.getElementById('kwitansi-teks').value = teks;

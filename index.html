@@ -1993,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.40.0';
+const APP_VERSION = 'v4.41.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2531,7 +2531,11 @@ async function loadDashboard() {
 // SIMPANAN
 async function loadSimpanan() {
   let savQ = 'select=member_id,type,amount,is_reversed,corrects_id,is_pembatalan';
-  let memQ = 'select=id,full_name,avatar_url&status=eq.active&order=full_name.asc';
+  // Anggota nonaktif ikut diambil. Menyaringnya membuat bekas anggota yang
+  // simpanannya belum dicairkan muncul sebagai baris "Unknown" — padahal
+  // justru merekalah kewajiban yang paling perlu terlihat. Lihat juga
+  // perbaikan yang sama pada berkas Excel (v4.40.0).
+  let memQ = 'select=id,full_name,avatar_url,status&order=full_name.asc';
   if (!isAdmin()) {
     savQ += `&member_id=eq.${currentUser.id}`;
     memQ += `&id=eq.${currentUser.id}`;
@@ -2541,12 +2545,12 @@ async function loadSimpanan() {
     dbQuery('profiles', memQ)
   ]);
   const memberMap = {};
-  (members || []).forEach(m => memberMap[m.id] = { name: m.full_name, avatar: m.avatar_url });
+  (members || []).forEach(m => memberMap[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status });
   const balances = {};
-  (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, deposit: 0, withdraw: 0 });
+  (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status, deposit: 0, withdraw: 0 });
   (savings || []).forEach(s => {
     if (!isBarisSimpananEfektif(s)) return;   // abaikan setoran terkoreksi & pembatalannya
-    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Unknown', avatar: null, deposit: 0, withdraw: 0 };
+    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Anggota terhapus', avatar: null, status: null, deposit: 0, withdraw: 0 };
     if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
     else balances[s.member_id].withdraw += Number(s.amount);
   });
@@ -2561,13 +2565,19 @@ async function loadSimpanan() {
         const avatarEl = r.avatar
           ? `<img src="${escapeHtml(r.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
           : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(r.name[0]||'?').toUpperCase()}</div>`;
-        return `<tr>
+        // Bekas anggota yang saldonya masih tersisa perlu menonjol: itu
+        // kewajiban yang belum diselesaikan, bukan sekadar baris riwayat.
+        const nonaktif = r.status && r.status !== 'active';
+        const tanda = nonaktif
+          ? ` <span class="badge badge-gray" title="Sudah tidak aktif">Nonaktif</span>`
+          : '';
+        return `<tr${nonaktif && saldo === 0 ? ' style="opacity:0.55"' : ''}>
           <td>${i+1}</td>
           <td style="padding:6px 4px;width:36px">${avatarEl}</td>
-          <td>${r.name}</td>
+          <td>${escapeHtml(r.name)}${tanda}</td>
           <td class="td-mono">${fmt(r.deposit)}</td>
           <td class="td-mono">${fmt(r.withdraw)}</td>
-          <td class="td-mono" style="font-weight:700;color:var(--green)">${fmt(saldo)}</td>
+          <td class="td-mono" style="font-weight:700;color:${saldo > 0 ? 'var(--green)' : 'var(--text3)'}">${fmt(saldo)}</td>
         </tr>`;
       }).join('')}</tbody>
     </table></div>`;

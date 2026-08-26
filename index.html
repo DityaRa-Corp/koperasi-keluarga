@@ -1994,7 +1994,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.44.0';
+const APP_VERSION = 'v4.45.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3316,10 +3316,12 @@ async function doAjukanPinjaman() {
     showToast('Pengajuan dibuat. Silakan set bunga dan cairkan.');
     closeModal('modal-ajukan');
     await loadPinjaman();
-    // Ambil ID pinjaman yang baru dibuat lalu buka approve form
-    const newLoan = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.pending&order=created_at.desc&limit=1&select=id`);
-    if (newLoan && newLoan[0]) {
-      currentLoanId = newLoan[0].id;
+    // Id diambil dari respons insert, bukan dicari ulang — pencarian ulang
+    // bisa mengambil pengajuan lain bila ada dua permintaan berdekatan.
+    // (Jalur anggota sudah memakai cara ini sejak v4.37; jalur ini luput.)
+    const idAdmin = Array.isArray(insertData) ? insertData[0]?.id : insertData?.id;
+    if (idAdmin) {
+      currentLoanId = idAdmin;
       openApproveForm();
     }
   } else {
@@ -4412,7 +4414,7 @@ async function exportLaporan() {
     // ── Sheet 3: Pinjaman ──
     const loans = await dbQuery('loans', `select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc${dateFilter}`);
     const typeLabel = { weekly:'Mingguan', biweekly:'2 Mingguan', monthly:'Bulanan' };
-    const statusLabel = { active:'Aktif', pending:'Menunggu', completed:'Lunas', rejected:'Ditolak' };
+    const statusLabel = { active:'Aktif', pending:'Menunggu', menunggu_konfirmasi:'Menunggu Persetujuan', completed:'Lunas', rejected:'Ditolak' };
     const pinjamanRows = kepalaSheet('LAPORAN PINJAMAN', periode);
     pinjamanRows.push(['No. Pinjaman','Anggota','Tgl Cair','Pokok (Rp)','Bunga %','Total Bunga (Rp)','Total Tagihan (Rp)','Jenis Cicilan','Cicilan/Periode (Rp)','Dibayar (Rp)','Sisa (Rp)','Jatuh Tempo','Status']);
     (loans||[]).forEach(l => {
@@ -4725,7 +4727,7 @@ async function renderLaporanPinjaman() {
   const active = (loans || []).filter(l => l.status === 'active');
   const totalPinjaman = active.reduce((a, l) => a + Number(l.remaining_amount), 0);
   const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
-  const statusBadge = { active: '<span class="badge badge-blue">Aktif</span>', pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
+  const statusBadge = { active: '<span class="badge badge-blue">Aktif</span>', pending: '<span class="badge badge-amber">Menunggu</span>', menunggu_konfirmasi: '<span class="badge badge-purple">Menunggu Persetujuan</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
   document.getElementById('laporan-content').innerHTML = `
     <div class="laporan-summary">
       <div class="card lap-stat"><div class="lap-stat-label">Pinjaman Aktif</div><div class="lap-stat-value amber">${active.length} pinjaman</div></div>
@@ -5420,10 +5422,21 @@ async function toggleMemberStatus(id, currentStatus) {
 
   // If deactivating, check for savings and active loans
   showToast('Memeriksa data anggota...');
-  const [savings, activeLoans] = await Promise.all([
+  const [savings, activeLoans, menggantung] = await Promise.all([
     dbQuery('savings', `member_id=eq.${id}&select=type,amount`),
-    dbQuery('loans', `member_id=eq.${id}&status=eq.active&select=remaining_amount`)
+    dbQuery('loans', `member_id=eq.${id}&status=eq.active&select=remaining_amount`),
+    dbQuery('loans', `member_id=eq.${id}&status=in.(pending,menunggu_konfirmasi)&select=id,status&limit=1`)
   ]);
+
+  // Pengajuan yang belum tuntas harus diselesaikan dulu — kalau tidak,
+  // anggota nonaktif masih bisa menekan Saya Setuju dan pinjamannya
+  // menjadi aktif atas nama orang yang sudah bukan anggota.
+  if (menggantung && menggantung.length > 0) {
+    showToast(menggantung[0].status === 'menunggu_konfirmasi'
+      ? '❌ Anggota ini punya pinjaman yang menunggu persetujuannya. Batalkan (Tolak) atau tunggu ia menyetujui dulu.'
+      : '❌ Anggota ini punya pengajuan pinjaman yang belum diproses. Setujui atau tolak dulu.', 7000);
+    return;
+  }
 
   // Calculate current balance
   let saldo = 0;

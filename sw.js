@@ -27,8 +27,9 @@ self.addEventListener('push', (event) => {
   const judul = d.judul || 'Koperasi Keluarga';
   const opsi = {
     body: d.pesan || '',
-    icon: d.ikon || '/manifest.json',
-    badge: d.ikon || undefined,
+    // Ikon harus GAMBAR. Sebelumnya fallback-nya '/manifest.json' — berkas
+    // JSON — sehingga ikon notifikasi rusak/kosong di banyak platform.
+    icon: d.ikon || '/icon-192.png',
     tag: d.tag || 'koperasi',          // notifikasi sejenis saling menimpa
     renotify: true,
     data: { url: d.url || '/' },

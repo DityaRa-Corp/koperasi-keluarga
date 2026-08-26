@@ -1994,7 +1994,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.43.0';
+const APP_VERSION = 'v4.44.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2070,6 +2070,87 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // Auth token storage
 let authToken = null;
 
+// ══════════════════════════════════════════════════════════════
+// PEMBARUAN TOKEN SELAMA SESI BERJALAN
+//
+// Access token Supabase hidup ±1 jam. Sebelumnya token hanya diperbarui saat
+// halaman DIMUAT ULANG — pengguna yang terus aktif tanpa reload justru
+// kehilangan sesinya diam-diam: semua panggilan mulai gagal tanpa pesan yang
+// menjelaskan, dan ironisnya idle-logout tidak menendangnya karena ia sedang
+// aktif. Yang paling rajin yang paling menderita.
+//
+// Dua lapis penanggulangan:
+//   1) refresh PROAKTIF tiap 50 menit (dan saat tab kembali terlihat setelah
+//      lama tersembunyi — timer tab tersembunyi dihentikan peramban)
+//   2) tangkap 401 di helper db: refresh sekali, ulangi sekali
+// ══════════════════════════════════════════════════════════════
+const REFRESH_JEDA_MS = 50 * 60 * 1000;
+let _refreshTimer = null;
+let _refreshInFlight = null;   // satu refresh untuk banyak 401 bersamaan
+
+async function segarkanToken() {
+  if (_refreshInFlight) return _refreshInFlight;   // sudah ada yang jalan
+  const refresh = localStorage.getItem('kk_refresh_token');
+  if (!refresh) return false;
+  _refreshInFlight = (async () => {
+    try {
+      const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+        body: JSON.stringify({ refresh_token: refresh })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.access_token) return false;
+      authToken = d.access_token;
+      localStorage.setItem('kk_auth_token', authToken);
+      // refresh token sekali pakai — simpan penggantinya
+      if (d.refresh_token) localStorage.setItem('kk_refresh_token', d.refresh_token);
+      if (d.user) localStorage.setItem('kk_auth_user', JSON.stringify(d.user));
+      localStorage.setItem('kk_token_saat', String(Date.now()));
+      return true;
+    } catch (e) {
+      return false;   // jaringan putus: biarkan, percobaan berikut mengulang
+    } finally {
+      _refreshInFlight = null;
+    }
+  })();
+  return _refreshInFlight;
+}
+
+function mulaiJagaToken() {
+  hentikanJagaToken();
+  localStorage.setItem('kk_token_saat', String(Date.now()));
+  _refreshTimer = setInterval(segarkanToken, REFRESH_JEDA_MS);
+}
+function hentikanJagaToken() {
+  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+}
+
+// Tab yang lama tersembunyi: timernya dibekukan peramban, jadi periksa umur
+// token begitu kembali terlihat.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !currentUser) return;
+  const saat = Number(localStorage.getItem('kk_token_saat') || 0);
+  if (saat && Date.now() - saat > 45 * 60 * 1000) segarkanToken();
+});
+
+// Fetch yang sadar-token: bila jawabannya 401 dan kita memang memakai token
+// login (bukan anon), segarkan token lalu ulangi SEKALI. Header dibangun per
+// percobaan supaya percobaan kedua memakai token baru.
+async function fetchToken(url, opts = {}, pakaiAnon = false) {
+  const kirim = () => fetch(url, { ...opts, headers: {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + (pakaiAnon ? SUPABASE_ANON_KEY : (authToken || SUPABASE_ANON_KEY)),
+    'Content-Type': 'application/json',
+    ...(opts.headers || {})
+  }});
+  let res = await kirim();
+  if (res.status === 401 && !pakaiAnon && authToken) {
+    if (await segarkanToken()) res = await kirim();
+  }
+  return res;
+}
+
 function jwtDecode(token) {
   try {
     const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -2093,13 +2174,7 @@ async function supabaseLogin(email, password) {
 // Direct REST query helper - bypasses Supabase JS client auth issues
 async function dbQuery(table, params = '') {
   const url = `${SUPABASE_URL}/rest/v1/${table}${params ? '?' + params : ''}`;
-  const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (authToken || SUPABASE_ANON_KEY),
-      'Content-Type': 'application/json'
-    }
-  });
+  const res = await fetchToken(url);
   if (!res.ok) return null;
   return await res.json();
 }
@@ -2108,29 +2183,18 @@ async function dbQuery(table, params = '') {
 // dikerjakan lewat akses tabel langsung — misalnya proses login, di mana
 // pengguna belum punya token sehingga tabel `profiles` tidak boleh terbuka.
 async function dbRpc(fnName, args = {}, useAnon = false) {
-  const token = useAnon ? SUPABASE_ANON_KEY : (authToken || SUPABASE_ANON_KEY);
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+  const res = await fetchToken(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify(args)
-  });
+  }, useAnon);
   if (!res.ok) { let e; try { e = await res.json(); } catch(_) { e = { message: 'HTTP ' + res.status }; } return { error: e }; }
   return { data: await res.json(), error: null };
 }
 
 async function dbInsert(table, data) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+  const res = await fetchToken(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (authToken || SUPABASE_ANON_KEY),
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
+    headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify(data)
   });
   if (!res.ok) { const err = await res.json(); return { error: err }; }
@@ -2138,14 +2202,9 @@ async function dbInsert(table, data) {
 }
 
 async function dbUpdate(table, params, data) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+  const res = await fetchToken(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + (authToken || SUPABASE_ANON_KEY),
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    },
+    headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify(data)
   });
   if (!res.ok) { const err = await res.json(); return { error: err }; }
@@ -2335,7 +2394,14 @@ async function doLogout(sengaja = false) {
   clearTimeout(idleTimer);
   clearTimeout(idleWarningTimer);
   hentikanPantauNotifikasi();
+  hentikanJagaToken();
   if (sengaja) await cabutPushPerangkatIni();
+  // Q2: keluar sengaja = "ini bukan perangkat saya lagi" — persetujuan push
+  // anggota ini di perangkat ini ikut dicabut, supaya tidak dipulihkan
+  // diam-diam saat orang lain (atau ia sendiri) masuk kembali.
+  if (sengaja && currentUser) {
+    try { localStorage.removeItem('kk_push_optin_' + currentUser.id); } catch(e) {}
+  }
   authToken = null;
   currentUser = null; currentProfile = null;
   localStorage.removeItem('kk_auth_token');
@@ -2373,6 +2439,7 @@ async function initApp(user) {
   await loadAllMembers();
   loadDashboard();
   mulaiPantauNotifikasi();
+  mulaiJagaToken();
   daftarkanServiceWorker().then(sinkronkanPushDiamDiam);
   resetIdleTimer(); // Start idle timer
 }
@@ -5932,6 +5999,8 @@ async function aktifkanPush() {
     if (error && !String(error.message || '').includes('duplicate')) {
       showToast('Gagal mendaftarkan perangkat: ' + (error.message || ''), 6000); return;
     }
+    // Persetujuan dicatat per anggota per perangkat (kunci Q2)
+    try { localStorage.setItem('kk_push_optin_' + currentUser.id, '1'); } catch(e) {}
     showToast('✅ Notifikasi aktif di perangkat ini');
   } catch (e) {
     showToast('Gagal mengaktifkan notifikasi: ' + e.message, 6000);
@@ -5958,6 +6027,9 @@ async function cabutPushPerangkatIni() {
 
 async function matikanPush() {
   await cabutPushPerangkatIni();
+  if (currentUser) {
+    try { localStorage.removeItem('kk_push_optin_' + currentUser.id); } catch(e) {}
+  }
   showToast('Notifikasi dimatikan di perangkat ini');
   renderTombolPush();
 }
@@ -5968,6 +6040,11 @@ async function matikanPush() {
 async function sinkronkanPushDiamDiam() {
   try {
     if (!pushDidukung() || Notification.permission !== 'granted') return;
+    // Izin Notification milik SITUS, bukan orang. Di perangkat bersama,
+    // izin yang diberikan anggota A tidak boleh membuat anggota B ikut
+    // terdaftar diam-diam. Pemulihan otomatis hanya untuk anggota yang
+    // MEMANG pernah menekan Aktifkan di perangkat ini.
+    if (localStorage.getItem('kk_push_optin_' + currentUser.id) !== '1') return;
     const reg = _swReg || await navigator.serviceWorker.getRegistration();
     if (!reg) return;
     const sub = await reg.pushManager.getSubscription();

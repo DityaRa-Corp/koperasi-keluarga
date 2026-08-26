@@ -47,9 +47,29 @@ Deno.serve(async (req) => {
     if (!kejadian || !loan_id) return jawab({ success: false, message: 'kejadian & loan_id wajib' }, 400)
 
     const { data: loan } = await db.from('loans')
-      .select('id, member_id, principal, total_amount, installment_amount, installment_count, status')
+      .select('id, member_id, principal, total_amount, installment_amount, installment_count, status, created_at, konfirmasi_at')
       .eq('id', loan_id).maybeSingle()
     if (!loan) return jawab({ success: false, message: 'Pinjaman tidak ditemukan' }, 404)
+
+    // ── Validasi status per kejadian ──
+    // Setiap kejadian hanya sah pada fase hidup pinjaman yang sesuai. Tanpa
+    // ini, kejadian bisa dikirim ulang kapan pun untuk pinjaman apa pun —
+    // anggota bisa membanjiri HP admin dengan "pengajuan baru" berulang.
+    // Batas umur menutup celah pengiriman ulang selama fasenya masih berjalan.
+    const SYARAT_STATUS: Record<string, string> = {
+      pengajuan_baru: 'pending',
+      perlu_konfirmasi: 'menunggu_konfirmasi',
+      dikonfirmasi: 'active'
+    }
+    if (SYARAT_STATUS[kejadian] && loan.status !== SYARAT_STATUS[kejadian]) {
+      return jawab({ success: false, message: `Kejadian '${kejadian}' tidak berlaku untuk pinjaman berstatus '${loan.status}'` }, 409)
+    }
+    const UMUR_MAKS_MS = 10 * 60 * 1000
+    const acuanUmur = kejadian === 'dikonfirmasi' ? loan.konfirmasi_at : loan.created_at
+    if (kejadian !== 'perlu_konfirmasi'    // dikirim admin; pending bisa lama sebelum diproses
+        && acuanUmur && Date.now() - new Date(acuanUmur).getTime() > UMUR_MAKS_MS) {
+      return jawab({ success: false, message: 'Kejadian ini sudah lewat masanya untuk diberitahukan' }, 409)
+    }
 
     const { data: profilPemanggil } = await db.from('profiles')
       .select('id, full_name, role').eq('id', pemanggil).maybeSingle()

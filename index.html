@@ -1994,7 +1994,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.47.0';
+const APP_VERSION = 'v4.48.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2822,6 +2822,7 @@ async function doKoreksiCicilan() {
     closeModal('modal-koreksi-cicilan');
     _kcCtx = null;
     loadCicilan(); loadPinjaman(); loadDashboard();
+    muatNotifikasi();
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
@@ -3013,7 +3014,10 @@ async function loadSimpananHistory() {
       // Bukti bisa diambil ulang kapan saja. Tanpa ini, admin yang tidak sengaja
       // menutup kwitansi kehilangan buktinya — padahal seluruh datanya masih ada
       // di baris ini dan bisa digambar ulang persis sama.
-      const tombolBukti = s.is_reversed
+      // Baris pembatalan BUKAN transaksi — ia artefak koreksi. Mencetak
+      // "kwitansi setoran" untuk pembatalan pencairan berarti menerbitkan
+      // dokumen resmi atas uang yang tidak pernah disetor siapa pun.
+      const tombolBukti = (s.is_reversed || s.is_pembatalan)
         ? ''
         : `<button class="btn btn-ghost btn-sm" title="Lihat bukti transaksi" onclick="cetakUlangBuktiSimpanan('${s.id}')">🧾</button>`;
       const tombol = `<td style="white-space:nowrap">${tombolBukti}${
@@ -4237,6 +4241,7 @@ async function doCatatCicilan() {
     closeModal('modal-cicilan');
     document.getElementById('cicilan-note').value = '';
     loadCicilan(); loadDashboard();
+    muatNotifikasi();   // item "jatuh tempo" yang barusan dibayar harus langsung hilang
 
     // Bukti dibuat paling akhir, setelah semuanya tersimpan. Kalau pembuatannya
     // gagal, pembayarannya tetap sah — buktinya bisa dicetak ulang dari riwayat.
@@ -5419,7 +5424,7 @@ async function hapusAnggota(id, nama) {
 async function loadAnggotaEditLog() {
   const data = await dbQuery('adjustments', 
     'select=created_at,reason,member_id,admin_id,profiles!adjustments_member_id_fkey(full_name),admin:profiles!adjustments_admin_id_fkey(full_name)' +
-    '&or=(reason.like.*EDIT ANGGOTA*,reason.like.*RESET PASSWORD*,reason.like.*UNLOCK*,reason.like.*LOCK AKUN*)&order=created_at.desc&limit=100'
+    '&or=(reason.like.*EDIT ANGGOTA*,reason.like.*RESET PASSWORD*,reason.like.*UNLOCK*,reason.like.*LOCK AKUN*,reason.like.*BYPASS MASA TUNGGU*)&order=created_at.desc&limit=100'
   );
   const el = document.getElementById('anggota-edit-log');
   if (!el) return;
@@ -5573,10 +5578,19 @@ async function muatPengaturan() {
 }
 
 async function simpanPengaturan(key, value) {
-  const { error } = await dbUpdate('app_settings', `key=eq.${key}`, {
-    value, updated_by: currentUser.id, updated_at: new Date().toISOString()
+  // Upsert, bukan UPDATE polos. UPDATE pada baris yang belum ada mengubah
+  // 0 baris TANPA error — pengaturan tampak tersimpan, kembali ke bawaan
+  // saat dimuat ulang. Tidak menggigit di database yang sudah terisi,
+  // tapi menggigit persis saat paling genting: setup ulang setelah bencana.
+  const res = await fetchToken(`${SUPABASE_URL}/rest/v1/app_settings?on_conflict=key`, {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ key, value, updated_by: currentUser.id, updated_at: new Date().toISOString() })
   });
-  if (error) return { error };
+  if (!res.ok) {
+    let e; try { e = await res.json(); } catch(_) { e = { message: 'HTTP ' + res.status }; }
+    return { error: e };
+  }
   appSettings[key] = value;
   return { error: null };
 }
@@ -6465,11 +6479,11 @@ async function bypassMasaTunggu(memberId, memberName) {
     reason: `[BYPASS MASA TUNGGU] Diizinkan admin untuk mengajukan pinjaman baru lebih awal`,
     admin_id: currentUser.id
   });
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-    method: 'PATCH',
-    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ bypass_waiting: true })
-  });
+  const { error: eBy } = await dbUpdate('profiles', `id=eq.${memberId}`, { bypass_waiting: true });
+  if (eBy) { showToast('❌ Gagal memberi bypass: ' + (eBy.message || JSON.stringify(eBy))); return; }
+  // Pemberian dicatat ke activity_log (pemakaiannya sudah dicatat sejak
+  // v4.42) — jejak lengkapnya: siapa memberi, siapa memakai, kapan.
+  await logActivity('BYPASS_TUNGGU', `Bypass masa tunggu DIBERIKAN kepada ${memberName}`, memberId);
   showToast(`✅ Masa tunggu ${memberName} berhasil di-bypass. Berlaku untuk 1 kali pengajuan berikutnya.`);
 }
 
@@ -6713,6 +6727,10 @@ async function cetakUlangBuktiSimpanan(savingsId) {
   if (rows === null) { showToast('Gagal memuat data. Periksa koneksi lalu coba lagi.'); return; }
   const s = rows[0];
   if (!s) { showToast('Transaksi tidak ditemukan'); return; }
+  if (s.is_pembatalan) {
+    showToast('Baris ini adalah pembatalan koreksi, bukan transaksi — tidak ada bukti untuk dicetak.');
+    return;
+  }
 
   const { opsi, teks, namaFile } = susunBuktiSimpanan({
     id: s.id,

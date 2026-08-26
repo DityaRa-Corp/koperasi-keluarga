@@ -1994,7 +1994,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.46.0';
+const APP_VERSION = 'v4.47.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2343,6 +2343,14 @@ async function doLogin() {
       alertEl.style.display = 'block'; return;
     }
 
+    // Akun nonaktif tidak bisa masuk. Datanya tetap utuh — simpanan yang
+    // belum dicairkan tetap tercatat sebagai kewajiban koperasi — hanya
+    // aksesnya yang ditutup sampai admin mengaktifkannya kembali.
+    if (profile.status === 'inactive') {
+      alertEl.textContent = '⏸️ Akun Anda sedang nonaktif. Hubungi Admin bila ingin diaktifkan kembali.';
+      alertEl.style.display = 'block'; return;
+    }
+
     const email = profile.email_ref;
     if (!email) { alertEl.textContent = 'Akun tidak valid. Hubungi Admin.'; alertEl.style.display = 'block'; return; }
 
@@ -2428,6 +2436,22 @@ async function initApp(user) {
   currentUser = user;
   const profileArr = await dbQuery('profiles', `id=eq.${user.id}&limit=1`);
   currentProfile = (profileArr && profileArr.length > 0) ? profileArr[0] : null;
+
+  // Gerbang kedua: sesi tersimpan milik akun yang KEBURU dinonaktifkan
+  // (token masih sah sampai 1 jam) tidak boleh lolos hanya karena tidak
+  // melewati layar masuk.
+  if (currentProfile && currentProfile.status === 'inactive') {
+    currentUser = null; currentProfile = null; authToken = null;
+    ['kk_auth_token','kk_auth_user','kk_refresh_token'].forEach(k => localStorage.removeItem(k));
+    const alertEl = document.getElementById('auth-alert');
+    if (alertEl) {
+      alertEl.textContent = '⏸️ Akun Anda sedang nonaktif. Hubungi Admin bila ingin diaktifkan kembali.';
+      alertEl.style.display = 'block';
+    }
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    return;
+  }
   document.getElementById('sidebar-name').textContent = currentProfile?.full_name || user.email;
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';

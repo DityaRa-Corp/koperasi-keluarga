@@ -1903,12 +1903,26 @@ tbody tr:hover { background: var(--surface2); }
     <div id="approve-pinjaman-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:13px"></div>
     <div class="form-group">
       <label class="form-label">Nominal yang Disetujui (Rp)</label>
-      <input class="form-input" type="number" id="approve-nominal" min="1000" placeholder="Isi nominal yang disetujui">
+      <input class="form-input" type="number" id="approve-nominal" min="1000" placeholder="Isi nominal yang disetujui" oninput="perbaruiDiffApprove()">
     </div>
     <div class="form-group" id="approve-bunga-group">
       <label class="form-label">Bunga per Cicilan (Rp) <span style="color:var(--text3);font-weight:400;font-size:12px">— opsional, 0 = tanpa bunga</span></label>
-      <input class="form-input" type="number" id="approve-bunga-nominal" min="0" value="0" placeholder="Contoh: 50000">
+      <input class="form-input" type="number" id="approve-bunga-nominal" min="0" value="0" placeholder="Contoh: 50000" oninput="perbaruiDiffApprove()">
       <div class="form-hint">Nominal bunga tetap per cicilan. Kosongkan atau isi 0 untuk tanpa bunga.</div>
+    </div>
+    <!-- Muncul hanya bila syaratnya berbeda dari yang diajukan anggota -->
+    <div id="approve-diff" style="display:none;background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
+    <div id="approve-jalur-cepat" style="display:none;margin-bottom:14px">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+        <input type="checkbox" id="approve-lewati" onchange="ubahJalurCepat()" style="margin-top:2px">
+        <span style="font-size:13px">Cairkan sekarang tanpa menunggu konfirmasi anggota
+          <span style="display:block;color:var(--text2);font-size:11px;margin-top:2px">Pakai ini bila syaratnya sudah disepakati langsung saat serah terima.</span>
+        </span>
+      </label>
+      <div class="form-group" id="approve-lewati-alasan-group" style="display:none;margin-top:10px;margin-bottom:0">
+        <label class="form-label">Alasan melewati konfirmasi <span style="color:var(--red)">*</span></label>
+        <input class="form-input" type="text" id="approve-lewati-alasan" placeholder="Contoh: disepakati langsung saat serah terima">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-approve-pinjaman')">Batal</button>
@@ -1938,6 +1952,8 @@ tbody tr:hover { background: var(--surface2); }
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
       <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
       <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="doRejectPinjaman()">Tolak</button>
+      <button class="btn btn-success" style="display:none" id="btn-konfirmasi-setuju" onclick="doKonfirmasiPinjaman(true)">✅ Saya Setuju</button>
+      <button class="btn btn-danger" style="display:none" id="btn-konfirmasi-tolak" onclick="doKonfirmasiPinjaman(false)">Tolak Syarat Ini</button>
     </div>
   </div>
 </div>
@@ -1954,7 +1970,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.34.0';
+const APP_VERSION = 'v4.35.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2948,8 +2964,11 @@ async function doSetor() {
 async function loadPinjaman() {
   let qParams = 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.desc';
   if (!isAdmin()) qParams += `&member_id=eq.${currentUser.id}`;
+  // Tab "Menunggu" memuat dua keadaan: menunggu keputusan admin, dan menunggu
+  // konfirmasi anggota atas syarat yang diubah.
   const statusMap = { aktif: 'active', pending: 'pending', lunas: 'completed' };
-  if (currentPinjamanTab !== 'semua') qParams += `&status=eq.${statusMap[currentPinjamanTab] || currentPinjamanTab}`;
+  if (currentPinjamanTab === 'pending') qParams += '&status=in.(pending,menunggu_konfirmasi)';
+  else if (currentPinjamanTab !== 'semua') qParams += `&status=eq.${statusMap[currentPinjamanTab] || currentPinjamanTab}`;
   const data = await dbQuery('loans', qParams);
   const el = document.getElementById('pinjaman-list');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada pinjaman</div></div>'; return; }
@@ -2964,6 +2983,7 @@ async function loadPinjaman() {
       const statusBadges = {
         active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`,
         pending: '<span class="badge badge-amber">Menunggu</span>',
+        menunggu_konfirmasi: '<span class="badge badge-purple">Menunggu Persetujuan Anda</span>',
         completed: '<span class="badge badge-green">Lunas</span>',
         rejected: '<span class="badge badge-gray">Ditolak</span>'
       };
@@ -2997,7 +3017,7 @@ async function loadPinjaman() {
         const todayStr2 = getTodayStr();
         const overdue = l.next_due_date && l.next_due_date.split('T')[0] < todayStr2 && l.status === 'active';
         const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-        const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
+        const statusBadge = { active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`, pending: '<span class="badge badge-amber">Menunggu</span>', menunggu_konfirmasi: '<span class="badge badge-purple">Menunggu Persetujuan</span>', completed: '<span class="badge badge-green">Lunas</span>', rejected: '<span class="badge badge-gray">Ditolak</span>' };
         const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
         return `<tr>
           <td style="font-weight:500">${escapeHtml(l.profiles?.full_name || '-')}</td>
@@ -3090,10 +3110,14 @@ async function doAjukanPinjaman() {
   // ── VALIDASI RULES PINJAMAN ──
   showToast('Memeriksa kelayakan...');
 
-  // Rule 1: Tidak bisa pinjam jika masih ada pinjaman aktif
-  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id&limit=1`);
+  // Rule 1: Tidak bisa pinjam jika masih ada pinjaman aktif, atau ada pinjaman
+  // yang syaratnya sedang menunggu konfirmasi (uangnya belum cair tetapi
+  // komitmennya sudah ada).
+  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=in.(active,menunggu_konfirmasi)&select=id,status&limit=1`);
   if (activeLoans && activeLoans.length > 0) {
-    showToast('❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas');
+    showToast(activeLoans[0].status === 'menunggu_konfirmasi'
+      ? '❌ Masih ada pengajuan yang menunggu persetujuan syarat. Setujui atau tolak dulu.'
+      : '❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas', 6000);
     return;
   }
 
@@ -3225,7 +3249,7 @@ async function showDetailPinjaman(loanId) {
   content.innerHTML = `
     <div class="detail-grid" style="margin-bottom:16px">
       <div class="detail-item"><label>Anggota</label><span style="font-weight:600">${escapeHtml(loan.profiles?.full_name)}</span></div>
-      <div class="detail-item"><label>Status</label><span>${loan.status === 'active' ? '<span class="badge badge-blue">Aktif</span>' : loan.status === 'pending' ? '<span class="badge badge-amber">Menunggu</span>' : loan.status === 'completed' ? '<span class="badge badge-green">Lunas</span>' : '<span class="badge badge-gray">Ditolak</span>'}${isAdmin() ? renderOverdueBadge(loan.next_due_date, loan.status) : ''}</span></div>
+      <div class="detail-item"><label>Status</label><span>${loan.status === 'active' ? '<span class="badge badge-blue">Aktif</span>' : loan.status === 'pending' ? '<span class="badge badge-amber">Menunggu</span>' : loan.status === 'menunggu_konfirmasi' ? '<span class="badge badge-purple">Menunggu Persetujuan</span>' : loan.status === 'completed' ? '<span class="badge badge-green">Lunas</span>' : '<span class="badge badge-gray">Ditolak</span>'}${isAdmin() ? renderOverdueBadge(loan.next_due_date, loan.status) : ''}</span></div>
       <div class="detail-item"><label>Pokok Pinjaman</label><span class="td-mono">${fmt(loan.principal)}</span></div>
       <div class="detail-item"><label>Bunga Flat</label><span>${loan.interest_rate}%/bulan</span></div>
       <div class="detail-item"><label>Total Bunga</label><span class="td-mono">${fmt(loan.total_interest)}</span></div>
@@ -3273,14 +3297,66 @@ async function showDetailPinjaman(loanId) {
     btnApprove.style.display = loan.status === 'pending' ? '' : 'none';
     btnReject.style.display = loan.status === 'pending' ? '' : 'none';
   }
+
+  // ── Konfirmasi syarat oleh anggota yang bersangkutan ──
+  // Hanya pemilik pinjaman yang boleh menyetujui — bukan admin, dan bukan
+  // anggota lain. Fungsi database memeriksa ulang hal yang sama.
+  const perluKonfirmasi = loan.status === 'menunggu_konfirmasi'
+                       && loan.member_id === currentUser.id;
+  const bSetuju = document.getElementById('btn-konfirmasi-setuju');
+  const bTolak  = document.getElementById('btn-konfirmasi-tolak');
+  if (bSetuju) bSetuju.style.display = perluKonfirmasi ? '' : 'none';
+  if (bTolak)  bTolak.style.display  = perluKonfirmasi ? '' : 'none';
+
+  if (loan.status === 'menunggu_konfirmasi') {
+    const a = loan.pengajuan_awal || {};
+    const brs = (label, lama, baru) => (lama === undefined || Number(lama) === Number(baru)) ? '' : `
+      <div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0">
+        <span style="color:var(--text2)">${label}</span>
+        <span><span style="text-decoration:line-through;color:var(--text3)">${fmt(lama)}</span>
+        <strong style="margin-left:6px">${fmt(baru)}</strong></span>
+      </div>`;
+    content.insertAdjacentHTML('afterbegin',
+      `<div style="background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px">
+        <div style="font-weight:700;color:var(--amber-text);margin-bottom:6px">
+          ${perluKonfirmasi ? '⚠️ Syarat pinjaman ini berbeda dari yang Anda ajukan' : '⏳ Menunggu konfirmasi anggota'}
+        </div>
+        ${brs('Pokok pinjaman', a.principal, loan.principal)}
+        ${brs('Total bunga', a.total_interest, loan.total_interest)}
+        ${brs('Total tagihan', a.total_amount, loan.total_amount)}
+        ${brs('Cicilan per periode', a.installment_amount, loan.installment_amount)}
+        <div style="margin-top:8px;color:var(--text2)">
+          ${perluKonfirmasi
+            ? 'Uang belum dicairkan. Pinjaman baru berjalan setelah Anda menekan “Saya Setuju”.'
+            : 'Uang belum dicairkan sampai anggota menyetujui syarat ini.'}
+        </div>
+      </div>`);
+  }
+
   openModal('modal-detail-pinjaman');
 }
 
+// Syarat yang DIAJUKAN anggota. Selama pinjaman masih 'pending', baris di
+// database masih berisi persis apa yang ia ajukan — admin baru menimpanya
+// saat mencairkan. Jadi acuannya diambil dari sini, dan pinjaman lama yang
+// sudah menggantung pun ikut tertangani tanpa data tambahan.
+let _pengajuanAcuan = null;
+
 function openApproveForm() {
   // Get current loan data to pre-fill
-  dbQuery('loans', `select=principal,interest_rate,total_amount,installment_type,installment_count,member_id,profiles!loans_member_id_fkey(full_name)&id=eq.${currentLoanId}&limit=1`).then(arr => {
+  dbQuery('loans', `select=principal,interest_rate,total_amount,total_interest,installment_amount,installment_type,installment_count,member_id,profiles!loans_member_id_fkey(full_name)&id=eq.${currentLoanId}&limit=1`).then(arr => {
     const l = arr?.[0];
     if (!l) return;
+    _pengajuanAcuan = {
+      principal: Number(l.principal) || 0,
+      total_amount: Number(l.total_amount) || 0,
+      total_interest: Number(l.total_interest) || 0,
+      installment_amount: Number(l.installment_amount) || 0,
+      installment_count: Number(l.installment_count) || 0,
+      installment_type: l.installment_type,
+      interest_rate: Number(l.interest_rate) || 0,
+      nama: l.profiles?.full_name || 'Anggota'
+    };
     const info = document.getElementById('approve-pinjaman-info');
     info.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div><div style="color:var(--text3);font-size:11px;text-transform:uppercase">Peminjam</div><div style="font-weight:600">${escapeHtml(l.profiles?.full_name)}</div></div>
@@ -3296,9 +3372,73 @@ function openApproveForm() {
       ? Math.round(l.principal * (currentBunga / 100) * months / l.installment_count)
       : 0;
     document.getElementById('approve-bunga-nominal').value = defaultBungaNominal;
+    document.getElementById('approve-lewati').checked = false;
+    document.getElementById('approve-lewati-alasan').value = '';
+    document.getElementById('approve-lewati-alasan-group').style.display = 'none';
     closeModal('modal-detail-pinjaman');
     openModal('modal-approve-pinjaman');
+    perbaruiDiffApprove();
   });
+}
+
+// Menghitung syarat final dari isian admin. Dipakai bersama oleh pratinjau
+// dan pencairan supaya angka yang dilihat sama dengan yang tersimpan.
+function hitungSyaratApprove() {
+  const p = _pengajuanAcuan;
+  if (!p) return null;
+  const pokok = parseInt(document.getElementById('approve-nominal').value) || 0;
+  const bungaPerCicilan = parseInt(document.getElementById('approve-bunga-nominal').value) || 0;
+  const n = p.installment_count || 1;
+  const totalBunga   = bungaPerCicilan * n;
+  const totalTagihan = pokok + totalBunga;
+  const cicilan      = Math.round(pokok / n) + bungaPerCicilan;
+  const berubah = pokok !== p.principal || totalTagihan !== p.total_amount;
+  return { pokok, bungaPerCicilan, totalBunga, totalTagihan, cicilan, n, berubah };
+}
+
+// Perbandingan berdampingan: apa yang diajukan vs apa yang akan dicairkan.
+// Muncul hanya bila memang berbeda, supaya persetujuan yang tidak mengubah
+// apa pun tetap secepat dulu.
+function perbaruiDiffApprove() {
+  const s = hitungSyaratApprove();
+  const kotak = document.getElementById('approve-diff');
+  const jalur = document.getElementById('approve-jalur-cepat');
+  const tombol = document.getElementById('btn-do-approve');
+  if (!s || !kotak) return;
+  const p = _pengajuanAcuan;
+
+  if (!s.berubah) {
+    kotak.style.display = 'none';
+    jalur.style.display = 'none';
+    if (tombol) tombol.textContent = 'Cairkan';
+    return;
+  }
+
+  const baris = (label, lama, baru) => lama === baru ? '' : `
+    <div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0">
+      <span style="color:var(--text2)">${label}</span>
+      <span><span style="text-decoration:line-through;color:var(--text3)">${fmt(lama)}</span>
+      <strong style="margin-left:6px">${fmt(baru)}</strong></span>
+    </div>`;
+
+  kotak.innerHTML = `<div style="font-weight:700;color:var(--amber-text);margin-bottom:6px">⚠️ Syaratnya berbeda dari yang diajukan ${escapeHtml(p.nama)}</div>`
+    + baris('Pokok pinjaman', p.principal, s.pokok)
+    + baris('Total bunga', p.total_interest, s.totalBunga)
+    + baris('Total tagihan', p.total_amount, s.totalTagihan)
+    + baris('Cicilan per periode', p.installment_amount, s.cicilan)
+    + `<div style="margin-top:8px;color:var(--text2)">Pinjaman akan menunggu konfirmasi ${escapeHtml(p.nama)} lebih dulu, dan baru cair setelah ia menyetujuinya di akunnya sendiri.</div>`;
+  kotak.style.display = 'block';
+  jalur.style.display = 'block';
+  if (tombol) {
+    tombol.textContent = document.getElementById('approve-lewati')?.checked
+      ? 'Cairkan Sekarang' : 'Kirim untuk Dikonfirmasi';
+  }
+}
+
+function ubahJalurCepat() {
+  const aktif = document.getElementById('approve-lewati').checked;
+  document.getElementById('approve-lewati-alasan-group').style.display = aktif ? 'block' : 'none';
+  perbaruiDiffApprove();
 }
 
 async function doApprovePinjaman() {
@@ -3324,6 +3464,17 @@ async function doApprovePinjaman() {
     return;
   }
 
+  // Apakah syaratnya berbeda dari yang diajukan anggota? Kalau ya, pencairan
+  // menunggu konfirmasinya — kecuali admin memilih jalur cepat dengan alasan.
+  const syarat  = hitungSyaratApprove();
+  const berubah = syarat ? syarat.berubah : false;
+  const lewati  = document.getElementById('approve-lewati')?.checked === true;
+  const alasanLewat = (document.getElementById('approve-lewati-alasan')?.value || '').trim();
+  if (berubah && lewati && !alasanLewat) {
+    showToast('Alasan melewati konfirmasi wajib diisi', 5000); return;
+  }
+  const perluKonfirmasi = berubah && !lewati;
+
   const totalBunga     = bungaPerCicilan * loan.installment_count;
   const totalTagihan   = approvedNominal + totalBunga;
   const pokokPerCicilan = Math.round(approvedNominal / loan.installment_count);
@@ -3336,8 +3487,17 @@ async function doApprovePinjaman() {
     ? Math.round((totalBunga / approvedNominal / months) * 100 * 100) / 100
     : 0;
 
-  const { error } = await dbUpdate('loans', `id=eq.${currentLoanId}`, {
-    status: 'active',
+  // Syarat yang DIAJUKAN disimpan sebelum ditimpa, supaya anggota bisa
+  // melihat persis apa yang berubah saat diminta menyetujui.
+  const pengajuanAwal = berubah ? {
+    principal:          Number(loan.principal) || 0,
+    total_amount:       Number(loan.total_amount) || 0,
+    total_interest:     Number(loan.total_interest) || 0,
+    installment_amount: Number(loan.installment_amount) || 0,
+    interest_rate:      Number(loan.interest_rate) || 0
+  } : null;
+
+  const perubahan = {
     principal: approvedNominal,
     interest_rate: interestRate,
     total_interest: totalBunga,
@@ -3345,11 +3505,43 @@ async function doApprovePinjaman() {
     installment_amount: cicilanPerPeriod,
     remaining_amount: totalTagihan,
     approved_by: currentUser.id,
-    disbursed_at: new Date().toISOString(),
-    next_due_date: nextDue,
     note: loan.note
-  });
+  };
+  if (pengajuanAwal) perubahan.pengajuan_awal = pengajuanAwal;
+
+  if (perluKonfirmasi) {
+    // Belum cair: disbursed_at & next_due_date sengaja dibiarkan kosong,
+    // sehingga kas koperasi belum berkurang sampai anggota menyetujui.
+    perubahan.status = 'menunggu_konfirmasi';
+  } else {
+    perubahan.status = 'active';
+    perubahan.disbursed_at = new Date().toISOString();
+    perubahan.next_due_date = nextDue;
+    if (berubah) {
+      perubahan.konfirmasi_at = new Date().toISOString();
+      perubahan.konfirmasi_oleh = currentUser.id;
+      perubahan.konfirmasi_catatan = '[JALUR CEPAT] ' + alasanLewat;
+    }
+  }
+
+  const { error } = await dbUpdate('loans', `id=eq.${currentLoanId}`, perubahan);
   if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
+
+  if (berubah) {
+    await logActivity(perluKonfirmasi ? 'PINJAMAN_REVISI' : 'PINJAMAN_REVISI_JALUR_CEPAT',
+      `Syarat diubah: pokok ${fmt(loan.principal)} → ${fmt(approvedNominal)}, `
+      + `total ${fmt(loan.total_amount)} → ${fmt(totalTagihan)}`
+      + (perluKonfirmasi ? ' — menunggu konfirmasi anggota' : ` — dicairkan langsung (${alasanLewat})`),
+      loan.member_id);
+  }
+
+  if (perluKonfirmasi) {
+    showToast(`Syarat dikirim ke ${_pengajuanAcuan?.nama || 'anggota'} untuk dikonfirmasi. Pinjaman belum cair.`, 6000);
+    closeModal('modal-approve-pinjaman');
+    loadPinjaman();
+    return;
+  }
+
   showToast('Pinjaman disetujui dan dicairkan ✓');
   closeModal('modal-approve-pinjaman');
   loadPinjaman(); loadDashboard();
@@ -3367,6 +3559,45 @@ async function doApprovePinjaman() {
   finally {
     const btnAEnd = document.getElementById('btn-do-approve');
     if (btnAEnd) { btnAEnd.disabled = false; btnAEnd.style.opacity = ''; }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// KONFIRMASI SYARAT OLEH ANGGOTA
+//
+// Seluruh keputusan dikerjakan di dalam fungsi database: memastikan yang
+// menyetujui benar-benar pemilik pinjaman, memeriksa ulang ketersediaan kas
+// pada saat pencairan (bisa berubah sejak admin menyetujui), lalu menetapkan
+// tanggal cair dan jatuh tempo. Tanggal tidak boleh datang dari peramban —
+// yang menekan tombol adalah pihak yang berkepentingan atas tanggal itu.
+// ══════════════════════════════════════════════════════════════
+async function doKonfirmasiPinjaman(setuju) {
+  if (!currentLoanId) return;
+  if (!setuju && !confirm('Tolak syarat pinjaman ini?\n\nPengajuan akan ditutup dan Anda perlu mengajukan ulang bila masih membutuhkannya.')) return;
+  if (setuju && !confirm('Setujui syarat pinjaman ini?\n\nDengan menyetujui, pinjaman langsung berjalan dan uangnya dicairkan.')) return;
+
+  const { data, error } = await dbRpc('konfirmasi_pinjaman', {
+    p_loan_id: currentLoanId,
+    p_setuju: setuju
+  });
+  if (error) { showToast('❌ ' + (error.message || JSON.stringify(error)), 7000); return; }
+
+  await logActivity(setuju ? 'PINJAMAN_DIKONFIRMASI' : 'PINJAMAN_SYARAT_DITOLAK',
+    setuju ? 'Anggota menyetujui syarat final' : 'Anggota menolak syarat final', currentUser.id);
+
+  closeModal('modal-detail-pinjaman');
+  showToast(setuju ? '✅ Syarat disetujui — pinjaman berjalan' : 'Syarat ditolak');
+  loadPinjaman(); loadDashboard();
+
+  if (setuju && data) {
+    const bukti = susunBuktiPinjaman({
+      id: currentLoanId, nama: currentProfile?.full_name || 'Anggota', tanggal: new Date(),
+      pokok: Number(data.principal), totalBunga: Number(data.total_interest),
+      totalTagihan: Number(data.total_amount), cicilan: Number(data.installment_amount),
+      tenor: Number(data.installment_count), jenisCicilan: data.installment_type,
+      jatuhTempo: data.next_due_date
+    });
+    await tampilkanKwitansi(bukti.opsi, bukti.teks, bukti.namaFile);
   }
 }
 
@@ -4855,7 +5086,7 @@ async function hapusAnggota(id, nama) {
   showToast('Memeriksa riwayat anggota...');
   const [aktif, pending, savings, loans, payments] = await Promise.all([
     dbQuery('loans',         `member_id=eq.${id}&status=eq.active&select=id&limit=1`),
-    dbQuery('loans',         `member_id=eq.${id}&status=eq.pending&select=id&limit=1`),
+    dbQuery('loans',         `member_id=eq.${id}&status=in.(pending,menunggu_konfirmasi)&select=id&limit=1`),
     dbQuery('savings',       `member_id=eq.${id}&select=type,amount`),
     dbQuery('loans',         `member_id=eq.${id}&select=id&limit=1`),
     dbQuery('loan_payments', `member_id=eq.${id}&select=id&limit=1`)

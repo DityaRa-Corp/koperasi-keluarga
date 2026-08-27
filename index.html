@@ -847,6 +847,14 @@ tbody tr:hover { background: var(--surface2); }
   .nominal-tx.naik  { color: var(--green); }
   .nominal-tx.turun { color: var(--red); }
 
+  /* Tombol aksi utama pada kartu (Catat Bayar, Lihat Detail) dibuat setinggi
+     42px — ambang nyaman untuk ibu jari. Sebelumnya hanya 24px. */
+  .aksi-kartu { display: flex; gap: 8px; margin-top: 12px; }
+  .aksi-kartu .btn { min-height: 42px; font-size: 12px !important; padding: 0 12px !important;
+    justify-content: center; white-space: nowrap; }
+  .aksi-kartu .btn.utama { flex: 1 1 auto; }
+  .aksi-kartu-tunggal { width: 100%; justify-content: center; min-height: 42px; margin-top: 4px; }
+
   /* Tombol aksi pada tabel yang TIDAK jadi kartu tetap dinaikkan dari 23px */
   td > div[style*="display:flex"] .btn {
     font-size: 11px !important; padding: 6px 10px !important; min-height: 32px;
@@ -2245,7 +2253,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.58.0';
+const APP_VERSION = 'v4.59.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3432,7 +3440,7 @@ async function loadPinjaman() {
         <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px">
           <div style="width:${pct}%;height:100%;background:${pctColor};border-radius:4px;transition:width .5s"></div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="showDetailPinjaman('${l.id}')">Lihat Detail</button>
+        <button class="btn btn-ghost btn-sm aksi-kartu-tunggal" onclick="showDetailPinjaman('${l.id}')">Lihat Detail</button>
       </div>`;
     }).join('');
   } else {
@@ -4188,8 +4196,14 @@ async function loadCicilan() {
           : todayDue ? '<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>'
           : '<span class="badge badge-blue">Aktif</span>';
         const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-        const catatBtn = isAdmin() ? `<button class="btn btn-success btn-sm" style="width:100%;margin-top:10px;justify-content:center" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>
-        <button class="btn btn-ghost btn-sm" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')">💬</button>` : '';
+        // Tombol aksi utama kartu: disandingkan dalam satu baris dan dibuat
+        // setinggi 42px. Sebelumnya "Catat Bayar" hanya 24px dan tombol
+        // pengingat menggantung sendiri di bawahnya sebagai ikon tanpa
+        // keterangan — terbaca seperti elemen nyasar di layar sentuh.
+        const catatBtn = isAdmin() ? `<div class="aksi-kartu">
+          <button class="btn btn-success btn-sm utama" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>
+          <button class="btn btn-ghost btn-sm" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')">💬 Ingatkan</button>
+        </div>` : '';
         const dueDateColor = overdue ? 'var(--red)' : todayDue ? 'var(--amber)' : 'var(--text2)';
         return `<div class="card" style="margin-bottom:10px;padding:14px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">

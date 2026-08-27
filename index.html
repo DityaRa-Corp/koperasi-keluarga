@@ -1993,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.50.0';
+const APP_VERSION = 'v4.51.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2139,15 +2139,28 @@ document.addEventListener('visibilitychange', () => {
 // login (bukan anon), segarkan token lalu ulangi SEKALI. Header dibangun per
 // percobaan supaya percobaan kedua memakai token baru.
 async function fetchToken(url, opts = {}, pakaiAnon = false) {
-  const kirim = () => fetch(url, { ...opts, headers: {
+  const kirim = (tok) => fetch(url, { ...opts, headers: {
     'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + (pakaiAnon ? SUPABASE_ANON_KEY : (authToken || SUPABASE_ANON_KEY)),
+    'Authorization': 'Bearer ' + (pakaiAnon ? SUPABASE_ANON_KEY : (tok || SUPABASE_ANON_KEY)),
     'Content-Type': 'application/json',
     ...(opts.headers || {})
   }});
-  let res = await kirim();
+  const dipakai = authToken;              // token yang dibawa permintaan ini
+  let res = await kirim(dipakai);
   if (res.status === 401 && !pakaiAnon && authToken) {
-    if (await segarkanToken()) res = await kirim();
+    // Penjaga _refreshInFlight saja tidak cukup: 401 tidak datang serentak.
+    // Permintaan yang 401-nya tiba SESUDAH refresh pertama selesai akan
+    // melihat penjaga sudah kosong dan memicu refresh lagi — padahal
+    // tokennya sudah segar. Supabase merotasi refresh token tiap pemakaian,
+    // jadi refresh berlebih berisiko mematikan sesi, bukan sekadar boros.
+    //
+    // Karena itu diperiksa dulu: kalau token sudah BERUBAH sejak permintaan
+    // ini dikirim, berarti pihak lain sudah menyegarkannya — cukup ulangi.
+    if (authToken !== dipakai) {
+      res = await kirim(authToken);
+    } else if (await segarkanToken()) {
+      res = await kirim(authToken);
+    }
   }
   return res;
 }

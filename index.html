@@ -812,7 +812,7 @@ tbody tr:hover { background: var(--surface2); }
   .table-wrap.daftar-transaksi td[data-label="Tanggal"] { display: none !important; }
   /* Kolom yang tidak punya tempat di baris ringkas disembunyikan; datanya tetap
      lengkap di bukti transaksi yang bisa dibuka dari tombolnya. */
-  .table-wrap.daftar-transaksi td[data-label="Bayar Ke-"],
+  .table-wrap.daftar-transaksi td[data-label="Bayar Ke-"] { grid-area: jenis; text-align: left !important; }
   .table-wrap.daftar-transaksi td[data-label="Pokok"],
   .table-wrap.daftar-transaksi td[data-label="Bunga"] { display: none !important; }
   /* Di daftar ringkas, tombol tidak lagi selebar penuh: ia berbagi baris
@@ -1231,11 +1231,11 @@ tbody tr:hover { background: var(--surface2); }
       </div>
       <!-- Grafik Tren - full width -->
       <div class="card" style="margin-top:14px">
-        <div class="section-title">📈 Tren Simpanan & Cicilan (6 Bulan)</div>
-        <div id="chart-tren" style="height:180px;display:flex;align-items:flex-end;gap:4px;padding:8px 0"></div>
-        <div id="chart-tren-legend" style="display:flex;gap:16px;margin-top:8px;font-size:11px;color:var(--text2)">
-          <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:2px;margin-right:4px"></span>Simpanan</span>
-          <span><span style="display:inline-block;width:10px;height:10px;background:#2563eb;border-radius:2px;margin-right:4px"></span>Cicilan</span>
+        <div class="section-title">📈 Uang Masuk & Keluar (8 Minggu)</div>
+        <div id="chart-tren" style="padding:4px 0"></div>
+        <div id="chart-tren-legend" style="display:flex;gap:16px;margin-top:6px;font-size:11px;color:var(--text2);flex-wrap:wrap">
+          <span><span style="display:inline-block;width:10px;height:10px;background:#16a34a;border-radius:2px;margin-right:5px"></span>Uang masuk — setoran, cicilan, denda</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:#dc2626;border-radius:2px;margin-right:5px"></span>Uang keluar — pencairan simpanan &amp; pinjaman, biaya event</span>
         </div>
       </div>
 
@@ -2247,7 +2247,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.56.0';
+const APP_VERSION = 'v4.57.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -4580,7 +4580,7 @@ async function doCatatCicilan() {
 async function loadCicilanHistory() {
   const memberId = document.getElementById('filter-cicilan-member').value;
   const month = document.getElementById('filter-cicilan-month').value;
-  let cihParams = 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.desc&limit=100';
+  let cihParams = 'select=*,profiles!loan_payments_member_id_fkey(full_name,avatar_url)&order=created_at.desc&limit=100';
   if (memberId) cihParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) cihParams += `&member_id=eq.${currentUser.id}`;
   if (month) { const b = batasBulan(month); cihParams += `&created_at=gte.${b.dari}&created_at=lt.${b.sampai}`; }
@@ -4588,7 +4588,7 @@ async function loadCicilanHistory() {
   const el = document.getElementById('cicilan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada riwayat cicilan</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th><th></th></tr></thead>
+    <thead><tr><th></th><th>Tanggal</th><th>Anggota</th><th>Bayar Ke-</th><th>Dibayar</th><th>Pokok</th><th>Bunga</th><th>Sisa</th><th>Ket.</th><th></th></tr></thead>
     <tbody>${data.map(p => {
       // Penanda: mana yang nominalnya sudah diperbaiki, mana baris penggantinya
       const tanda = p.is_reversed
@@ -4602,11 +4602,15 @@ async function loadCicilanHistory() {
         bisaKoreksi
           ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
           : ''}</td>`;
+      const fotoC = p.profiles?.avatar_url
+        ? `<img class="tx-foto" src="${escapeHtml(p.profiles.avatar_url)}" alt="">`
+        : `<div class="tx-foto tx-foto-huruf">${escapeHtml((p.profiles?.full_name || '?')[0].toUpperCase())}</div>`;
       return `<tr${p.is_reversed ? ' style="opacity:0.55"' : ''}>
+        <td>${fotoC}</td>
         <td>${fmtDate(p.created_at)}</td>
         <td>${escapeHtml(p.profiles?.full_name || '-')}${tanda}</td>
-        <td style="text-align:center">${p.payment_number}</td>
-        <td class="td-mono" style="font-weight:600${p.is_reversed ? ';text-decoration:line-through' : ''}">${fmt(p.amount_paid)}</td>
+        <td style="text-align:center"><span class="badge badge-blue">Cicilan ke-${p.payment_number}</span></td>
+        <td class="td-mono nominal-tx naik" style="font-weight:600${p.is_reversed ? ';text-decoration:line-through' : ''}">+${fmt(p.amount_paid)}</td>
         <td class="td-mono">${fmt(p.principal_component)}</td>
         <td class="td-mono">${fmt(p.interest_component)}</td>
         <td class="td-mono" style="color:var(--amber)">${fmt(p.remaining_after)}</td>
@@ -6508,6 +6512,11 @@ async function kirimPush(kejadian, loanId) {
 // ══════════════════════════════════════════════════════════════
 const NOTIF_JEDA_MS = 45000;
 let _notifItems  = [];
+// Kunci hal-hal yang sudah dibuka pemakai. Angka pada lonceng menghitung yang
+// BELUM dibaca, bukan seluruh daftar: urusan yang belum selesai tetap tampil
+// di dalam lonceng, tetapi tidak terus-menerus menagih perhatian lewat angka
+// merah setelah dilihat. Disimpan per anggota agar tidak tertukar di satu HP.
+let _notifDibaca = new Set();
 let _notifDikenal = new Set();
 let _notifTimer  = null;
 let _notifPertama = true;
@@ -6591,8 +6600,27 @@ async function muatNotifikasi() {
   renderLonceng();
 }
 
+function kunciNotifDibaca() { return 'kk_notif_dibaca_' + (currentUser?.id || 'anon'); }
+
+function muatNotifDibaca() {
+  try {
+    const t = localStorage.getItem(kunciNotifDibaca());
+    _notifDibaca = new Set(t ? JSON.parse(t) : []);
+  } catch (e) { _notifDibaca = new Set(); }
+}
+
+function simpanNotifDibaca() {
+  try {
+    // Hanya kunci yang masih ada di daftar yang disimpan, supaya catatannya
+    // tidak menggelembung oleh urusan yang sudah lama selesai.
+    const masihAda = new Set(_notifItems.map(i => i.kunci));
+    _notifDibaca = new Set([..._notifDibaca].filter(k => masihAda.has(k)));
+    localStorage.setItem(kunciNotifDibaca(), JSON.stringify([..._notifDibaca]));
+  } catch (e) {}
+}
+
 function renderLonceng() {
-  const n = _notifItems.length;
+  const n = _notifItems.filter(i => !_notifDibaca.has(i.kunci)).length;
   ['notif-badge-mobile', 'notif-badge-sidebar'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -6609,17 +6637,28 @@ function bukaNotifikasi() {
     sub.textContent = 'Tidak ada yang menunggu tindakan Anda';
     el.innerHTML = '<div class="empty-state" style="padding:28px"><div class="empty-state-title">Semua beres 🎉</div><div class="empty-state-sub">Tidak ada pengajuan, persetujuan, atau cicilan yang perlu ditangani.</div></div>';
   } else {
-    sub.textContent = `${_notifItems.length} hal menunggu tindakan Anda`;
-    el.innerHTML = _notifItems.map((i, idx) => `
-      <div onclick="bukaNotifItem(${idx})" style="display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:var(--radius-sm);cursor:pointer;background:var(--surface2);margin-bottom:8px">
+    const belum = _notifItems.filter(i => !_notifDibaca.has(i.kunci)).length;
+    sub.textContent = belum
+      ? `${belum} hal baru dari ${_notifItems.length} yang menunggu tindakan Anda`
+      : `${_notifItems.length} hal menunggu tindakan Anda`;
+    el.innerHTML = _notifItems.map((i, idx) => {
+      const baru = !_notifDibaca.has(i.kunci);
+      return `
+      <div onclick="bukaNotifItem(${idx})" style="display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:var(--radius-sm);cursor:pointer;background:${baru ? 'var(--accent-bg)' : 'var(--surface2)'};margin-bottom:8px">
         <div style="font-size:20px;line-height:1">${i.ikon}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px">${escapeHtml(i.judul)}</div>
+          <div style="font-weight:600;font-size:13px">${escapeHtml(i.judul)}${baru ? ' <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);vertical-align:middle;margin-left:4px"></span>' : ''}</div>
           <div style="font-size:12px;color:var(--text2);margin-top:2px">${escapeHtml(i.sub)}</div>
         </div>
         <div style="color:var(--text3);font-size:18px">›</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
+  // Membuka lonceng berarti sudah dilihat: angkanya padam, isinya tetap ada
+  // selama urusannya belum selesai.
+  _notifItems.forEach(i => _notifDibaca.add(i.kunci));
+  simpanNotifDibaca();
+  renderLonceng();
   renderTombolPush();
   openModal('modal-notifikasi');
 }
@@ -6635,6 +6674,7 @@ function mulaiPantauNotifikasi() {
   hentikanPantauNotifikasi();
   _notifPertama = true;
   _notifDikenal = new Set();
+  muatNotifDibaca();
   muatNotifikasi();
   _notifTimer = setInterval(muatNotifikasi, NOTIF_JEDA_MS);
 }
@@ -8106,60 +8146,104 @@ async function hitungKalkulator() {
 // BATCH 1B: GRAFIK DASHBOARD (Pure SVG, tanpa library)
 // ══════════════════════════════════════════════════════════════
 async function loadDashboardCharts(savings, memberBalances) {
-  // Hitung data 6 bulan terakhir
-  const months6 = [], labels6 = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - i);
-    months6.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'));
-    labels6.push(d.toLocaleDateString('id-ID', { month: 'short' }));
+  // Delapan minggu terakhir. Bulanan terlalu jarang untuk koperasi yang
+  // berkumpul mingguan: setengah kolomnya kosong dan pergerakan dalam sebulan
+  // tidak terlihat sama sekali. Mingguan sejalan dengan ritme kumpulan.
+  const mingguMulai = [], labelMinggu = [];
+  const awalMingguIni = new Date();
+  awalMingguIni.setHours(0,0,0,0);
+  // Senin sebagai awal minggu
+  awalMingguIni.setDate(awalMingguIni.getDate() - ((awalMingguIni.getDay() + 6) % 7));
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date(awalMingguIni);
+    d.setDate(d.getDate() - i * 7);
+    mingguMulai.push(d);
+    labelMinggu.push(d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
   }
+  const batasAkhir = new Date(awalMingguIni);
+  batasAkhir.setDate(batasAkhir.getDate() + 7);
 
-  const simpananPerBulan = months6.map(m =>
-    (savings || []).filter(s => s.type === 'deposit' && isBarisSimpananEfektif(s) && bulanLokal(s.created_at) === m)
-      .reduce((a, s) => a + Number(s.amount), 0)
-  );
+  // Nomor minggu ke-berapa dalam deret, atau -1 kalau di luar rentang
+  const keMinggu = (waktu) => {
+    const t = new Date(waktu); if (isNaN(t)) return -1;
+    if (t < mingguMulai[0] || t >= batasAkhir) return -1;
+    return Math.floor((t - mingguMulai[0]) / (7 * 86400000));
+  };
 
-  const allPayments = await dbQuery('loan_payments', 'select=amount_paid,created_at&is_reversed=is.false&order=created_at.asc');
-  const cicilanPerBulan = months6.map(m =>
-    (allPayments || []).filter(p => bulanLokal(p.created_at) === m)
-      .reduce((a, p) => a + Number(p.amount_paid), 0)
-  );
+  const masuk  = new Array(8).fill(0);
+  const keluar = new Array(8).fill(0);
+  const tambah = (arr, waktu, nilai) => { const i = keMinggu(waktu); if (i >= 0 && i < 8) arr[i] += Number(nilai) || 0; };
 
-  // Render bar chart SVG
+  // Arah uang dilihat dari KAS KOPERASI, sama seperti di daftar transaksi.
+  (savings || []).filter(isBarisSimpananEfektif).forEach(x =>
+    tambah(x.type === 'deposit' ? masuk : keluar, x.created_at, x.amount));
+
+  const sejak = mingguMulai[0].toISOString();
+  const [bayar, cair, lain, keluarKas] = await Promise.all([
+    dbQuery('loan_payments', `select=amount_paid,created_at&is_reversed=is.false&created_at=gte.${sejak}`),
+    dbQuery('loans', `select=principal,disbursed_at&status=in.(active,completed)&disbursed_at=gte.${sejak}`),
+    dbQuery('pendapatan_lain', `select=amount,created_at&created_at=gte.${sejak}`),
+    dbQuery('org_expenses', `select=amount,created_at&created_at=gte.${sejak}`)
+  ]);
+  (bayar || []).forEach(x => tambah(masuk, x.created_at, x.amount_paid));
+  (lain  || []).forEach(x => tambah(masuk, x.created_at, x.amount));
+  (cair  || []).forEach(x => x.disbursed_at && tambah(keluar, x.disbursed_at, x.principal));
+  (keluarKas || []).forEach(x => tambah(keluar, x.created_at, x.amount));
+
   const elTren = document.getElementById('chart-tren');
   if (!elTren) return;
 
-  const maxVal = Math.max(...simpananPerBulan, ...cicilanPerBulan, 1);
-  const chartH = 160;
-  const barW = 18;
-  const gap = 6;
-  const groupW = barW * 2 + gap;
-  const groupGap = 12;
-  const totalW = months6.length * (groupW + groupGap);
+  const ringkas = v => v >= 1000000 ? (v/1000000).toFixed(v % 1000000 === 0 ? 0 : 1)+'jt'
+                     : v >= 1000    ? Math.round(v/1000)+'rb' : String(v);
 
-  const fmtShortVal = v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : v >= 1000 ? Math.round(v/1000)+'rb' : v;
+  // Skala dibulatkan ke atas ke angka bulat supaya garis bantunya terbaca
+  const tertinggi = Math.max(...masuk, ...keluar, 1);
+  const pangkat = Math.pow(10, Math.floor(Math.log10(tertinggi)));
+  const puncak = Math.ceil(tertinggi / pangkat) * pangkat;
 
-  let barsHTML = '';
-  months6.forEach((m, i) => {
-    const s = simpananPerBulan[i];
-    const c = cicilanPerBulan[i];
-    const sH = Math.round((s / maxVal) * chartH);
-    const cH = Math.round((c / maxVal) * chartH);
-    const x = i * (groupW + groupGap);
-    barsHTML += `
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
-        <div style="display:flex;align-items:flex-end;gap:2px;height:${chartH}px">
-          <div title="${fmt(s)}" style="width:${barW}px;height:${sH}px;background:#16a34a;border-radius:3px 3px 0 0;min-height:${s>0?2:0}px;cursor:pointer"></div>
-          <div title="${fmt(c)}" style="width:${barW}px;height:${cH}px;background:#2563eb;border-radius:3px 3px 0 0;min-height:${c>0?2:0}px;cursor:pointer"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text3);text-align:center;white-space:nowrap">${labels6[i]}</div>
-      </div>`;
-  });
+  const W = 320, H = 168, kiri = 38, kanan = 8, atas = 12, bawah = 26;
+  const lebarPlot = W - kiri - kanan, tinggiPlot = H - atas - bawah;
+  const px = i => kiri + (lebarPlot * i) / 7;
+  const py = v => atas + tinggiPlot - (v / puncak) * tinggiPlot;
 
-  elTren.style.cssText = 'display:flex;align-items:flex-end;gap:4px;padding:8px 0;height:auto';
-  elTren.innerHTML = barsHTML;
+  const titik = arr => arr.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
+  const area  = arr => `M ${px(0).toFixed(1)},${py(arr[0]).toFixed(1)} `
+    + arr.map((v, i) => `L ${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ')
+    + ` L ${px(7).toFixed(1)},${(atas + tinggiPlot).toFixed(1)} L ${px(0).toFixed(1)},${(atas + tinggiPlot).toFixed(1)} Z`;
+
+  const garisBantu = [0, 0.5, 1].map(f => {
+    const y = atas + tinggiPlot - f * tinggiPlot;
+    return `<line x1="${kiri}" y1="${y}" x2="${W - kanan}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`
+         + `<text x="${kiri - 6}" y="${y + 3}" text-anchor="end" font-size="8" fill="var(--text3)">${ringkas(Math.round(puncak * f))}</text>`;
+  }).join('');
+
+  // Label minggu diberi jarak: delapan label berdempetan tidak terbaca di HP
+  const labelX = labelMinggu.map((t, i) => {
+    if (!(i % 2 === 0 || i === 7)) return '';
+    // Label pertama dan terakhir dirapatkan ke tepinya masing-masing, kalau
+    // tidak keduanya terpotong oleh batas viewBox.
+    const anchor = i === 0 ? 'start' : (i === 7 ? 'end' : 'middle');
+    return `<text x="${px(i)}" y="${H - 8}" text-anchor="${anchor}" font-size="8" fill="var(--text3)">${t}</text>`;
+  }).join('');
+
+  const bulatan = (arr, warna) => arr.map((v, i) =>
+    `<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="${i === 7 ? 3.5 : 2.2}" fill="${warna}" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+
+  elTren.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">
+    ${garisBantu}
+    <path d="${area(masuk)}"  fill="#16a34a" opacity="0.10"/>
+    <path d="${area(keluar)}" fill="#dc2626" opacity="0.10"/>
+    <polyline points="${titik(masuk)}"  fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="${titik(keluar)}" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${bulatan(masuk, '#16a34a')}${bulatan(keluar, '#dc2626')}
+    ${labelX}
+  </svg>
+  <div style="display:flex;justify-content:space-between;gap:10px;margin-top:8px">
+    <div><div style="font-size:10px;color:var(--text3)">MASUK MINGGU INI</div>
+      <div style="font-size:15px;font-weight:700;color:#16a34a">${fmt(masuk[7])}</div></div>
+    <div style="text-align:right"><div style="font-size:10px;color:var(--text3)">KELUAR MINGGU INI</div>
+      <div style="font-size:15px;font-weight:700;color:#dc2626">${fmt(keluar[7])}</div></div>
+  </div>`;
 
   // Chart per anggota (admin only) — progress bars
   if (!isAdmin()) return;

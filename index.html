@@ -720,7 +720,9 @@ tbody tr:hover { background: var(--surface2); }
   .page.active .card > .section-title {
     position: sticky; top: 0; z-index: 6;
     background: var(--surface);
-    margin: -14px -14px 12px; padding: 13px 14px 10px;
+    /* margin atas HARUS nol: margin negatif menggeser kotaknya ke atas batas
+       area gulir, sehingga saat menempel ia terpotong separuh. */
+    margin: 0 -14px 12px; padding: 4px 14px 10px;
     border-radius: var(--radius) var(--radius) 0 0;
     box-shadow: 0 1px 0 var(--border);
   }
@@ -750,12 +752,19 @@ tbody tr:hover { background: var(--surface2); }
      tipis — foto di kiri, nama dan jenis di tengah, nominal berwarna di kanan —
      dan tanggalnya diangkat menjadi pemisah kelompok agar tidak diulang-ulang
      di setiap baris. */
-  .table-wrap.daftar-transaksi tr { border: none !important; background: transparent !important;
-    border-radius: 0 !important; margin-bottom: 0 !important; padding: 0 !important; }
-  .table-wrap.daftar-transaksi tr.grup-tanggal { display: block; padding: 14px 0 8px !important; }
+  /* Latar daftar dibuat sedikit lebih gelap daripada kartunya, sehingga tiap
+     kelompok tanggal terbaca sebagai kepingan putih tersendiri yang mengambang
+     di atasnya — bukan satu hamparan putih menyambung seperti sebelumnya. */
+  .table-wrap.daftar-transaksi {
+    background: var(--bg); border-radius: var(--radius);
+    padding: 2px 10px 12px; margin-top: 4px;
+  }
+  .table-wrap.daftar-transaksi tr { border: none; background: transparent;
+    border-radius: 0; margin-bottom: 0 !important; padding: 0 !important; }
+  .table-wrap.daftar-transaksi tr.grup-tanggal { display: block; padding: 14px 0 7px !important; }
   .table-wrap.daftar-transaksi tr.grup-tanggal td {
     display: inline-block !important; width: auto !important;
-    background: var(--surface2); color: var(--text2);
+    background: var(--accent-bg); color: var(--accent-text);
     font-size: 11px; font-weight: 700; letter-spacing: .04em;
     padding: 5px 12px !important; border-radius: 999px; text-align: left;
   }
@@ -766,10 +775,18 @@ tbody tr:hover { background: var(--surface2); }
     grid-template-columns: 36px minmax(0, 1fr) auto;
     grid-template-areas: "foto nama nominal" "foto jenis saldo" "ket ket aksi";
     column-gap: 10px; row-gap: 1px;
-    padding: 11px 2px !important;
-    border-bottom: 1px solid var(--border) !important;
+    padding: 11px 12px !important;
+    background: var(--surface);
+    border: 1px solid var(--border); border-top: none;
     align-items: center;
   }
+  /* Baris pertama dan terakhir tiap kelompok membulat, sehingga satu tanggal
+     tampak sebagai satu kepingan utuh yang terpisah dari tanggal lainnya. */
+  .table-wrap.daftar-transaksi tr.baris-tx.grup-awal {
+    border-top: 1px solid var(--border); border-radius: 12px 12px 0 0;
+  }
+  .table-wrap.daftar-transaksi tr.baris-tx.grup-akhir { border-radius: 0 0 12px 12px; }
+  .table-wrap.daftar-transaksi tr.baris-tx.grup-awal.grup-akhir { border-radius: 12px; }
   .table-wrap.daftar-transaksi tr.baris-tx > td {
     display: block; padding: 0 !important; text-align: left; font-size: 13px !important;
   }
@@ -789,7 +806,7 @@ tbody tr:hover { background: var(--surface2); }
   .table-wrap.daftar-transaksi td[data-label="Keterangan"],
   .table-wrap.daftar-transaksi td[data-label="Ket."] {
     grid-area: ket; font-size: 11px !important; color: var(--text3);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap !important; margin-top: 2px;
   }
   /* Tanggal sudah menjadi pemisah kelompok, tidak perlu diulang tiap baris */
   .table-wrap.daftar-transaksi td[data-label="Tanggal"] { display: none !important; }
@@ -1363,6 +1380,10 @@ tbody tr:hover { background: var(--surface2); }
         <button class="btn btn-ghost btn-sm" onclick="exportLaporan()" style="gap:6px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export Excel
+        </button>
+        <button class="btn btn-success btn-sm admin-only" id="btn-laporan-wa" style="display:none;gap:6px" onclick="bagikanLaporanPeriode()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M8 9h8M8 12h5"/></svg>
+          Laporan ke WhatsApp
         </button>
         <button class="btn btn-ghost btn-sm" onclick="cetakLaporan()" style="gap:6px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -2226,7 +2247,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.54.0';
+const APP_VERSION = 'v4.55.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2850,7 +2871,7 @@ async function loadDashboard() {
   const avatarMap = {};
   (profiles || []).forEach(p => { avatarMap[p.id] = { avatar_url: p.avatar_url, full_name: p.full_name }; });
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Tanggal</th><th></th><th>Anggota</th><th>Jenis</th><th>Jumlah</th></tr></thead>
+    <thead><tr><th></th><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th></tr></thead>
     <tbody>${combined.map(t => {
       const pData = t.kind === 'saving' ? (avatarMap[t.member_id] || {}) : (t.profiles || {});
       const name = pData.full_name || t.profiles?.full_name || '-';
@@ -2858,12 +2879,16 @@ async function loadDashboard() {
       const avatarEl = av
         ? `<img src="${escapeHtml(av)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
         : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(name[0]||'?').toUpperCase()}</div>`;
+      // Arah uang dari sudut pandang koperasi: setoran dan cicilan MASUK ke kas
+      // (hijau, bertanda +), pencairan simpanan KELUAR dari kas (merah, −).
+      const masuk = !(t.kind === 'saving' && t.type === 'withdraw');
+      const arah = masuk ? 'naik' : 'turun';
       return `<tr>
-        <td style="white-space:nowrap">${fmtDate(t.created_at)}</td>
         <td style="padding:6px 4px;width:36px">${avatarEl}</td>
+        <td style="white-space:nowrap">${fmtDate(t.created_at)}</td>
         <td>${name}</td>
         <td>${t.kind === 'saving' ? (t.type === 'deposit' ? '<span class="badge badge-green">Setor</span>' : '<span class="badge badge-red">Tarik</span>') : '<span class="badge badge-blue">Cicilan</span>'}</td>
-        <td class="td-mono">${fmt(t.amount || t.amount_paid)}</td>
+        <td class="td-mono nominal-tx ${arah}">${masuk ? '+' : '−'}${fmt(t.amount || t.amount_paid)}</td>
       </tr>`;
     }).join('')}</tbody>
   </table></div>`;
@@ -8384,6 +8409,206 @@ const _origDoApprovePinjaman = window.doApprovePinjaman;
 // ══════════════════════════════════════════════════════════════
 // BATCH 3A: CETAK LAPORAN
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// LAPORAN PERIODE UNTUK DIBAGIKAN KE GRUP WHATSAPP
+//
+// Bukan laporan akuntansi: ini catatan transparansi yang dibaca ibu-ibu di
+// grup keluarga sesudah kumpulan. Karena itu ia SENGAJA tidak memuat saldo
+// simpanan siapa pun — hanya apa yang bergerak selama periode itu, siapa
+// pelakunya, dan berapa. Saldo adalah urusan masing-masing anggota dengan
+// admin, bukan konsumsi grup.
+// ══════════════════════════════════════════════════════════════
+
+async function kumpulkanLaporanPeriode() {
+  const filter  = getLaporanDateFilter();
+  const filterD = filter.replace(/created_at/g, 'disbursed_at');
+
+  const [simpanan, cicilan, pinjaman, lain, pengeluaran] = await Promise.all([
+    dbQuery('savings', `select=type,amount,created_at,note,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${filter}`),
+    dbQuery('loan_payments', `select=amount_paid,payment_number,created_at,is_reversed,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${filter}`),
+    dbQuery('loans', `select=principal,disbursed_at,status,profiles!loans_member_id_fkey(full_name)&status=in.(active,completed)&order=disbursed_at.asc${filterD}`),
+    dbQuery('pendapatan_lain', `select=amount,jenis,created_at,note&order=created_at.asc${filter}`),
+    dbQuery('org_expenses', `select=amount,description,category,created_at&order=created_at.asc${filter}`)
+  ]);
+
+  const masuk = [], keluar = [];
+
+  (simpanan || []).filter(isBarisSimpananEfektif).forEach(x => {
+    const item = { nama: x.profiles?.full_name || '-', jumlah: Number(x.amount), waktu: x.created_at };
+    if (x.type === 'deposit') masuk.push({ ...item, jenis: 'Setoran simpanan' });
+    else                      keluar.push({ ...item, jenis: 'Pencairan simpanan' });
+  });
+
+  (cicilan || []).filter(x => !x.is_reversed).forEach(x => masuk.push({
+    nama: x.profiles?.full_name || '-', jumlah: Number(x.amount_paid),
+    jenis: 'Cicilan ke-' + x.payment_number, waktu: x.created_at
+  }));
+
+  (pinjaman || []).filter(x => x.disbursed_at).forEach(x => keluar.push({
+    nama: x.profiles?.full_name || '-', jumlah: Number(x.principal),
+    jenis: 'Pencairan pinjaman', waktu: x.disbursed_at
+  }));
+
+  (lain || []).forEach(x => masuk.push({
+    nama: 'Koperasi', jumlah: Number(x.amount),
+    jenis: x.jenis === 'denda' ? 'Denda keterlambatan' : 'Pendapatan lain', waktu: x.created_at
+  }));
+
+  (pengeluaran || []).forEach(x => keluar.push({
+    nama: 'Koperasi', jumlah: Number(x.amount),
+    jenis: x.description || 'Pengeluaran kas', waktu: x.created_at
+  }));
+
+  const urut = (a, b) => new Date(a.waktu) - new Date(b.waktu);
+  masuk.sort(urut); keluar.sort(urut);
+  const total = a => a.reduce((n, x) => n + x.jumlah, 0);
+
+  return { masuk, keluar, totalMasuk: total(masuk), totalKeluar: total(keluar), periode: periodeAktif() };
+}
+
+async function gambarLaporanPeriode(d) {
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e) {}
+  const F = "'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif";
+  const pad = 48, kop = 132, tinggiBaris = 50, kepalaBagian = 52;
+  const bagian = n => n ? kepalaBagian + n * tinggiBaris : kepalaBagian + 40;
+  const tinggi = kop + 86 + 112 + bagian(d.masuk.length) + 18 + bagian(d.keluar.length) + 96;
+
+  const skala = 2;
+  const cv = document.createElement('canvas');
+  cv.width = KW_LEBAR * skala; cv.height = tinggi * skala;
+  const ctx = cv.getContext('2d');
+  ctx.scale(skala, skala); ctx.textBaseline = 'alphabetic';
+
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, KW_LEBAR, tinggi);
+  ctx.fillStyle = KW_WARNA.navy; ctx.fillRect(0, 0, KW_LEBAR, kop);
+  ctx.fillStyle = '#ffffff'; kwKotakBulat(ctx, pad, 34, 46, 46, 12); ctx.fill();
+  ctx.fillStyle = KW_WARNA.navy; ctx.font = `700 22px ${F}`; ctx.fillText('K', pad + 15, 65);
+  ctx.fillStyle = '#ffffff'; ctx.font = `700 22px ${F}`;
+  ctx.fillText('KOPERASI KELUARGA', pad + 62, 52);
+  ctx.font = `400 14px ${F}`; ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.fillText('Laporan Transaksi Periode', pad + 62, 74);
+
+  let y = kop + 46;
+  ctx.fillStyle = KW_WARNA.teks; ctx.font = `700 20px ${F}`;
+  ctx.fillText('LAPORAN TRANSAKSI', pad, y);
+  y += 24;
+  ctx.fillStyle = KW_WARNA.teks2; ctx.font = `500 14px ${F}`;
+  ctx.fillText(d.periode, pad, y);
+
+  // Kotak ringkasan: masuk, keluar, selisih
+  y += 26;
+  const lebarKotak = (KW_LEBAR - pad * 2 - 20) / 3;
+  const selisih = d.totalMasuk - d.totalKeluar;
+  [['UANG MASUK', d.totalMasuk, KW_WARNA.hijau],
+   ['UANG KELUAR', d.totalKeluar, KW_WARNA.merah],
+   ['SELISIH', selisih, selisih >= 0 ? KW_WARNA.navy : KW_WARNA.merah]
+  ].forEach(([label, nilai, warna], i) => {
+    const x = pad + i * (lebarKotak + 10);
+    ctx.fillStyle = KW_WARNA.latar; kwKotakBulat(ctx, x, y, lebarKotak, 84, 10); ctx.fill();
+    ctx.fillStyle = KW_WARNA.teks3; ctx.font = `600 11px ${F}`;
+    ctx.fillText(label, x + 14, y + 28);
+    ctx.fillStyle = warna; ctx.font = `700 19px ${F}`;
+    ctx.fillText((nilai < 0 ? '−' : '') + fmt(Math.abs(nilai)), x + 14, y + 58);
+  });
+  y += 112;
+
+  const gambarBagian = (judul, daftar, warna, tanda) => {
+    ctx.fillStyle = warna; kwKotakBulat(ctx, pad, y, 5, 22, 2.5); ctx.fill();
+    ctx.fillStyle = KW_WARNA.teks; ctx.font = `700 15px ${F}`;
+    ctx.fillText(judul, pad + 16, y + 17);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = warna; ctx.font = `700 15px ${F}`;
+    ctx.fillText(tanda + fmt(daftar.reduce((n, x) => n + x.jumlah, 0)), KW_LEBAR - pad, y + 17);
+    ctx.textAlign = 'left';
+    y += kepalaBagian;
+
+    if (!daftar.length) {
+      ctx.fillStyle = KW_WARNA.teks3; ctx.font = `400 13px ${F}`;
+      ctx.fillText('Tidak ada transaksi pada periode ini.', pad, y + 4);
+      y += 40; return;
+    }
+    daftar.forEach((x, i) => {
+      if (i % 2 === 0) { ctx.fillStyle = KW_WARNA.latar;
+        kwKotakBulat(ctx, pad - 10, y - 26, KW_LEBAR - pad * 2 + 20, tinggiBaris - 6, 8); ctx.fill(); }
+      ctx.fillStyle = KW_WARNA.teks; ctx.font = `600 14px ${F}`;
+      ctx.fillText(potongTeksKanvas(ctx, x.nama, 300), pad, y - 8);
+      ctx.fillStyle = KW_WARNA.teks3; ctx.font = `400 12px ${F}`;
+      ctx.fillText(potongTeksKanvas(ctx, x.jenis, 300), pad, y + 9);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = warna; ctx.font = `700 15px ${F}`;
+      ctx.fillText(tanda + fmt(x.jumlah), KW_LEBAR - pad, y + 1);
+      ctx.textAlign = 'left';
+      y += tinggiBaris;
+    });
+  };
+
+  gambarBagian('UANG MASUK', d.masuk, KW_WARNA.hijau, '+');
+  y += 18;
+  gambarBagian('UANG KELUAR', d.keluar, KW_WARNA.merah, '−');
+
+  y += 22;
+  ctx.strokeStyle = KW_WARNA.garis; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(KW_LEBAR - pad, y); ctx.stroke();
+  y += 26;
+  ctx.fillStyle = KW_WARNA.teks3; ctx.font = `400 12px ${F}`;
+  ctx.fillText('Laporan ini hanya memuat transaksi periode tersebut, bukan saldo simpanan.', pad, y);
+  ctx.textAlign = 'right';
+  ctx.fillText('Dicetak ' + new Date().toLocaleString('id-ID'), KW_LEBAR - pad, y);
+  ctx.textAlign = 'left';
+
+  return cv.toDataURL('image/png');
+}
+
+// Memotong teks agar tidak menabrak kolom nominal di sebelah kanan
+function potongTeksKanvas(ctx, teks, lebarMaks) {
+  if (ctx.measureText(teks).width <= lebarMaks) return teks;
+  let t = teks;
+  while (t.length > 1 && ctx.measureText(t + '…').width > lebarMaks) t = t.slice(0, -1);
+  return t + '…';
+}
+
+function susunTeksLaporanPeriode(d) {
+  const baris = a => a.length
+    ? a.map(x => `• ${x.nama} — ${x.jenis}: ${fmt(x.jumlah)}`).join('\n')
+    : '• Tidak ada';
+  const selisih = d.totalMasuk - d.totalKeluar;
+  return `*LAPORAN KOPERASI KELUARGA*\n${d.periode}\n\n`
+    + `Assalamualaikum Bapak/Ibu 🙏\n`
+    + `Berikut catatan transaksi koperasi pada periode ini, supaya semua bisa ikut memantau.\n\n`
+    + `💚 *UANG MASUK — ${fmt(d.totalMasuk)}*\n${baris(d.masuk)}\n\n`
+    + `❤️ *UANG KELUAR — ${fmt(d.totalKeluar)}*\n${baris(d.keluar)}\n\n`
+    + `📊 *Selisih periode ini: ${selisih < 0 ? '−' : '+'}${fmt(Math.abs(selisih))}*\n\n`
+    + `Laporan ini memuat transaksi saja, bukan saldo simpanan masing-masing.\n`
+    + `Kalau ada yang perlu ditanyakan, silakan hubungi admin ya.\n\n`
+    + `Terima kasih atas kepercayaannya 🌾`;
+}
+
+async function bagikanLaporanPeriode() {
+  const btn = document.getElementById('btn-laporan-wa');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  try {
+    showToast('⏳ Menyusun laporan...');
+    const d = await kumpulkanLaporanPeriode();
+    if (!d.masuk.length && !d.keluar.length) {
+      showToast('Tidak ada transaksi pada periode ini. Pilih rentang tanggal lain.', 6000);
+      return;
+    }
+    const dataURL = await gambarLaporanPeriode(d);
+    const teks = susunTeksLaporanPeriode(d);
+    _kwitansiData = { dataURL, teks, namaFile: 'Laporan-Koperasi-' + getTodayStr() };
+    document.getElementById('kwitansi-judul').textContent = 'Laporan Transaksi Periode';
+    const sub = document.getElementById('kwitansi-sub');
+    if (sub) sub.textContent = 'Bagikan gambar dan teksnya ke grup WhatsApp keluarga.';
+    document.getElementById('kwitansi-gambar').src = dataURL;
+    document.getElementById('kwitansi-teks').value = teks;
+    openModal('modal-kwitansi');
+  } catch (e) {
+    showToast('Gagal menyusun laporan: ' + e.message, 6000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
 function cetakLaporan() {
   // Tambah header print
   const now = new Date();
@@ -9074,15 +9299,18 @@ const _opsiPengamatTabel = { childList: true, subtree: true, attributes: true, a
 // mutasi di aplikasi dompet digital. Tanggal yang sama tidak diulang-ulang,
 // sehingga tiap baris cukup memuat siapa, jenis apa, dan berapa.
 function susunPemisahTanggal(tabel, jumlahKolom, aktif) {
-  tabel.querySelectorAll('tr.baris-tx').forEach(r => r.classList.remove('baris-tx'));
+  tabel.querySelectorAll('tr.baris-tx').forEach(r =>
+    r.classList.remove('baris-tx', 'grup-awal', 'grup-akhir'));
   if (!aktif || !window.matchMedia('(max-width: 768px)').matches) return;
-  let tanggalTerakhir = null;
+  let tanggalTerakhir = null, barisSebelumnya = null;
   Array.from(tabel.querySelectorAll('tbody tr')).forEach(baris => {
     const sel = baris.querySelector('td[data-label="Tanggal"]');
     if (!sel) return;
     baris.classList.add('baris-tx');
     const tanggal = sel.textContent.trim();
     if (tanggal !== tanggalTerakhir) {
+      if (barisSebelumnya) barisSebelumnya.classList.add('grup-akhir');
+      baris.classList.add('grup-awal');
       const pemisah = document.createElement('tr');
       pemisah.className = 'grup-tanggal';
       const sel2 = document.createElement('td');
@@ -9093,7 +9321,9 @@ function susunPemisahTanggal(tabel, jumlahKolom, aktif) {
       baris.parentNode.insertBefore(pemisah, baris);
       tanggalTerakhir = tanggal;
     }
+    barisSebelumnya = baris;
   });
+  if (barisSebelumnya) barisSebelumnya.classList.add('grup-akhir');
 }
 
 // Menjadikan seluruh baris transaksi bisa ditekan untuk membuka buktinya.

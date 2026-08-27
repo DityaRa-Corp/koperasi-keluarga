@@ -791,30 +791,28 @@ tbody tr:hover { background: var(--surface2); }
     display: block; padding: 0 !important; text-align: left; font-size: 13px !important;
   }
   .table-wrap.daftar-transaksi tr.baris-tx > td::before { content: none !important; }
-  .table-wrap.daftar-transaksi td[data-label=""]:first-child { grid-area: foto; }
-  .table-wrap.daftar-transaksi td[data-label="Anggota"] { grid-area: nama; font-weight: 600;
+  /* Penempatan memakai KELAS PERAN yang distempel tandaiKolomTransaksi(),
+     bukan nama kolom. Nama kolom berbeda-beda antar tabel ("Bayar Ke-" vs
+     "Pembayaran Ke-", "Sisa" vs "Sisa Tagihan"), dan sel yang namanya tidak
+     dikenali dahulu ditumpuk otomatis oleh grid sehingga saling bertindih. */
+  .table-wrap.daftar-transaksi .kol-foto { grid-area: foto; }
+  .table-wrap.daftar-transaksi .kol-nama { grid-area: nama; font-weight: 600;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap !important; }
-  .table-wrap.daftar-transaksi td[data-label="Jenis"] { grid-area: jenis; }
-  .table-wrap.daftar-transaksi td[data-label="Jumlah"],
-  .table-wrap.daftar-transaksi td[data-label="Dibayar"] {
+  .table-wrap.daftar-transaksi .kol-jenis { grid-area: jenis; text-align: left !important; }
+  .table-wrap.daftar-transaksi .kol-nominal {
     grid-area: nominal; text-align: right !important; font-weight: 700; font-size: 14px !important;
   }
-  .table-wrap.daftar-transaksi td[data-label="Saldo Setelah"],
-  .table-wrap.daftar-transaksi td[data-label="Sisa"] {
+  .table-wrap.daftar-transaksi .kol-saldo {
     grid-area: saldo; text-align: right !important; font-size: 11px !important; color: var(--text3);
   }
-  .table-wrap.daftar-transaksi td[data-label="Keterangan"],
-  .table-wrap.daftar-transaksi td[data-label="Ket."] {
+  .table-wrap.daftar-transaksi .kol-ket {
     grid-area: ket; font-size: 11px !important; color: var(--text3);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap !important; margin-top: 2px;
   }
-  /* Tanggal sudah menjadi pemisah kelompok, tidak perlu diulang tiap baris */
-  .table-wrap.daftar-transaksi td[data-label="Tanggal"] { display: none !important; }
-  /* Kolom yang tidak punya tempat di baris ringkas disembunyikan; datanya tetap
-     lengkap di bukti transaksi yang bisa dibuka dari tombolnya. */
-  .table-wrap.daftar-transaksi td[data-label="Bayar Ke-"] { grid-area: jenis; text-align: left !important; }
-  .table-wrap.daftar-transaksi td[data-label="Pokok"],
-  .table-wrap.daftar-transaksi td[data-label="Bunga"] { display: none !important; }
+  /* Tanggal sudah menjadi pemisah kelompok; kolom lain yang tidak punya tempat
+     di baris ringkas disembunyikan — datanya tetap lengkap di bukti transaksi. */
+  .table-wrap.daftar-transaksi .kol-tanggal,
+  .table-wrap.daftar-transaksi .kol-sembunyi { display: none !important; }
   /* Di daftar ringkas, tombol tidak lagi selebar penuh: ia berbagi baris
      dengan keterangan, rata kanan, sehingga tinggi tiap transaksi tetap pendek.
      Tetap 34px agar masih nyaman ditekan. */
@@ -2247,7 +2245,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.57.0';
+const APP_VERSION = 'v4.58.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -9439,13 +9437,41 @@ const _opsiPengamatTabel = { childList: true, subtree: true, attributes: true, a
 // Mengangkat tanggal dari tiap baris menjadi pemisah kelompok, seperti daftar
 // mutasi di aplikasi dompet digital. Tanggal yang sama tidak diulang-ulang,
 // sehingga tiap baris cukup memuat siapa, jenis apa, dan berapa.
+// Menandai peran tiap kolom lewat KATA KUNCI pada judulnya, bukan nama persis.
+// Tata letak ringkas menempatkan sel berdasarkan kelas ini; kolom yang tidak
+// dikenali disembunyikan, sehingga tidak mungkin lagi ada sel yang bertindih
+// hanya karena sebuah laporan menamai kolomnya sedikit berbeda.
+function tandaiKolomTransaksi(tabel, judul) {
+  const peran = judul.map(j => {
+    const t = (j || '').toLowerCase();
+    if (!t) return 'foto';
+    if (t.includes('tanggal') || t.includes('waktu')) return 'tanggal';
+    if (t.includes('anggota') || t.includes('nama'))  return 'nama';
+    if (t.includes('jenis') || t.includes('bayar ke') || t.includes('pembayaran ke')) return 'jenis';
+    if (t.includes('dibayar') || t === 'jumlah')      return 'nominal';
+    if (t.includes('saldo') || t.includes('sisa'))    return 'saldo';
+    if (t.startsWith('ket'))                          return 'ket';
+    return 'sembunyi';
+  });
+  tabel.querySelectorAll('tbody tr').forEach(baris => {
+    let kolom = 0;
+    Array.from(baris.children).forEach(sel => {
+      if (!sel.classList.contains('sel-aksi')) {
+        sel.classList.remove('kol-foto','kol-tanggal','kol-nama','kol-jenis','kol-nominal','kol-saldo','kol-ket','kol-sembunyi');
+        sel.classList.add('kol-' + (peran[kolom] || 'sembunyi'));
+      }
+      kolom += sel.colSpan || 1;
+    });
+  });
+}
+
 function susunPemisahTanggal(tabel, jumlahKolom, aktif) {
   tabel.querySelectorAll('tr.baris-tx').forEach(r =>
     r.classList.remove('baris-tx', 'grup-awal', 'grup-akhir'));
   if (!aktif || !window.matchMedia('(max-width: 768px)').matches) return;
   let tanggalTerakhir = null, barisSebelumnya = null;
   Array.from(tabel.querySelectorAll('tbody tr')).forEach(baris => {
-    const sel = baris.querySelector('td[data-label="Tanggal"]');
+    const sel = baris.querySelector('.kol-tanggal');
     if (!sel) return;
     baris.classList.add('baris-tx');
     const tanggal = sel.textContent.trim();
@@ -9487,8 +9513,7 @@ function pasangTapBaris(tabel) {
     baris.classList.add('bisa-ditekan');
   });
   // Keterangan yang isinya hanya tanda hubung tidak perlu memakan ruang
-  tabel.querySelectorAll('tr.baris-tx td[data-label="Keterangan"], tr.baris-tx td[data-label="Ket."]')
-    .forEach(sel => {
+  tabel.querySelectorAll('tr.baris-tx .kol-ket').forEach(sel => {
       const t = sel.textContent.trim();
       sel.classList.toggle('ket-kosong', t === '-' || t === '—' || t === '–' || t === '');
     });
@@ -9548,12 +9573,17 @@ function siapkanTabelHp() {
       // masih muat utuh di layar 375px sehingga dibiarkan sebagai tabel.
       wadah.classList.toggle('kartu-hp', judul.length >= 4);
 
-      // Tabel yang isinya transaksi (punya kolom Tanggal dan nominal) tidak
-      // ditampilkan sebagai kartu berlabel — terlalu tinggi — melainkan sebagai
-      // daftar tipis dengan tanggal diangkat jadi pemisah kelompok.
-      const punya = n => judul.includes(n);
-      const daftarTx = judul.length >= 4 && punya('Tanggal') && (punya('Jumlah') || punya('Dibayar'));
+      // Daftar ringkas HANYA untuk riwayat transaksi. Tabel laporan sengaja
+      // dibiarkan berbentuk kartu berlabel: isinya memang rincian yang perlu
+      // dibaca satu per satu, dan nama kolomnya berbeda-beda antar laporan.
+      // Sebelumnya penentuannya menebak dari nama kolom, dan tabel laporan
+      // cicilan ikut terjaring lalu sel-selnya bertindih karena nama kolomnya
+      // tidak dikenali ("Pembayaran Ke-" vs "Bayar Ke-").
+      const WADAH_TRANSAKSI = ['simpanan-history', 'cicilan-history', 'recent-transactions'];
+      const daftarTx = judul.length >= 4 &&
+        WADAH_TRANSAKSI.some(id => wadah.querySelector('#' + id) || wadah.closest('#' + id));
       wadah.classList.toggle('daftar-transaksi', daftarTx);
+      if (daftarTx) tandaiKolomTransaksi(tabel, judul);
       susunPemisahTanggal(tabel, judul.length, daftarTx);
       if (daftarTx) pasangTapBaris(tabel);
       // Petunjuk geser hanya untuk sisa tabel yang tetap meluber

@@ -259,6 +259,13 @@ tbody tr:hover { background: var(--surface2); }
   padding: 20px;
 }
 .modal-overlay.open { display: flex; }
+/* dvh mengikuti tinggi layar yang benar-benar terlihat, menyusut/melebar
+   bersama bilah alamat peramban HP. Tanpa ini, inset:0 memakai tinggi layout
+   yang menjorok ke balik bilah alamat sehingga modal tampak turun sebelah. */
+@supports (height: 100dvh) {
+  .modal-overlay { height: 100dvh; }
+  .modal { max-height: 85dvh; }
+}
 .modal {
   background: var(--surface); border-radius: 14px;
   padding: 28px; width: 100%; max-width: 480px;
@@ -590,9 +597,9 @@ tbody tr:hover { background: var(--surface2); }
   #dashboard-charts-row { grid-template-columns: 1fr; }
   #kalk-input-grid { grid-template-columns: 1fr 1fr !important; }
   .detail-grid { grid-template-columns: 1fr; }
-  .modal { max-width: calc(100vw - 32px) !important; margin: 0 16px; max-height: 90vh; overflow-y: auto; }
-  .modal-overlay { align-items: flex-end; padding-bottom: 0; }
-  .modal { border-radius: 16px 16px 0 0 !important; }
+  .modal { max-width: calc(100vw - 32px) !important; margin: 0; max-height: 85vh; overflow-y: auto; }
+  .modal-overlay { align-items: center; padding: 16px; }
+  .modal { border-radius: 16px !important; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
   .page-actions { width: 100%; }
   .page-actions .btn { justify-content: center; }
@@ -692,14 +699,39 @@ tbody tr:hover { background: var(--surface2); }
   .table-wrap.kartu-hp td.sel-aksi { display: block; }
   .table-wrap.kartu-hp td.sel-aksi > .aksi-bungkus {
     display: grid !important; gap: 8px !important;
-    /* auto-fit: satu tombol melebar penuh, dua berdampingan, tiga membungkus */
-    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+    /* minmax(0,...) WAJIB: tanpa itu kolom grid tidak boleh lebih sempit dari
+       isinya, sehingga tombol berlabel panjang meluber dan saling bertindih. */
+    grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  }
+  .table-wrap.kartu-hp td.sel-aksi .btn { min-width: 0; overflow: hidden; }
+  .table-wrap.kartu-hp td.sel-aksi .btn .label-aksi {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
   }
   .table-wrap.kartu-hp td.sel-aksi .btn {
     font-size: 12px !important; padding: 0 10px !important;
     min-height: 42px; width: 100%; justify-content: center;
   }
   .table-wrap.kartu-hp .label-aksi { display: inline; margin-left: 5px; }
+
+  /* BATAS ANTAR-BAGIAN. Saat digulir cepat, "Saldo per Anggota" dan
+     "Riwayat Transaksi Simpanan" terlihat menyambung karena keduanya kartu
+     putih di atas latar abu muda. Judul bagian dibuat menempel di atas layar
+     selama bagiannya digulir, sehingga selalu jelas sedang berada di area mana. */
+  .page.active .card > .section-title {
+    position: sticky; top: 0; z-index: 6;
+    background: var(--surface);
+    margin: -14px -14px 12px; padding: 13px 14px 10px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    box-shadow: 0 1px 0 var(--border);
+  }
+  /* Jarak antar kartu diperlebar dan diberi garis pemisah tipis supaya
+     peralihan bagian terbaca walau digulir cepat. */
+  .page.active > .card { margin-bottom: 22px !important; }
+  .page.active > .card + .card { position: relative; }
+  .page.active > .card + .card::before {
+    content: ''; position: absolute; left: 22%; right: 22%; top: -12px;
+    height: 3px; border-radius: 3px; background: var(--border);
+  }
 
   /* Nomor urut adalah alat bantu tabel; di dalam kartu ia hanya derau */
   .table-wrap.kartu-hp td[data-label="No"],
@@ -710,6 +742,95 @@ tbody tr:hover { background: var(--surface2); }
   /* Baris kosong / baris total yang memakai colspan tampil melebar penuh */
   .table-wrap.kartu-hp td[colspan] { display: block; text-align: center; }
   .table-wrap.kartu-hp td[colspan]::before { content: none; }
+
+  /* ══ DAFTAR TRANSAKSI RINGKAS ══
+     Bentuk kartu berlabel terlalu tinggi untuk riwayat transaksi: enam baris
+     label/nilai per transaksi. Untuk tabel yang memang berupa transaksi
+     (punya kolom Tanggal dan nominal), barisnya dipadatkan menjadi satu baris
+     tipis — foto di kiri, nama dan jenis di tengah, nominal berwarna di kanan —
+     dan tanggalnya diangkat menjadi pemisah kelompok agar tidak diulang-ulang
+     di setiap baris. */
+  .table-wrap.daftar-transaksi tr { border: none !important; background: transparent !important;
+    border-radius: 0 !important; margin-bottom: 0 !important; padding: 0 !important; }
+  .table-wrap.daftar-transaksi tr.grup-tanggal { display: block; padding: 14px 0 8px !important; }
+  .table-wrap.daftar-transaksi tr.grup-tanggal td {
+    display: inline-block !important; width: auto !important;
+    background: var(--surface2); color: var(--text2);
+    font-size: 11px; font-weight: 700; letter-spacing: .04em;
+    padding: 5px 12px !important; border-radius: 999px; text-align: left;
+  }
+  .table-wrap.daftar-transaksi tr.grup-tanggal td::before { content: none; }
+
+  .table-wrap.daftar-transaksi tr.baris-tx {
+    display: grid !important;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-areas: "foto nama nominal" "foto jenis saldo" "ket ket aksi";
+    column-gap: 10px; row-gap: 1px;
+    padding: 11px 2px !important;
+    border-bottom: 1px solid var(--border) !important;
+    align-items: center;
+  }
+  .table-wrap.daftar-transaksi tr.baris-tx > td {
+    display: block; padding: 0 !important; text-align: left; font-size: 13px !important;
+  }
+  .table-wrap.daftar-transaksi tr.baris-tx > td::before { content: none !important; }
+  .table-wrap.daftar-transaksi td[data-label=""]:first-child { grid-area: foto; }
+  .table-wrap.daftar-transaksi td[data-label="Anggota"] { grid-area: nama; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap !important; }
+  .table-wrap.daftar-transaksi td[data-label="Jenis"] { grid-area: jenis; }
+  .table-wrap.daftar-transaksi td[data-label="Jumlah"],
+  .table-wrap.daftar-transaksi td[data-label="Dibayar"] {
+    grid-area: nominal; text-align: right !important; font-weight: 700; font-size: 14px !important;
+  }
+  .table-wrap.daftar-transaksi td[data-label="Saldo Setelah"],
+  .table-wrap.daftar-transaksi td[data-label="Sisa"] {
+    grid-area: saldo; text-align: right !important; font-size: 11px !important; color: var(--text3);
+  }
+  .table-wrap.daftar-transaksi td[data-label="Keterangan"],
+  .table-wrap.daftar-transaksi td[data-label="Ket."] {
+    grid-area: ket; font-size: 11px !important; color: var(--text3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px;
+  }
+  /* Tanggal sudah menjadi pemisah kelompok, tidak perlu diulang tiap baris */
+  .table-wrap.daftar-transaksi td[data-label="Tanggal"] { display: none !important; }
+  /* Kolom yang tidak punya tempat di baris ringkas disembunyikan; datanya tetap
+     lengkap di bukti transaksi yang bisa dibuka dari tombolnya. */
+  .table-wrap.daftar-transaksi td[data-label="Bayar Ke-"],
+  .table-wrap.daftar-transaksi td[data-label="Pokok"],
+  .table-wrap.daftar-transaksi td[data-label="Bunga"] { display: none !important; }
+  /* Di daftar ringkas, tombol tidak lagi selebar penuh: ia berbagi baris
+     dengan keterangan, rata kanan, sehingga tinggi tiap transaksi tetap pendek.
+     Tetap 34px agar masih nyaman ditekan. */
+  /* Barisnya sendiri bisa ditekan untuk membuka bukti — seperti daftar mutasi
+     di aplikasi dompet digital — sehingga tombol "Lihat bukti" tidak perlu
+     memakan satu baris sendiri. Tombol yang tersisa berbagi baris dengan
+     keterangan, rata kanan. */
+  .table-wrap.daftar-transaksi tr.baris-tx.bisa-ditekan { cursor: pointer; }
+  .table-wrap.daftar-transaksi tr.baris-tx.bisa-ditekan:active { background: var(--surface2) !important; }
+  .table-wrap.daftar-transaksi td.sel-aksi {
+    grid-area: aksi; margin-top: 0; padding-top: 0 !important; border-top: none !important;
+  }
+  .table-wrap.daftar-transaksi td.sel-aksi > .aksi-bungkus {
+    display: flex !important; gap: 6px !important; justify-content: flex-end;
+  }
+  /* Tombol sekunder dibuat tenang: ia berulang di setiap baris, jadi kalau
+     diberi latar penuh ia berteriak lebih keras daripada nominalnya sendiri. */
+  .table-wrap.daftar-transaksi td.sel-aksi .btn {
+    min-height: 26px; width: auto; font-size: 11px !important; padding: 0 4px !important;
+    background: transparent; border: none; color: var(--accent); font-weight: 600;
+  }
+  .table-wrap.daftar-transaksi td.sel-aksi .btn:active { background: var(--surface2); }
+  /* Keterangan kosong hanya derau di daftar ringkas */
+  .table-wrap.daftar-transaksi td.ket-kosong { visibility: hidden; }
+  /* Tombol bukti disembunyikan karena barisnya sudah menggantikannya */
+  .table-wrap.daftar-transaksi td.sel-aksi .btn.tersembunyi-tap { display: none; }
+
+  .tx-foto { width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+    border: 1px solid var(--border); display: block; }
+  .tx-foto-huruf { background: var(--accent); color: #fff; font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; }
+  .nominal-tx.naik  { color: var(--green); }
+  .nominal-tx.turun { color: var(--red); }
 
   /* Tombol aksi pada tabel yang TIDAK jadi kartu tetap dinaikkan dari 23px */
   td > div[style*="display:flex"] .btn {
@@ -2105,7 +2226,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.53.0';
+const APP_VERSION = 'v4.54.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3121,7 +3242,7 @@ async function doKoreksiSetoran() {
 async function loadSimpananHistory() {
   const memberId = document.getElementById('filter-simpanan-member').value;
   const month = document.getElementById('filter-simpanan-month').value;
-  let qParams = 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.desc&limit=100';
+  let qParams = 'select=*,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc&limit=100';
   if (memberId) qParams += `&member_id=eq.${memberId}`;
   if (!isAdmin()) qParams += `&member_id=eq.${currentUser.id}`;
   if (month) { const b = batasBulan(month); qParams += `&created_at=gte.${b.dari}&created_at=lt.${b.sampai}`; }
@@ -3129,7 +3250,7 @@ async function loadSimpananHistory() {
   const el = document.getElementById('simpanan-history');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada transaksi</div></div>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th><th></th></tr></thead>
+    <thead><tr><th></th><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th><th>Saldo Setelah</th><th>Keterangan</th><th></th></tr></thead>
     <tbody>${data.map(s => {
       const jenis = s.type === 'deposit'
         ? '<span class="badge badge-green">Setor</span>'
@@ -3151,16 +3272,23 @@ async function loadSimpananHistory() {
       // dokumen resmi atas uang yang tidak pernah disetor siapa pun.
       const tombolBukti = (s.is_reversed || s.is_pembatalan)
         ? ''
-        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti transaksi" onclick="cetakUlangBuktiSimpanan('${s.id}')">🧾</button>`;
+        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti" onclick="cetakUlangBuktiSimpanan('${s.id}')">🧾</button>`;
       const tombol = `<td style="white-space:nowrap">${tombolBukti}${
         bisaKoreksi
-          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal transaksi ini" onclick="openKoreksiSimpanan('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}','${s.type}')">✏️</button>`
+          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal" onclick="openKoreksiSimpanan('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}','${s.type}')">✏️</button>`
           : ''}</td>`;
+      const foto = s.profiles?.avatar_url
+        ? `<img class="tx-foto" src="${escapeHtml(s.profiles.avatar_url)}" alt="">`
+        : `<div class="tx-foto tx-foto-huruf">${escapeHtml((s.profiles?.full_name || '?')[0].toUpperCase())}</div>`;
+      // Tanda dan warna pada nominal: uang masuk hijau bertanda +, uang keluar
+      // merah bertanda −. Di daftar ringkas inilah pembeda utama antar baris.
+      const arah = s.type === 'deposit' ? 'naik' : 'turun';
       return `<tr${s.is_reversed ? ' style="opacity:0.55"' : ''}>
+        <td>${foto}</td>
         <td>${fmtDate(s.created_at)}</td>
         <td>${escapeHtml(s.profiles?.full_name || '-')}</td>
         <td>${jenis} ${tanda}</td>
-        <td class="td-mono"${s.is_reversed ? ' style="text-decoration:line-through"' : ''}>${fmt(s.amount)}</td>
+        <td class="td-mono nominal-tx ${arah}"${s.is_reversed ? ' style="text-decoration:line-through"' : ''}>${s.type === 'deposit' ? '+' : '−'}${fmt(s.amount)}</td>
         <td class="td-mono">${fmt(s.balance_after)}</td>
         <td style="color:var(--text2)">${escapeHtml(s.note || '-')}</td>
         ${tombol}
@@ -3576,7 +3704,7 @@ async function showDetailPinjaman(loanId) {
           : (p.corrects_id ? ' <span class="badge badge-amber" title="Baris hasil koreksi">Koreksi</span>' : '');
         const tombolP = isAdmin()
           ? `<td>${!p.is_reversed
-              ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal pembayaran ini" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(loan.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${loan.id}')">✏️</button>`
+              ? `<button class="btn btn-ghost btn-sm" title="Perbaiki nominal" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(loan.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${loan.id}')">✏️</button>`
               : ''}</td>`
           : '';
         return `<tr${p.is_reversed ? ' style="opacity:0.55"' : ''}>
@@ -4444,10 +4572,10 @@ async function loadCicilanHistory() {
       const bisaKoreksi = isAdmin() && !p.is_reversed;
       const tombolBuktiC = p.is_reversed
         ? ''
-        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti pembayaran" onclick="cetakUlangBuktiCicilan('${p.id}')">🧾</button>`;
+        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti" onclick="cetakUlangBuktiCicilan('${p.id}')">🧾</button>`;
       const tombol = `<td style="white-space:nowrap">${tombolBuktiC}${
         bisaKoreksi
-          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal pembayaran ini" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
+          ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
           : ''}</td>`;
       return `<tr${p.is_reversed ? ' style="opacity:0.55"' : ''}>
         <td>${fmtDate(p.created_at)}</td>
@@ -4894,10 +5022,10 @@ async function renderLaporanSimpanan() {
 
   document.getElementById('laporan-content').innerHTML = `
     <div class="laporan-summary">
-      <div class="card lap-stat"><div class="lap-stat-label">Total Simpanan Koperasi</div><div class="lap-stat-value green">${fmt(totalAkhir)}</div></div>
+      <div class="card lap-stat"><div class="lap-stat-label">${isAdmin() ? 'Total Simpanan Koperasi' : 'Total Simpanan Saya'}</div><div class="lap-stat-value green">${fmt(totalAkhir)}</div></div>
       <div class="card lap-stat"><div class="lap-stat-label">${berfilter ? 'Setoran Periode Ini' : 'Total Setoran'}</div><div class="lap-stat-value">${fmt(totalSetor)}</div></div>
       <div class="card lap-stat"><div class="lap-stat-label">${berfilter ? 'Penarikan Periode Ini' : 'Total Penarikan'}</div><div class="lap-stat-value ${totalTarik > 0 ? 'red' : ''}">${fmt(totalTarik)}</div></div>
-      <div class="card lap-stat"><div class="lap-stat-label">Anggota Bertransaksi</div><div class="lap-stat-value">${adaMutasi} dari ${rows.length}</div></div>
+      ${isAdmin() ? `<div class="card lap-stat"><div class="lap-stat-label">Anggota Bertransaksi</div><div class="lap-stat-value">${adaMutasi} dari ${rows.length}</div></div>` : ''}
     </div>
     ${berfilter ? `<div style="font-size:12px;color:var(--text2);margin-bottom:10px">
       Saldo Awal adalah simpanan sebelum periode ini dimulai. Anggota yang tidak bertransaksi pada periode ini tetap ditampilkan, dengan saldo yang tidak berubah.
@@ -4978,7 +5106,7 @@ async function renderLaporanCicilan() {
   const totalDibayar = (data || []).reduce((a, p) => a + Number(p.amount_paid), 0);
   document.getElementById('laporan-content').innerHTML = `
     <div class="laporan-summary">
-      <div class="card lap-stat"><div class="lap-stat-label">Total Cicilan Diterima</div><div class="lap-stat-value green">${fmt(totalDibayar)}</div></div>
+      <div class="card lap-stat"><div class="lap-stat-label">${isAdmin() ? 'Total Cicilan Diterima' : 'Total Cicilan Saya Bayar'}</div><div class="lap-stat-value green">${fmt(totalDibayar)}</div></div>
       <div class="card lap-stat"><div class="lap-stat-label">Jumlah Transaksi</div><div class="lap-stat-value">${(data||[]).length}x</div></div>
     </div>
     <div class="table-wrap"><table class="lap-cicilan">
@@ -8942,6 +9070,59 @@ const _opsiPengamatTabel = { childList: true, subtree: true, attributes: true, a
 // Menyiapkan setiap tabel agar bisa tampil sebagai kartu di layar HP.
 // Dikerjakan di SATU tempat, bukan di belasan fungsi render: label tiap sel
 // diambil dari <thead> tabelnya sendiri, sehingga tabel baru pun otomatis ikut.
+// Mengangkat tanggal dari tiap baris menjadi pemisah kelompok, seperti daftar
+// mutasi di aplikasi dompet digital. Tanggal yang sama tidak diulang-ulang,
+// sehingga tiap baris cukup memuat siapa, jenis apa, dan berapa.
+function susunPemisahTanggal(tabel, jumlahKolom, aktif) {
+  tabel.querySelectorAll('tr.baris-tx').forEach(r => r.classList.remove('baris-tx'));
+  if (!aktif || !window.matchMedia('(max-width: 768px)').matches) return;
+  let tanggalTerakhir = null;
+  Array.from(tabel.querySelectorAll('tbody tr')).forEach(baris => {
+    const sel = baris.querySelector('td[data-label="Tanggal"]');
+    if (!sel) return;
+    baris.classList.add('baris-tx');
+    const tanggal = sel.textContent.trim();
+    if (tanggal !== tanggalTerakhir) {
+      const pemisah = document.createElement('tr');
+      pemisah.className = 'grup-tanggal';
+      const sel2 = document.createElement('td');
+      sel2.colSpan = jumlahKolom;
+      sel2.setAttribute('data-label', '');
+      sel2.textContent = tanggal;
+      pemisah.appendChild(sel2);
+      baris.parentNode.insertBefore(pemisah, baris);
+      tanggalTerakhir = tanggal;
+    }
+  });
+}
+
+// Menjadikan seluruh baris transaksi bisa ditekan untuk membuka buktinya.
+// Tanpa ini tombol "Lihat bukti" memakan satu baris penuh di tiap transaksi,
+// dan daftar menjadi dua kali lebih tinggi daripada perlunya.
+function pasangTapBaris(tabel) {
+  tabel.querySelectorAll('tr.baris-tx').forEach(baris => {
+    const bukti = Array.from(baris.querySelectorAll('.btn'))
+      .find(b => (b.getAttribute('title') || '').toLowerCase().includes('bukti'));
+    if (!bukti) return;
+    bukti.classList.add('tersembunyi-tap');
+    if (baris.dataset.tapTerpasang) return;
+    baris.dataset.tapTerpasang = '1';
+    baris.addEventListener('click', ev => {
+      // Tombol lain di dalam baris tetap bekerja seperti biasa
+      if (ev.target.closest('.btn')) return;
+      if (!baris.closest('.table-wrap')?.classList.contains('daftar-transaksi')) return;
+      bukti.click();
+    });
+    baris.classList.add('bisa-ditekan');
+  });
+  // Keterangan yang isinya hanya tanda hubung tidak perlu memakan ruang
+  tabel.querySelectorAll('tr.baris-tx td[data-label="Keterangan"], tr.baris-tx td[data-label="Ket."]')
+    .forEach(sel => {
+      const t = sel.textContent.trim();
+      sel.classList.toggle('ket-kosong', t === '-' || t === '—' || t === '–' || t === '');
+    });
+}
+
 function siapkanTabelHp() {
   // Pengamat dilepas selama menyiapkan. Fungsi ini mengubah atribut dan class,
   // sedangkan pengamatnya memantau keduanya — tanpa dilepas ia memicu dirinya
@@ -8952,6 +9133,9 @@ function siapkanTabelHp() {
       const tabel = wadah.querySelector('table');
       if (!tabel) { wadah.classList.remove('kartu-hp', 'bisa-digeser'); return; }
 
+      // Pemisah tanggal dari putaran sebelumnya dibuang lebih dulu, supaya
+      // baris sisipan itu tidak ikut terstempel data-label pada putaran ini.
+      tabel.querySelectorAll('tr.grup-tanggal').forEach(r => r.remove());
       const judul = Array.from(tabel.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
       tabel.querySelectorAll('tbody tr, tfoot tr').forEach(baris => {
@@ -8992,6 +9176,15 @@ function siapkanTabelHp() {
       // Tabel berkolom banyak ditumpuk jadi kartu; yang 3 kolom atau kurang
       // masih muat utuh di layar 375px sehingga dibiarkan sebagai tabel.
       wadah.classList.toggle('kartu-hp', judul.length >= 4);
+
+      // Tabel yang isinya transaksi (punya kolom Tanggal dan nominal) tidak
+      // ditampilkan sebagai kartu berlabel — terlalu tinggi — melainkan sebagai
+      // daftar tipis dengan tanggal diangkat jadi pemisah kelompok.
+      const punya = n => judul.includes(n);
+      const daftarTx = judul.length >= 4 && punya('Tanggal') && (punya('Jumlah') || punya('Dibayar'));
+      wadah.classList.toggle('daftar-transaksi', daftarTx);
+      susunPemisahTanggal(tabel, judul.length, daftarTx);
+      if (daftarTx) pasangTapBaris(tabel);
       // Petunjuk geser hanya untuk sisa tabel yang tetap meluber
       wadah.classList.toggle('bisa-digeser',
         !wadah.classList.contains('kartu-hp') && wadah.scrollWidth > wadah.clientWidth + 4);

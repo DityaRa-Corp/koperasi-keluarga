@@ -597,7 +597,9 @@ tbody tr:hover { background: var(--surface2); }
   #dashboard-charts-row { grid-template-columns: 1fr; }
   #kalk-input-grid { grid-template-columns: 1fr 1fr !important; }
   .detail-grid { grid-template-columns: 1fr; }
-  .modal { max-width: calc(100vw - 32px) !important; margin: 0; max-height: 85vh; overflow-y: auto; }
+  .modal { max-width: calc(100vw - 24px) !important; margin: 0; max-height: 85vh; overflow-y: auto; padding: 20px 16px; }
+  /* Bingkai gambar kwitansi dirampingkan supaya gambarnya sendiri dapat ruang */
+  #modal-kwitansi .modal > div[style*="var(--surface2)"] { padding: 6px !important; }
   .modal-overlay { align-items: center; padding: 16px; }
   .modal { border-radius: 16px !important; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -1956,12 +1958,35 @@ tbody tr:hover { background: var(--surface2); }
   </div>
 </div>
 <!-- Kwitansi Digital -->
+<div id="kwitansi-perbesar" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;background:rgba(15,18,35,.92);z-index:300;align-items:center;justify-content:center;padding:16px;cursor:zoom-out">
+  <img id="kwitansi-perbesar-gambar" alt="Bukti transaksi" style="max-width:100%;max-height:92vh;border-radius:10px">
+</div>
+
+<div class="modal-overlay" id="modal-tolak-pinjaman">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">Tolak Pengajuan Pinjaman</div>
+    <div class="modal-sub">Pengajuan yang ditolak tidak bisa dikembalikan — anggota harus mengajukan ulang.</div>
+    <div id="tolak-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px"></div>
+    <div id="tolak-alert" class="alert alert-error" style="display:none"></div>
+    <div class="form-group">
+      <label class="form-label">Alasan Penolakan *</label>
+      <input class="form-input" id="tolak-alasan" placeholder="Contoh: kas koperasi sedang tipis, coba bulan depan">
+      <div style="font-size:12px;color:var(--text2);margin-top:6px">Alasan ini tersimpan di catatan pinjaman, supaya nanti bisa dijelaskan ke anggotanya.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-tolak-pinjaman')">Batal</button>
+      <button class="btn btn-danger" id="btn-do-tolak" onclick="doRejectPinjaman()">Tolak Pengajuan</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-kwitansi">
   <div class="modal" style="max-width:460px">
     <div class="modal-title" id="kwitansi-judul">Bukti Transaksi</div>
     <div class="modal-sub" id="kwitansi-sub">Simpan gambarnya lalu kirim ke anggota lewat WhatsApp.</div>
     <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px;margin-bottom:14px;text-align:center">
-      <img id="kwitansi-gambar" alt="Bukti transaksi" style="max-width:100%;border-radius:6px;box-shadow:0 2px 10px rgba(30,34,56,.12)">
+      <img id="kwitansi-gambar" alt="Bukti transaksi" onclick="perbesarKwitansi()" title="Ketuk untuk memperbesar" style="max-width:100%;border-radius:6px;box-shadow:0 2px 10px rgba(30,34,56,.12);cursor:zoom-in">
+      <div style="font-size:11px;color:var(--text2);margin-top:8px">Ketuk gambar untuk memperbesar</div>
     </div>
     <div class="form-group">
       <label class="form-label">Teks untuk caption</label>
@@ -2218,7 +2243,7 @@ tbody tr:hover { background: var(--surface2); }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
       <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
-      <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="doRejectPinjaman()">Tolak</button>
+      <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="openTolakForm()">Tolak</button>
       <button class="btn btn-ghost admin-only" style="display:none" id="btn-tanda-terima" onclick="cetakTandaTerimaPinjaman()" title="Cetak tanda terima saat uang diserahkan">🧾 Tanda Terima</button>
       <button class="btn btn-ghost" style="display:none" id="btn-wa-konfirmasi" onclick="ingatkanKonfirmasi()" title="Kirim pengingat lewat WhatsApp">💬 Ingatkan lewat WA</button>
       <button class="btn btn-ghost" style="display:none" id="btn-wa-admin" onclick="beriTahuAdmin()" title="Beri tahu admin lewat WhatsApp">💬 Beri Tahu Admin</button>
@@ -2253,7 +2278,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.59.0';
+const APP_VERSION = 'v4.60.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -4164,11 +4189,39 @@ async function doKonfirmasiPinjaman(setuju) {
   }
 }
 
+// Menolak pengajuan dahulu terjadi seketika begitu tombol ditekan — tanpa
+// konfirmasi, tanpa alasan tercatat — padahal tombolnya bersebelahan dengan
+// "Setujui & Cairkan". Salah tekan di layar HP menolak pengajuan keluarga
+// sendiri, dan tidak ada jejak kenapa. Kini alasannya wajib dan tersimpan.
+async function openTolakForm() {
+  if (!currentLoanId) return;
+  const rows = await dbQuery('loans',
+    `id=eq.${currentLoanId}&select=principal,installment_count,installment_type,profiles!loans_member_id_fkey(full_name)&limit=1`);
+  const l = rows?.[0];
+  if (!l) { showToast('Pinjaman tidak ditemukan'); return; }
+  const labelJenis = { weekly: 'Mingguan', biweekly: 'Dua mingguan', monthly: 'Bulanan' }[l.installment_type] || 'Bulanan';
+  document.getElementById('tolak-info').innerHTML =
+    `<div style="font-weight:600;margin-bottom:4px">${escapeHtml(l.profiles?.full_name || '-')}</div>`
+    + `<div style="color:var(--text2)">Pokok ${fmt(l.principal)} · ${l.installment_count}x ${labelJenis}</div>`;
+  document.getElementById('tolak-alasan').value = '';
+  document.getElementById('tolak-alert').style.display = 'none';
+  openModal('modal-tolak-pinjaman');
+}
+
 async function doRejectPinjaman() {
-  const { error } = await dbUpdate('loans', `id=eq.${currentLoanId}`, { status: 'rejected' });
-  if (error) { showToast('Gagal: ' + error.message); return; }
-  showToast('Pinjaman ditolak');
+  const alertEl = document.getElementById('tolak-alert');
+  alertEl.style.display = 'none';
+  const alasan = document.getElementById('tolak-alasan').value.trim();
+  if (!alasan) { alertEl.textContent = 'Alasan penolakan wajib diisi.'; alertEl.style.display = 'block'; return; }
+
+  const { error } = await dbUpdate('loans', `id=eq.${currentLoanId}`,
+    { status: 'rejected', note: `[DITOLAK] ${alasan}` });
+  if (error) { alertEl.textContent = 'Gagal: ' + (error.message || JSON.stringify(error)); alertEl.style.display = 'block'; return; }
+
+  await logActivity('PINJAMAN_DITOLAK', `Pengajuan ditolak — ${alasan}`, currentUser.id);
+  closeModal('modal-tolak-pinjaman');
   closeModal('modal-detail-pinjaman');
+  showToast('Pengajuan ditolak, alasannya tercatat');
   loadPinjaman();
   muatNotifikasi();
 }
@@ -7521,6 +7574,16 @@ async function tampilkanKwitansi(opsi, teks, namaFile) {
   }
 }
 
+// Gambar kwitansi digambar pada 1440px tetapi ditampilkan sekitar 227px di HP —
+// enam kali lebih kecil, sehingga tulisannya tak terbaca padahal admin diminta
+// memeriksanya sebelum mengirim ke anggota.
+function perbesarKwitansi() {
+  const src = document.getElementById('kwitansi-gambar')?.src;
+  if (!src) return;
+  document.getElementById('kwitansi-perbesar-gambar').src = src;
+  document.getElementById('kwitansi-perbesar').style.display = 'flex';
+}
+
 function dataURLKeBlob(dataURL) {
   const [kepala, isi] = dataURL.split(',');
   const tipe = kepala.match(/:(.*?);/)[1];
@@ -9379,10 +9442,21 @@ async function autoPoinCicilan(memberId, nextDueDateBefore, periods = 1) {
 // Tombol untuk admin: tambah poin aktif bulanan ke semua anggota
 async function poinAktifBulanan() {
   if (!confirm('Tambah +2 poin "Aktif Bulanan" ke semua anggota aktif?\n\nLakukan ini sekali setiap awal bulan.')) return;
+  const bulan = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  // Penjaga sekali-sebulan. Teks konfirmasinya berpesan "lakukan sekali setiap
+  // awal bulan", tetapi sebelumnya tidak ada yang menegakkannya — tekan dua kali
+  // berarti +4 poin untuk semua orang, dan membatalkannya harus manual satu per
+  // satu. Penandanya kalimat yang ditulis fungsi ini sendiri.
+  const penanda = `Aktif bulanan ${bulan}`;
+  const sudahAda = await dbQuery('member_points',
+    `select=id&reason=ilike.*${encodeURIComponent(penanda)}*&limit=1`);
+  if (sudahAda && sudahAda.length) {
+    showToast(`⚠️ Poin aktif bulanan ${bulan} sudah pernah diberikan. Tidak diulang supaya tidak dobel.`, 7000);
+    return;
+  }
   showToast('⏳ Memproses poin aktif bulanan...');
   const members = await dbQuery('profiles', 'select=id,full_name,total_points&status=eq.active');
   if (!members || !members.length) { showToast('Tidak ada anggota aktif'); return; }
-  const bulan = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   let berhasil = 0;
   for (const m of members) {
     await simpanPoin(m.id, 2, `[AUTO] Aktif bulanan ${bulan} → +2 poin`, 'credit');
@@ -9397,13 +9471,16 @@ async function resetPoinTahunan() {
   if (!confirm('⚠️ RESET POIN TAHUNAN\n\nIni akan mengatur semua poin anggota ke 0.\nLakukan hanya di awal tahun setelah hadiah diberikan.\n\nLanjutkan?')) return;
   const members = await dbQuery('profiles', 'select=id,full_name&status=eq.active');
   if (!members || !members.length) return;
-  const tahun = new Date().getFullYear() - 1;
+  // Dahulu memakai `tahun berjalan − 1`, yang hanya benar bila reset dijalankan
+  // awal Januari. Dijalankan pertengahan tahun, labelnya menyebut tahun yang
+  // salah. Dicap tanggal pelaksanaan saja — itu selalu benar.
+  const tahun = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   let berhasil = 0;
   for (const m of members) {
     // Catat history reset
     await dbInsert('member_points', {
       member_id: m.id, points: 0,
-      reason: `[RESET] Reset poin tahunan ${tahun}`, type: 'credit'
+      reason: `[RESET] Poin dinolkan pada ${tahun}`, type: 'credit'
     });
     // Set total_points ke 0
     await dbUpdate('profiles', `id=eq.${m.id}`, { total_points: 0 });

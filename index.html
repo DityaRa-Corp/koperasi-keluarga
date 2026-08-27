@@ -771,7 +771,7 @@ tbody tr:hover { background: var(--surface2); }
         <button class="btn btn-primary btn-full" id="btn-login" style="margin-top:12px;padding:12px;font-size:14px">Masuk</button>
         <div class="auth-footer">
           <div class="auth-footer-deploy">Deployed by <strong>Aditya Agustian</strong> &mdash; Private Family Cooperative System</div>
-          <div class="auth-footer-version">v1.0 &bull; KoperasiKeluarga &copy; 2026</div>
+          <div class="auth-footer-version" id="auth-version">KoperasiKeluarga &copy; 2026</div>
         </div>
       </div>
     </div>
@@ -1993,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.49.0';
+const APP_VERSION = 'v4.50.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2021,6 +2021,14 @@ function escapeAttr(str) {
     .replace(/"/g, '&quot;');
 }
 console.log('App loaded:', APP_VERSION);
+// Versi ditulis dari APP_VERSION, bukan diketik di HTML. Sebelumnya layar
+// masuk selalu menampilkan "v1.0" walau aplikasinya sudah jauh melewati itu —
+// menyesatkan justru saat paling dibutuhkan: menanyakan versi berapa yang
+// sedang dipakai anggota ketika ada laporan masalah.
+document.addEventListener('DOMContentLoaded', () => {
+  const el = document.getElementById('auth-version');
+  if (el) el.innerHTML = APP_VERSION + ' &bull; KoperasiKeluarga &copy; 2026';
+});
 const SUPABASE_URL = 'https://iwxxjkyalqrzolligvrs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eHhqa3lhbHFyem9sbGlndnJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTAwNzAsImV4cCI6MjA5NjIyNjA3MH0.v-iBFUI0lgQ84JhvSj-3e9fRRpEodBcD_jd8NeU3JvI';
 const EDGE_RESET_PW_URL = SUPABASE_URL + '/functions/v1/reset-member-password';

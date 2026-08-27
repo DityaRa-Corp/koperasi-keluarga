@@ -1993,7 +1993,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.51.0';
+const APP_VERSION = 'v4.52.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2788,8 +2788,11 @@ function previewKoreksiCicilan() {
 
 async function doKoreksiCicilan() {
   if (!_kcCtx) return;
+  // Penjaga klik ganda dipegang oleh bungkusSekaliJalan di akhir skrip.
+  // JANGAN tambahkan lagi cek `if (btn.disabled) return` di sini: pembungkus
+  // itu menonaktifkan seluruh tombol modal SEBELUM memanggil fungsi ini, jadi
+  // cek seperti itu selalu benar dan fungsinya keluar diam-diam tanpa pesan.
   const btn = document.getElementById('btn-do-kc');
-  if (btn && btn.disabled) return;
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
   const alertEl = document.getElementById('kc-alert');
   alertEl.style.display = 'none';
@@ -2946,8 +2949,11 @@ function previewKoreksi() {
 
 async function doKoreksiSetoran() {
   if (!_koreksiCtx) return;
+  // Penjaga klik ganda dipegang oleh bungkusSekaliJalan di akhir skrip.
+  // JANGAN tambahkan lagi cek `if (btn.disabled) return` di sini: pembungkus
+  // itu menonaktifkan seluruh tombol modal SEBELUM memanggil fungsi ini, jadi
+  // cek seperti itu selalu benar dan fungsinya keluar diam-diam tanpa pesan.
   const btn = document.getElementById('btn-do-koreksi');
-  if (btn && btn.disabled) return;
   if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
   const alertEl = document.getElementById('koreksi-alert');
   alertEl.style.display = 'none';
@@ -3271,11 +3277,17 @@ async function doAjukanPinjaman() {
   // Rule 1: Tidak bisa pinjam jika masih ada pinjaman aktif, atau ada pinjaman
   // yang syaratnya sedang menunggu konfirmasi (uangnya belum cair tetapi
   // komitmennya sudah ada).
-  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=in.(active,menunggu_konfirmasi)&select=id,status&limit=1`);
+  // `pending` HARUS ikut ditahan. Tanpa itu pengajuan bisa ditumpuk tanpa
+  // batas, lalu admin menyetujuinya satu per satu dan anggota memegang
+  // beberapa pinjaman aktif sekaligus — persis yang ditemukan pada UAT.
+  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=in.(pending,active,menunggu_konfirmasi)&select=id,status&limit=1`);
   if (activeLoans && activeLoans.length > 0) {
-    showToast(activeLoans[0].status === 'menunggu_konfirmasi'
+    const st = activeLoans[0].status;
+    showToast(st === 'menunggu_konfirmasi'
       ? '❌ Masih ada pengajuan yang menunggu persetujuan syarat. Setujui atau tolak dulu.'
-      : '❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas', 6000);
+      : st === 'pending'
+        ? '❌ Masih ada pengajuan yang belum diproses admin. Tunggu diproses, atau minta admin menolaknya dulu.'
+        : '❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas', 6000);
     return;
   }
 
@@ -3644,6 +3656,19 @@ async function doApprovePinjaman() {
   const loan = loanArr2?.[0];
   if (!loan) return;
 
+  // Satu anggota hanya boleh memegang satu pinjaman berjalan. Pintu pengajuan
+  // menahan aturan itu, tetapi pengajuan lama yang dibuat sebelum tambalan ini
+  // masih bisa menumpuk, jadi pintu pencairan wajib memeriksanya lagi. Tanpa
+  // ini dua pengajuan bisa dicairkan berurutan tanpa peringatan apa pun.
+  const berjalanLain = await dbQuery('loans',
+    `member_id=eq.${loan.member_id}&status=in.(active,menunggu_konfirmasi)&id=neq.${loan.id}&select=id,status,principal&limit=1`);
+  if (berjalanLain && berjalanLain.length > 0) {
+    showToast(berjalanLain[0].status === 'menunggu_konfirmasi'
+      ? '❌ Anggota ini sudah punya pinjaman lain yang menunggu persetujuannya. Selesaikan dulu yang itu.'
+      : `❌ Anggota ini masih punya pinjaman aktif ${fmt(berjalanLain[0].principal)} yang belum lunas. Tolak pengajuan ini, atau tunggu pinjamannya lunas.`, 8000);
+    return;
+  }
+
   // Kas tidak boleh tercatat negatif: koperasi hanya bisa mencairkan
   // uang yang benar-benar ada di tangan.
   const kas1 = await hitungKasTersedia();
@@ -3801,6 +3826,11 @@ async function ingatkanKonfirmasi() {
   const pesan = `Assalamualaikum ${nama} 🙏\n\n`
     + `Pengajuan pinjaman Anda sudah diproses, tetapi syaratnya berbeda dari yang diajukan:\n\n`
     + brs('Pokok  ', a.principal, l.principal)
+    // Bunga WAJIB ikut disebut. Tanpa baris ini, admin yang menurunkan pokok
+    // sekaligus menambah bunga akan mengirim pesan yang hanya menyebut pokoknya
+    // turun — sementara total dan cicilan bisa kebetulan tidak berubah, sehingga
+    // munculnya bunga sama sekali tak terlihat oleh anggota yang diminta setuju.
+    + brs('Bunga  ', a.total_interest, l.total_interest)
     + brs('Total  ', a.total_amount, l.total_amount)
     + brs('Cicilan', a.installment_amount, l.installment_amount)
     + `\nUang BELUM dicairkan. Mohon buka aplikasinya untuk menyetujui atau menolak syarat ini.\n\n`
@@ -8134,7 +8164,11 @@ function cetakLaporan() {
     document.body.prepend(printHeader);
   }
   // Judul tab ikut menjadi nama berkas bawaan saat "Simpan sebagai PDF"
-  const namaTab = document.querySelector('.tab-btn.active')?.textContent.trim() || 'Laporan';
+  // Selektor WAJIB dibatasi ke #page-laporan. Kelas .tab-btn.active juga dipakai
+  // halaman Pinjaman dan Anggota, dan page-pinjaman berada lebih dulu di DOM —
+  // querySelector tanpa batas selalu mengambil tabnya, sehingga laporan tercetak
+  // berjudul "Laporan Menunggu"/"Laporan Aktif" dan berkas PDF-nya ikut salah nama.
+  const namaTab = document.querySelector('#page-laporan .tab-btn.active')?.textContent.trim() || 'Laporan';
   printHeader.innerHTML = `
     <div style="text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #2A3568">
       <div style="font-size:20px;font-weight:700;color:#2A3568">KOPERASI KELUARGA</div>

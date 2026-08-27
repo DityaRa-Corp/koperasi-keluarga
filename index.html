@@ -610,6 +610,115 @@ tbody tr:hover { background: var(--surface2); }
   /* Kalkulator - full width 1 kolom */
   #kalk-result > div { grid-template-columns: 1fr 1fr !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PERBAIKAN TAMPILAN HP (hasil UAT 27 Agu 2026)
+   Strategi mobile sebelumnya adalah "kecilkan semuanya lalu geser ke
+   samping": tombol dalam tabel menyusut jadi 23px dan tabel dipaksa
+   min-width 500px. Akibatnya di layar 375px setiap tabel hanya
+   menampilkan 3 kolom pertama, dan pada halaman Anggota SELURUH tombol
+   aksi berada di luar layar — admin tidak punya cara menekannya dari HP.
+   ══════════════════════════════════════════════════════════════ */
+
+/* UX-01 — tombol lihat password. Mengetik sandi buta di keyboard HP rawan
+   salah, dan akun mengunci diri setelah lima kegagalan beruntun. */
+.input-dengan-tombol { position: relative; }
+.input-dengan-tombol .form-input { padding-right: 48px; }
+.pw-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer; font-size: 17px;
+  opacity: .5; border-radius: var(--radius-sm); line-height: 1; padding: 0;
+}
+.pw-toggle:hover, .pw-toggle:focus-visible { opacity: 1; background: var(--surface2); }
+
+/* UX-02 — petunjuk geser pada tabel yang lebih lebar dari layarnya.
+   Kelasnya dipasang oleh tandaiTabelBisaDigeser(), jadi hanya muncul pada
+   tabel yang benar-benar menyembunyikan kolom. */
+.table-wrap.bisa-digeser::after {
+  content: '⟵ geser untuk melihat kolom lainnya ⟶';
+  display: block; position: sticky; left: 0;
+  text-align: center; font-size: 11px; font-weight: 500;
+  color: var(--text3); padding: 8px 0 2px;
+}
+
+.label-aksi { display: none; }
+
+@media screen and (max-width: 768px) {
+  /* UX-02 + UX-03 — TABEL MENJADI KARTU, BUKAN DIGESER.
+     Kelas .kartu-hp dipasang siapkanTabelHp() pada setiap tabel berkolom
+     banyak, dan data-label tiap sel diisi otomatis dari <thead> — sehingga
+     tidak ada satu pun fungsi render yang perlu diubah. Menggeser tabel ke
+     samping menyembunyikan justru kolom terpenting (nominal ada di kanan),
+     jadi barisnya ditumpuk sebagai kartu berlabel. */
+  .table-wrap.kartu-hp { overflow-x: visible; }
+  .table-wrap.kartu-hp table { min-width: 0 !important; }
+  .table-wrap.kartu-hp table,
+  .table-wrap.kartu-hp tbody,
+  .table-wrap.kartu-hp tfoot,
+  .table-wrap.kartu-hp tr,
+  .table-wrap.kartu-hp td { display: block; width: 100%; }
+  .table-wrap.kartu-hp thead { display: none; }
+  .table-wrap.kartu-hp tr {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface); margin-bottom: 10px; padding: 12px 14px;
+  }
+  .table-wrap.kartu-hp tr:hover { background: var(--surface); }
+  .table-wrap.kartu-hp td {
+    border: none !important; padding: 6px 0 !important;
+    font-size: 13px !important; line-height: 1.45;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+    white-space: normal !important;
+  }
+  .table-wrap.kartu-hp td::before {
+    content: attr(data-label); flex: 0 0 auto; max-width: 45%;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text3);
+  }
+  /* Sel tanpa judul kolom (avatar, nomor urut, kolom aksi) tidak diberi label */
+  .table-wrap.kartu-hp td[data-label=""]::before { content: none; }
+  .table-wrap.kartu-hp td[data-label=""] { display: block; }
+  /* Nilai rata kanan agar angka mudah dibandingkan antar kartu */
+  .table-wrap.kartu-hp td { text-align: right; }
+  .table-wrap.kartu-hp td[data-label=""] { text-align: left; }
+
+  /* UX-04 — target sentuh. Tombol aksi di dalam tabel sebelumnya 23px;
+     pedoman Apple HIG dan Material Design menetapkan 44px sebagai minimum. */
+  .table-wrap.kartu-hp td.sel-aksi {
+    margin-top: 10px; padding-top: 12px !important;
+    border-top: 1px solid var(--border) !important; text-align: left;
+  }
+  .table-wrap.kartu-hp td.sel-aksi::before { content: none; }
+  .table-wrap.kartu-hp td.sel-aksi { display: block; }
+  .table-wrap.kartu-hp td.sel-aksi > .aksi-bungkus {
+    display: grid !important; gap: 8px !important;
+    /* auto-fit: satu tombol melebar penuh, dua berdampingan, tiga membungkus */
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  }
+  .table-wrap.kartu-hp td.sel-aksi .btn {
+    font-size: 12px !important; padding: 0 10px !important;
+    min-height: 42px; width: 100%; justify-content: center;
+  }
+  .table-wrap.kartu-hp .label-aksi { display: inline; margin-left: 5px; }
+
+  /* Nomor urut adalah alat bantu tabel; di dalam kartu ia hanya derau */
+  .table-wrap.kartu-hp td[data-label="No"],
+  .table-wrap.kartu-hp td[data-label="NO"] { display: none; }
+  /* Sel pertama tanpa judul (avatar) menjadi kepala kartu, bukan baris yatim */
+  .table-wrap.kartu-hp td[data-label=""]:first-child { padding-bottom: 2px !important; }
+
+  /* Baris kosong / baris total yang memakai colspan tampil melebar penuh */
+  .table-wrap.kartu-hp td[colspan] { display: block; text-align: center; }
+  .table-wrap.kartu-hp td[colspan]::before { content: none; }
+
+  /* Tombol aksi pada tabel yang TIDAK jadi kartu tetap dinaikkan dari 23px */
+  td > div[style*="display:flex"] .btn {
+    font-size: 11px !important; padding: 6px 10px !important; min-height: 32px;
+  }
+  /* Filter di halaman Anggota memotong teks opsinya sendiri di 375px */
+  #filter-anggota-status { min-width: 130px; }
+}
+
 /* ── Print styles ── */
 @media print {
   /* A4 tegak. Tab Pinjaman punya 13 kolom yang tidak muat di lebar ini,
@@ -766,7 +875,10 @@ tbody tr:hover { background: var(--surface2); }
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
-          <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+          <div class="input-dengan-tombol">
+            <input class="form-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="pw-toggle" id="btn-lihat-password" onclick="toggleLihatPassword()" aria-label="Tampilkan password">👁</button>
+          </div>
         </div>
         <button class="btn btn-primary btn-full" id="btn-login" style="margin-top:12px;padding:12px;font-size:14px">Masuk</button>
         <div class="auth-footer">
@@ -1018,8 +1130,8 @@ tbody tr:hover { background: var(--surface2); }
           <div class="form-group" style="margin-bottom:0">
             <label class="form-label" style="font-size:11px">Jenis Bunga</label>
             <select class="form-input form-select" id="kalk-bunga-type" onchange="hitungKalkulator()" style="font-size:13px">
-              <option value="persen">Persentase (%/bln)</option>
-              <option value="nominal">Nominal (Rp/cicilan)</option>
+              <option value="persen">Persen (%/bln)</option>
+              <option value="nominal">Nominal (Rp)</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
@@ -1993,7 +2105,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.52.0';
+const APP_VERSION = 'v4.53.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5151,23 +5263,23 @@ function renderAnggotaTable(data) {
   el.innerHTML = `<table>
     <thead><tr><th></th><th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Poin</th><th>Bergabung</th><th>Aksi</th></tr></thead>
     <tbody>${data.map((a, i) => `<tr>
-      <td>
+      <td data-label="" class="sel-avatar">
         ${a.avatar_url
           ? `<img src="${escapeHtml(a.avatar_url)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border)">`
           : `<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px">${escapeHtml((a.full_name||'?')[0].toUpperCase())}</div>`}
       </td>
-      <td style="font-weight:500">${escapeHtml(a.full_name)}</td>
-      <td><span class="td-mono" style="font-size:12px;color:var(--accent)">${escapeHtml(a.username || '-')}</span></td>
-      <td>${a.role === 'admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Anggota</span>'}</td>
-      <td>${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
-      <td><span style="font-weight:600;color:var(--amber)">⭐ ${a.total_points || 0}</span></td>
-      <td style="color:var(--text2)">${fmtDate(a.created_at)}</td>
-      <td style="display:flex;gap:6px">
+      <td data-label="Nama" style="font-weight:500">${escapeHtml(a.full_name)}</td>
+      <td data-label="Username"><span class="td-mono" style="font-size:12px;color:var(--accent)">${escapeHtml(a.username || '-')}</span></td>
+      <td data-label="Peran">${a.role === 'admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Anggota</span>'}</td>
+      <td data-label="Status">${a.status === 'active' ? '<span class="badge badge-green">Aktif</span>' : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>'}</td>
+      <td data-label="Poin"><span style="font-weight:600;color:var(--amber)">⭐ ${a.total_points || 0}</span></td>
+      <td data-label="Bergabung" style="color:var(--text2)">${fmtDate(a.created_at)}</td>
+      <td data-label="" class="sel-aksi" style="display:flex;gap:6px">
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="openEditAnggota('${a.id}','${escapeAttr(a.full_name)}','${a.role}','${escapeAttr(a.username||'')}','${escapeAttr(a.phone||'')}')">Edit</button>
-          <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${escapeAttr(a.full_name)}',false)" title="Reset Password">🔑</button>
-          <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${escapeAttr(a.full_name)}')" title="Bypass Masa Tunggu Pinjaman">⏩</button>
-          <button class="btn btn-ghost btn-sm" onclick="openTambahPoin('${a.id}','${escapeAttr(a.full_name)}')" title="Tambah Poin">⭐</button>
+          <button class="btn btn-ghost btn-sm" onclick="openResetPassword('${a.id}','${escapeAttr(a.full_name)}',false)" title="Reset Password">🔑<span class="label-aksi">Reset Sandi</span></button>
+          <button class="btn btn-ghost btn-sm" onclick="bypassMasaTunggu('${a.id}','${escapeAttr(a.full_name)}')" title="Bypass Masa Tunggu Pinjaman">⏩<span class="label-aksi">Bypass Tunggu</span></button>
+          <button class="btn btn-ghost btn-sm" onclick="openTambahPoin('${a.id}','${escapeAttr(a.full_name)}')" title="Tambah Poin">⭐<span class="label-aksi">Kelola Poin</span></button>
           ${a.id !== currentUser.id ? `
             ${a.status === 'locked' ? `<button class="btn btn-success btn-sm" onclick="openResetPassword('${a.id}','${escapeAttr(a.full_name)}',true)">🔓 Unlock</button>` : `<button class="btn btn-ghost btn-sm" onclick="toggleMemberStatus('${a.id}', '${a.status}')">${a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}</button>`}
             <button class="btn btn-danger btn-sm" onclick="hapusAnggota('${a.id}','${escapeAttr(a.full_name)}')">Hapus</button>
@@ -8803,6 +8915,108 @@ async function resetPoinTahunan() {
 // JavaScript sebenarnya sudah menanganinya lewat hoisting walau ditaruh di
 // atas, tetapi urutan yang terbaca dari atas ke bawah lebih jujur: pembungkus
 // hanya bisa membungkus sesuatu yang sudah ada.
+
+// ══════════════════════════════════════════════════════════════
+// PENYESUAIAN TAMPILAN HP (hasil UAT 27 Agu 2026)
+// ══════════════════════════════════════════════════════════════
+
+// Tombol lihat password di layar masuk. Salah ketik yang tidak terlihat
+// berbiaya tinggi di sini: akun mengunci diri setelah lima kegagalan.
+function toggleLihatPassword() {
+  const inp = document.getElementById('login-password');
+  const btn = document.getElementById('btn-lihat-password');
+  if (!inp || !btn) return;
+  const akanTerlihat = inp.type === 'password';
+  inp.type = akanTerlihat ? 'text' : 'password';
+  btn.textContent = akanTerlihat ? '🙈' : '👁';
+  btn.setAttribute('aria-label', akanTerlihat ? 'Sembunyikan password' : 'Tampilkan password');
+}
+
+// Menandai tabel yang lebih lebar daripada wadahnya, supaya petunjuk
+// "geser untuk melihat kolom lainnya" hanya muncul pada tabel yang memang
+// menyembunyikan kolom. Dikerjakan di satu tempat agar tidak perlu menyentuh
+// belasan fungsi render.
+let _pengamatTabel = null;
+const _opsiPengamatTabel = { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] };
+
+// Menyiapkan setiap tabel agar bisa tampil sebagai kartu di layar HP.
+// Dikerjakan di SATU tempat, bukan di belasan fungsi render: label tiap sel
+// diambil dari <thead> tabelnya sendiri, sehingga tabel baru pun otomatis ikut.
+function siapkanTabelHp() {
+  // Pengamat dilepas selama menyiapkan. Fungsi ini mengubah atribut dan class,
+  // sedangkan pengamatnya memantau keduanya — tanpa dilepas ia memicu dirinya
+  // sendiri tanpa henti.
+  if (_pengamatTabel) _pengamatTabel.disconnect();
+  try {
+    document.querySelectorAll('.table-wrap').forEach(wadah => {
+      const tabel = wadah.querySelector('table');
+      if (!tabel) { wadah.classList.remove('kartu-hp', 'bisa-digeser'); return; }
+
+      const judul = Array.from(tabel.querySelectorAll('thead th')).map(th => th.textContent.trim());
+
+      tabel.querySelectorAll('tbody tr, tfoot tr').forEach(baris => {
+        let kolom = 0;
+        Array.from(baris.children).forEach(sel => {
+          // data-label yang sudah ditulis tangan tidak ditimpa
+          if (!sel.hasAttribute('data-label')) {
+            sel.setAttribute('data-label', sel.colSpan > 1 ? '' : (judul[kolom] || ''));
+          }
+          // Sel berisi tombol diperlakukan sebagai blok aksi, dan tombolnya
+          // dibungkus satu wadah supaya aturan tata letaknya tunggal.
+          if (sel.querySelector('.btn') && !sel.classList.contains('sel-aksi')) {
+            sel.classList.add('sel-aksi');
+            sel.setAttribute('data-label', '');
+            if (!sel.querySelector(':scope > .aksi-bungkus')) {
+              const bungkus = document.createElement('div');
+              bungkus.className = 'aksi-bungkus';
+              while (sel.firstChild) bungkus.appendChild(sel.firstChild);
+              sel.appendChild(bungkus);
+            }
+          }
+          kolom += sel.colSpan || 1;
+        });
+      });
+
+      // Tombol yang isinya hanya ikon tidak terbaca di layar sentuh — tooltip
+      // tidak pernah muncul di sana. Keterangannya sudah tersimpan di atribut
+      // title, jadi ditampilkan sebagai teks saat tabel menjadi kartu.
+      tabel.querySelectorAll('td.sel-aksi .btn[title]').forEach(tbl => {
+        if (tbl.querySelector('.label-aksi')) return;
+        if (tbl.textContent.trim().length > 3) return;   // sudah punya teks sendiri
+        const label = document.createElement('span');
+        label.className = 'label-aksi';
+        label.textContent = tbl.getAttribute('title');
+        tbl.appendChild(label);
+      });
+
+      // Tabel berkolom banyak ditumpuk jadi kartu; yang 3 kolom atau kurang
+      // masih muat utuh di layar 375px sehingga dibiarkan sebagai tabel.
+      wadah.classList.toggle('kartu-hp', judul.length >= 4);
+      // Petunjuk geser hanya untuk sisa tabel yang tetap meluber
+      wadah.classList.toggle('bisa-digeser',
+        !wadah.classList.contains('kartu-hp') && wadah.scrollWidth > wadah.clientWidth + 4);
+    });
+  } finally {
+    if (_pengamatTabel) {
+      const wadah = document.querySelector('div.main') || document.body;
+      _pengamatTabel.observe(wadah, _opsiPengamatTabel);
+    }
+  }
+}
+
+(function pasangPengamatTabel() {
+  let jeda = null;
+  const jadwalkan = () => { clearTimeout(jeda); jeda = setTimeout(siapkanTabelHp, 160); };
+  window.addEventListener('resize', jadwalkan);
+  const wadah = document.querySelector('div.main') || document.body;
+  // Isi tabel digambar ulang lewat innerHTML oleh belasan fungsi render, dan
+  // tabel di dalam tab tersembunyi baru punya lebar setelah tabnya ditampilkan
+  // (perubahan atribut, bukan anak). Keduanya harus diamati.
+  _pengamatTabel = new MutationObserver(jadwalkan);
+  _pengamatTabel.observe(wadah, _opsiPengamatTabel);
+  jadwalkan();
+})();
+
 // ══════════════════════════════════════════════════════════════
 [
   'doCairanSimpanan',    // paling penting — mengeluarkan uang

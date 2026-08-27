@@ -2247,7 +2247,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.55.0';
+const APP_VERSION = 'v4.56.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -6926,6 +6926,82 @@ function kwNomor(jenis, id, tanggal) {
  * baris  : [[label, nilai], ...] untuk bagian rincian
  * warna  : warna angka utama — 'hijau' untuk uang masuk, 'amber' untuk uang keluar
  */
+// Logo koperasi digambar dari path yang SAMA dengan ikon di layar masuk,
+// bukan huruf "K". Satu sumber bentuk, sehingga dokumen yang dibagikan
+// keluar dengan identitas yang sama persis dengan aplikasinya.
+function gambarLogoKoperasi(ctx, x, y, ukuran, warna) {
+  const s = ukuran / 48;
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(s, s);
+  ctx.strokeStyle = warna; ctx.fillStyle = warna;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.lineWidth = 2.5;
+  kwKotakBulat(ctx, 4, 16, 40, 28, 4); ctx.stroke();          // badan koper
+  ctx.beginPath();                                              // pegangan
+  ctx.moveTo(16, 16); ctx.lineTo(16, 12);
+  ctx.quadraticCurveTo(16, 10, 18, 10);
+  ctx.lineTo(30, 10);
+  ctx.quadraticCurveTo(32, 10, 32, 12);
+  ctx.lineTo(32, 16);
+  ctx.stroke();
+  ctx.lineWidth = 2;                                            // garis pembatas
+  ctx.beginPath(); ctx.moveTo(4, 26); ctx.lineTo(44, 26); ctx.stroke();
+  ctx.beginPath();                                              // mata pena
+  ctx.moveTo(30, 22); ctx.lineTo(35, 27); ctx.lineTo(28, 29); ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(31, 23); ctx.lineTo(25, 29); ctx.stroke();
+  ctx.restore();
+}
+
+// Kop bersama untuk SELURUH dokumen yang digambar di Canvas — kwitansi
+// maupun laporan periode. Gradasi navy dengan tiga lapis ombak, mengambil
+// bentuk yang sama dengan latar layar masuk, supaya dokumen yang beredar di
+// grup keluarga terlihat satu keluarga dengan aplikasinya.
+function gambarKopKanvas(ctx, F, tinggiKop, sub) {
+  const W = KW_LEBAR, pad = 48;
+
+  const gradasi = ctx.createLinearGradient(0, 0, W, tinggiKop);
+  gradasi.addColorStop(0, '#33407A');
+  gradasi.addColorStop(0.55, KW_WARNA.navy);
+  gradasi.addColorStop(1, KW_WARNA.navyTua);
+  ctx.fillStyle = gradasi;
+  ctx.fillRect(0, 0, W, tinggiKop);
+
+  // Tiga lapis ombak dengan tinggi dan fase berbeda, seperti di layar masuk
+  const ombak = (yDasar, warna, amplitudo, balik) => {
+    ctx.fillStyle = warna;
+    ctx.beginPath();
+    ctx.moveTo(0, yDasar);
+    const langkah = W / 3;
+    for (let i = 0; i < 3; i++) {
+      const x0 = i * langkah;
+      const arah = ((i + balik) % 2 === 0) ? -1 : 1;
+      ctx.bezierCurveTo(
+        x0 + langkah * 0.35, yDasar + arah * amplitudo,
+        x0 + langkah * 0.65, yDasar - arah * amplitudo,
+        x0 + langkah, yDasar
+      );
+    }
+    ctx.lineTo(W, tinggiKop); ctx.lineTo(0, tinggiKop);
+    ctx.closePath(); ctx.fill();
+  };
+  ombak(tinggiKop - 52, 'rgba(146,160,238,0.16)', 17, 0);
+  ombak(tinggiKop - 30, 'rgba(120,136,224,0.20)', 14, 1);
+  ombak(tinggiKop - 11, 'rgba(96,112,206,0.26)', 11, 0);
+
+  // Logo di dalam kotak putih membulat
+  ctx.fillStyle = '#ffffff';
+  kwKotakBulat(ctx, pad, 32, 54, 54, 15); ctx.fill();
+  gambarLogoKoperasi(ctx, pad + 9, 32 + 9, 36, KW_WARNA.navy);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `700 23px ${F}`;
+  ctx.fillText('KOPERASI KELUARGA', pad + 70, 56);
+  ctx.font = `400 14px ${F}`;
+  ctx.fillStyle = 'rgba(255,255,255,0.78)';
+  ctx.fillText(sub, pad + 70, 78);
+}
+
 async function gambarKwitansi({ judul, nomor, tanggal, nama, baris = [], labelUtama, nominal, warna = 'hijau', catatan, pesanKaki }) {
   // Menunggu font selesai dimuat, kalau tidak Canvas memakai font cadangan
   try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e) {}
@@ -6951,20 +7027,7 @@ async function gambarKwitansi({ judul, nomor, tanggal, nama, baris = [], labelUt
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, KW_LEBAR, tinggi);
 
-  // Kop
-  ctx.fillStyle = KW_WARNA.navy;
-  ctx.fillRect(0, 0, KW_LEBAR, tinggiKop);
-  ctx.fillStyle = '#ffffff';
-  kwKotakBulat(ctx, pad, 34, 46, 46, 12); ctx.fill();
-  ctx.fillStyle = KW_WARNA.navy;
-  ctx.font = `700 22px ${F}`;
-  ctx.fillText('K', pad + 15, 65);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `700 22px ${F}`;
-  ctx.fillText('KOPERASI KELUARGA', pad + 62, 52);
-  ctx.font = `400 14px ${F}`;
-  ctx.fillStyle = 'rgba(255,255,255,0.72)';
-  ctx.fillText('Simpan & Pinjam Keluarga', pad + 62, 74);
+  gambarKopKanvas(ctx, F, tinggiKop, 'Simpan & Pinjam Keluarga');
 
   let y = tinggiKop + 40;
 
@@ -8480,13 +8543,7 @@ async function gambarLaporanPeriode(d) {
   ctx.scale(skala, skala); ctx.textBaseline = 'alphabetic';
 
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, KW_LEBAR, tinggi);
-  ctx.fillStyle = KW_WARNA.navy; ctx.fillRect(0, 0, KW_LEBAR, kop);
-  ctx.fillStyle = '#ffffff'; kwKotakBulat(ctx, pad, 34, 46, 46, 12); ctx.fill();
-  ctx.fillStyle = KW_WARNA.navy; ctx.font = `700 22px ${F}`; ctx.fillText('K', pad + 15, 65);
-  ctx.fillStyle = '#ffffff'; ctx.font = `700 22px ${F}`;
-  ctx.fillText('KOPERASI KELUARGA', pad + 62, 52);
-  ctx.font = `400 14px ${F}`; ctx.fillStyle = 'rgba(255,255,255,0.72)';
-  ctx.fillText('Laporan Transaksi Periode', pad + 62, 74);
+  gambarKopKanvas(ctx, F, kop, 'Laporan Transaksi Periode');
 
   let y = kop + 46;
   ctx.fillStyle = KW_WARNA.teks; ctx.font = `700 20px ${F}`;

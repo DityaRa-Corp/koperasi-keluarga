@@ -2278,7 +2278,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.61.0';
+const APP_VERSION = 'v4.62.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -8635,17 +8635,24 @@ async function doTambahPoin() {
   if (!jumlah || jumlah < 1) { showToast('Masukkan jumlah poin'); return; }
   if (!alasan) { showToast('Alasan wajib diisi'); return; }
 
-  // Insert ke member_points
+  // Pengurangan tidak boleh melebihi poin yang dimiliki. Dulu kelebihannya
+  // dijepit diam-diam ke 0 sementara buku poin tetap mencatat angka penuh —
+  // keduanya jadi tidak pernah cocok lagi. Sekarang ditolak dengan pesan.
+  if (type === 'debit') {
+    const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
+    if (profileArr === null) { showToast('❌ Gagal membaca poin saat ini. Coba lagi.'); return; }
+    const sekarang = Number(profileArr[0]?.total_points) || 0;
+    if (jumlah > sekarang) {
+      showToast(`❌ Poin anggota ini hanya ${sekarang}. Maksimal yang bisa dikurangi ${sekarang}.`, 6000);
+      return;
+    }
+  }
+
+  // Cukup mencatat ke buku poin — total_points dihitung trigger database.
   const { error } = await dbInsert('member_points', {
     member_id: memberId, points: jumlah, reason: alasan, type
   });
   if (error) { showToast('Gagal: ' + error.message); return; }
-
-  // Update total_points di profiles
-  const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
-  const currentPts = profileArr?.[0]?.total_points || 0;
-  const newPts = type === 'credit' ? currentPts + jumlah : Math.max(0, currentPts - jumlah);
-  await dbUpdate('profiles', `id=eq.${memberId}`, { total_points: newPts });
 
   await logActivity('POIN_TAMBAH', `${type==='credit'?'Tambah':'Kurangi'} ${jumlah} poin: ${alasan}`, memberId);
 
@@ -9417,26 +9424,29 @@ function hitungPoinSetor(amount) {
 }
 
 // Helper: simpan poin ke DB dan update total_points di profiles
+// ══════════════════════════════════════════════════════════════
+// POIN: aplikasi hanya MENCATAT ke buku poin (member_points).
+// profiles.total_points dihitung ulang oleh trigger database
+// `trg_total_poin` setiap ada baris baru — jumlah credit − debit sejak baris
+// [RESET] terakhir. Sebelumnya aplikasi membaca total lalu menulis
+// total+delta sendiri, dijepit Math.max(0, …): dua permintaan berdekatan
+// saling menimpa, dan debit yang melebihi saldo membuat buku poin dan
+// angka total menyimpang selamanya. JANGAN kembali menulis total_points
+// dari sini — trigger sudah menjumlah; menambahkannya lagi berarti dobel.
+// ══════════════════════════════════════════════════════════════
 async function simpanPoin(memberId, poin, reason, type = 'credit') {
-  if (poin === 0) return;
-  try {
-    // Insert ke member_points
-    await dbInsert('member_points', {
-      member_id: memberId,
-      points: Math.abs(poin),
-      reason,
-      type
-    });
-    // Update total_points di profiles - pakai increment untuk menghindari race condition
-    // Baca dulu untuk pastikan tidak negatif
-    const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
-    const currentPts = profileArr?.[0]?.total_points || 0;
-    const delta = type === 'credit' ? Math.abs(poin) : -Math.abs(poin);
-    const newPts = Math.max(0, currentPts + delta);
-    await dbUpdate('profiles', `id=eq.${memberId}`, { total_points: newPts });
-  } catch(e) {
-    console.warn('Auto-poin gagal (tidak kritikal):', e.message);
+  if (poin === 0) return false;
+  const { error } = await dbInsert('member_points', {
+    member_id: memberId,
+    points: Math.abs(poin),
+    reason,
+    type
+  });
+  if (error) {
+    console.warn('Auto-poin gagal (tidak kritikal):', error.message || JSON.stringify(error));
+    return false;
   }
+  return true;
 }
 
 // Auto-poin saat setor simpanan
@@ -9508,18 +9518,20 @@ async function resetPoinTahunan() {
   // awal Januari. Dijalankan pertengahan tahun, labelnya menyebut tahun yang
   // salah. Dicap tanggal pelaksanaan saja — itu selalu benar.
   const tahun = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  let berhasil = 0;
+  let berhasil = 0, gagal = 0;
   for (const m of members) {
-    // Catat history reset
-    await dbInsert('member_points', {
+    // Baris [RESET] adalah penanda batas: trigger database menghitung total
+    // hanya dari baris SESUDAH penanda ini, jadi totalnya otomatis menjadi 0.
+    // Kegagalan tiap anggota dihitung — sebelumnya diabaikan diam-diam.
+    const { error } = await dbInsert('member_points', {
       member_id: m.id, points: 0,
       reason: `[RESET] Poin dinolkan pada ${tahun}`, type: 'credit'
     });
-    // Set total_points ke 0
-    await dbUpdate('profiles', `id=eq.${m.id}`, { total_points: 0 });
-    berhasil++;
+    if (error) gagal++; else berhasil++;
   }
-  showToast(`✅ Poin ${berhasil} anggota berhasil direset ke 0`);
+  showToast(gagal
+    ? `⚠️ Poin ${berhasil} anggota direset, ${gagal} GAGAL — periksa Papan Poin lalu ulangi.`
+    : `✅ Poin ${berhasil} anggota berhasil direset ke 0`, gagal ? 8000 : 4000);
   loadPoinData();
 }
 

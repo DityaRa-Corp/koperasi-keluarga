@@ -2278,7 +2278,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.60.0';
+const APP_VERSION = 'v4.61.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2723,8 +2723,13 @@ async function doLogout(sengaja = false) {
    'setor-amount','setor-note',
    'anggota-nama','anggota-username','anggota-password'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  // Tutup semua modal yang mungkin terbuka
-  document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+  // Tutup semua modal yang mungkin terbuka. Modal memakai class `open`
+  // (lihat openModal/closeModal) — sebelumnya baris ini mencari `.active`,
+  // yang tidak pernah dipakai modal mana pun, sehingga tidak menutup apa pun.
+  // Akibatnya di HP: modal "Catat Pembayaran Cicilan" yang ditinggal lebih
+  // dari satu jam tetap menutupi layar login setelah sesi berakhir otomatis
+  // (z-index modal 100, layar login tidak punya) — tampak seperti membeku.
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
   document.getElementById('app-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
   const warn = document.getElementById('idle-warning');
@@ -2789,6 +2794,12 @@ function populateMemberSelects() {
     const el = document.getElementById(id);
     if (!el) return;
     const isFilter = id.startsWith('filter-');
+    // Anggota biasa hanya melihat riwayatnya sendiri (query-nya dipaksa ke
+    // dirinya di loadSimpananHistory/loadCicilanHistory), jadi dropdown
+    // "Semua anggota" tidak berarti apa-apa baginya — dan memperlihatkan
+    // daftar nama yang tak perlu. Disembunyikan, nilainya dikosongkan.
+    if (isFilter && !isAdmin()) { el.value = ''; el.style.display = 'none'; return; }
+    el.style.display = '';
     const opts = isFilter ? '<option value="">Semua anggota</option>' : '';
     const daftar = hanyaAktif.includes(id)
       ? allMembers.filter(m => m.status === 'active')
@@ -2917,7 +2928,7 @@ async function loadDashboard() {
       return `<tr>
         <td style="padding:6px 4px;width:36px">${avatarEl}</td>
         <td style="white-space:nowrap">${fmtDate(t.created_at)}</td>
-        <td>${name}</td>
+        <td>${escapeHtml(name)}</td>
         <td>${t.kind === 'saving' ? (t.type === 'deposit' ? '<span class="badge badge-green">Setor</span>' : '<span class="badge badge-red">Tarik</span>') : '<span class="badge badge-blue">Cicilan</span>'}</td>
         <td class="td-mono nominal-tx ${arah}">${masuk ? '+' : '−'}${fmt(t.amount || t.amount_paid)}</td>
       </tr>`;
@@ -4095,12 +4106,28 @@ async function doApprovePinjaman() {
 // Jalur ini penting karena satu-satunya yang benar-benar sampai ke HP saat
 // aplikasi tertutup, selama push sejati belum dibangun.
 // ══════════════════════════════════════════════════════════════
-function bukaWA(nomorMentah, pesan, namaTujuan) {
+// Jendela WhatsApp HARUS dibuka secara sinkron, di dalam sentuhan yang sama
+// dengan tombolnya. Semua pemanggil di bawah membaca data dari database dulu
+// (await) sebelum tahu nomor tujuannya — dan Safari iOS menganggap izin
+// membuka jendela sudah hangus begitu ada jeda jaringan. Hasilnya tombol
+// "Ingatkan" di iPhone diam tanpa pesan apa pun. Karena itu jendela kosongnya
+// dibuka lebih dulu, lalu diisi alamatnya setelah datanya siap; kalau nomornya
+// ternyata kosong atau datanya gagal dimuat, jendela itu ditutup lagi.
+function bukaJendelaWA() {
+  try { return window.open('', '_blank'); } catch (e) { return null; }
+}
+function tutupJendelaWA(jendela) {
+  try { if (jendela && !jendela.closed) jendela.close(); } catch (e) { /* abaikan */ }
+}
+function bukaWA(nomorMentah, pesan, namaTujuan, jendela = null) {
   const nomor = normalkanNomorWA(nomorMentah);
   if (nomor) {
-    window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`, '_blank');
+    const url = `https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`;
+    if (jendela && !jendela.closed) jendela.location.href = url;
+    else window.open(url, '_blank');
     return;
   }
+  tutupJendelaWA(jendela);
   navigator.clipboard.writeText(pesan).then(
     () => showToast(`Nomor WhatsApp ${namaTujuan} belum diisi. Pesannya sudah disalin — tempel manual.`, 7000),
     () => showToast(`Nomor WhatsApp ${namaTujuan} belum diisi. Isi lewat menu Anggota.`, 7000)
@@ -4110,10 +4137,11 @@ function bukaWA(nomorMentah, pesan, namaTujuan) {
 // Admin → anggota: syarat pinjaman menunggu persetujuan
 async function ingatkanKonfirmasi() {
   if (!currentLoanId) return;
+  const jendela = bukaJendelaWA();   // sebelum await — lihat bukaJendelaWA
   const rows = await dbQuery('loans',
     `id=eq.${currentLoanId}&select=*,profiles!loans_member_id_fkey(full_name,phone)&limit=1`);
   const l = rows?.[0];
-  if (!l) { showToast('Pinjaman tidak ditemukan'); return; }
+  if (!l) { tutupJendelaWA(jendela); showToast('Pinjaman tidak ditemukan'); return; }
   const nama = l.profiles?.full_name || 'Anggota';
   const a = l.pengajuan_awal || {};
   const brs = (label, lama, baru) =>
@@ -4131,18 +4159,19 @@ async function ingatkanKonfirmasi() {
     + brs('Cicilan', a.installment_amount, l.installment_amount)
     + `\nUang BELUM dicairkan. Mohon buka aplikasinya untuk menyetujui atau menolak syarat ini.\n\n`
     + `${location.origin}\n\nTerima kasih 🌾`;
-  bukaWA(l.profiles?.phone, pesan, nama);
+  bukaWA(l.profiles?.phone, pesan, nama, jendela);
 }
 
 // Anggota → admin: pengajuan baru menunggu diproses
 async function beriTahuAdmin() {
   if (!currentLoanId) return;
+  const jendela = bukaJendelaWA();   // sebelum await — lihat bukaJendelaWA
   const [rows, admins] = await Promise.all([
     dbQuery('loans', `id=eq.${currentLoanId}&select=principal,installment_count,installment_type&limit=1`),
     dbQuery('profiles', 'role=eq.admin&status=eq.active&select=full_name,phone&order=full_name.asc')
   ]);
   const l = rows?.[0];
-  if (!l) { showToast('Pinjaman tidak ditemukan'); return; }
+  if (!l) { tutupJendelaWA(jendela); showToast('Pinjaman tidak ditemukan'); return; }
   // Nomor admin pertama yang terisi; kalau tidak ada, pesannya tetap disalin
   const adm = (admins || []).find(a => normalkanNomorWA(a.phone)) || (admins || [])[0] || {};
   const labelJenis = { weekly: 'Mingguan', biweekly: 'Dua mingguan', monthly: 'Bulanan' }[l.installment_type] || 'Bulanan';
@@ -4152,7 +4181,7 @@ async function beriTahuAdmin() {
     + `Pokok   : ${fmt(l.principal)}\n`
     + `Cicilan : ${l.installment_count}x (${labelJenis})\n\n`
     + `Mohon dicek bila sempat ya.\n\n${location.origin}\n\nTerima kasih 🌾`;
-  bukaWA(adm.phone, pesan, adm.full_name || 'Admin');
+  bukaWA(adm.phone, pesan, adm.full_name || 'Admin', jendela);
 }
 
 async function doKonfirmasiPinjaman(setuju) {
@@ -4289,7 +4318,7 @@ async function loadCicilan() {
               : `<span class="badge badge-blue">Aktif</span>`;
           const catatBtn = isAdmin() ? '<button class="btn btn-success btn-sm" onclick="openCatatCicilan(\'' + l.id + '\')">Catat Bayar</button>' : '';
           return '<tr>' +
-            '<td style="font-weight:500">' + l.profiles?.full_name + '</td>' +
+            '<td style="font-weight:500">' + escapeHtml(l.profiles?.full_name || '-') + '</td>' +
             '<td class="td-mono">' + fmt(l.installment_amount) + '</td>' +
             '<td class="td-mono">' + fmt(l.remaining_amount) + '</td>' +
             '<td style="' + tdColor + '">' + fmtDate(l.next_due_date) + '</td>' +
@@ -5659,11 +5688,18 @@ async function doResetPassword() {
     // Edge Function sudah handle: clear pending_password, reset failed_attempts, log adjustments
     // Jika unlock: tambahan update status
     if (resetPwIsUnlock) {
-      await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${memberId}`, {
-        method: 'PATCH',
-        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'active', failed_attempts: 0 })
-      });
+      // Hasilnya WAJIB diperiksa. Sebelumnya ini fetch mentah tanpa melihat
+      // jawabannya: kalau PATCH-nya ditolak, akun tetap terkunci sementara
+      // layar mengumumkan "🔓 di-unlock" — kegagalan yang tidak berbunyi.
+      const { error: eBuka } = await dbUpdate('profiles', `id=eq.${memberId}`,
+        { status: 'active', failed_attempts: 0 });
+      if (eBuka) {
+        alertEl.textContent = '⚠️ Password sudah direset, tetapi akun GAGAL dibuka kuncinya: '
+          + (eBuka.message || JSON.stringify(eBuka)) + '. Coba tekan Unlock sekali lagi.';
+        alertEl.style.display = 'block';
+        loadAnggota();
+        return;
+      }
     }
 
     showToast(resetPwIsUnlock ? '🔓 Akun di-unlock & password langsung aktif ✓' : '🔑 Password berhasil direset ✓');
@@ -5836,7 +5872,7 @@ async function loadAnggotaEditLog() {
       return `<tr>
         <td>${fmtDateTime(l.created_at)}</td>
         <td style="font-weight:500">${escapeHtml(l.profiles?.full_name || '-')}</td>
-        <td style="font-size:12px;color:var(--text2)">${detail[0] || '-'}<br><span style="color:var(--text3);font-style:italic">Alasan: ${detail[1] || '-'}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${escapeHtml(detail[0] || '-')}<br><span style="color:var(--text3);font-style:italic">Alasan: ${escapeHtml(detail[1] || '-')}</span></td>
         <td style="color:var(--text2)">${escapeHtml(l.admin?.full_name || '-')}</td>
       </tr>`;
     }).join('')}</tbody>
@@ -6910,14 +6946,18 @@ daftarkanServiceWorker();
 // ══════════════════════════════════════════════════════════════
 async function bypassMasaTunggu(memberId, memberName) {
   if (!confirm(`Bypass masa tunggu 1 bulan untuk ${memberName}?\n\nAnggota ini akan bisa mengajukan pinjaman baru segera tanpa menunggu 1 bulan.\n\nLanjutkan?`)) return;
-  await dbInsert('adjustments', {
+  // Penandanya diubah DULU, baru jejaknya ditulis. Urutan sebaliknya membuat
+  // log berkata "bypass diberikan" padahal update-nya gagal — jejak audit
+  // yang berbohong lebih buruk daripada tidak ada jejak.
+  const { error: eBy } = await dbUpdate('profiles', `id=eq.${memberId}`, { bypass_waiting: true });
+  if (eBy) { showToast('❌ Gagal memberi bypass: ' + (eBy.message || JSON.stringify(eBy))); return; }
+  const { error: eLog } = await dbInsert('adjustments', {
     member_id: memberId, type: 'savings',
     value_before: 0, value_after: 0, difference: 0,
     reason: `[BYPASS MASA TUNGGU] Diizinkan admin untuk mengajukan pinjaman baru lebih awal`,
     admin_id: currentUser.id
   });
-  const { error: eBy } = await dbUpdate('profiles', `id=eq.${memberId}`, { bypass_waiting: true });
-  if (eBy) { showToast('❌ Gagal memberi bypass: ' + (eBy.message || JSON.stringify(eBy))); return; }
+  if (eLog) showToast('⚠️ Bypass diberikan, tetapi jejaknya gagal dicatat di Log Perubahan.', 6000);
   // Pemberian dicatat ke activity_log (pemakaiannya sudah dicatat sejak
   // v4.42) — jejak lengkapnya: siapa memberi, siapa memakai, kapan.
   await logActivity('BYPASS_TUNGGU', `Bypass masa tunggu DIBERIKAN kepada ${memberName}`, memberId);
@@ -7282,11 +7322,12 @@ function susunPesanPengingat({ nama, cicilan, sisa, jatuhTempo, telatHari }) {
 }
 
 async function ingatkanCicilan(loanId) {
+  const jendela = bukaJendelaWA();   // sebelum await — lihat bukaJendelaWA
   const rows = await dbQuery('loans',
     `id=eq.${loanId}&select=*,profiles!loans_member_id_fkey(full_name,phone)&limit=1`);
-  if (rows === null) { showToast('Gagal memuat data. Periksa koneksi lalu coba lagi.'); return; }
+  if (rows === null) { tutupJendelaWA(jendela); showToast('Gagal memuat data. Periksa koneksi lalu coba lagi.'); return; }
   const loan = rows[0];
-  if (!loan) { showToast('Pinjaman tidak ditemukan'); return; }
+  if (!loan) { tutupJendelaWA(jendela); showToast('Pinjaman tidak ditemukan'); return; }
 
   const nama = loan.profiles?.full_name || 'Anggota';
   const due  = loan.next_due_date ? loan.next_due_date.split('T')[0] : null;
@@ -7302,20 +7343,9 @@ async function ingatkanCicilan(loanId) {
     telatHari: telat
   });
 
-  const nomor = normalkanNomorWA(loan.profiles?.phone);
-  if (nomor) {
-    // Membuka WhatsApp dengan percakapan orang yang tepat dan pesan terisi
-    window.open(`https://wa.me/${nomor}?text=${encodeURIComponent(pesan)}`, '_blank');
-    return;
-  }
-
-  // Tanpa nomor, pesannya tetap berguna — tinggal ditempel manual
-  try {
-    await navigator.clipboard.writeText(pesan);
-    showToast(`Nomor WhatsApp ${nama} belum diisi. Pesannya sudah disalin — tempel manual di WhatsApp.`, 7000);
-  } catch(e) {
-    showToast(`Nomor WhatsApp ${nama} belum diisi. Isi lewat menu Anggota agar bisa langsung terkirim.`, 7000);
-  }
+  // Membuka WhatsApp lewat jendela yang sudah dibuka di awal; tanpa nomor,
+  // pesannya disalin ke clipboard — keduanya ditangani bukaWA.
+  bukaWA(loan.profiles?.phone, pesan, nama, jendela);
 }
 
 // Menyusun bukti transaksi simpanan — setoran maupun pencairan.
@@ -8077,10 +8107,10 @@ async function konfirmasiFinalisasiEvent(eventId) {
   const ev = evArr?.[0]; if (!ev) return;
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
   document.getElementById('final-event-preview').innerHTML =
-    '<div style="font-weight:700;font-size:15px;margin-bottom:10px">🎉 ' + ev.judul + '</div>' +
+    '<div style="font-weight:700;font-size:15px;margin-bottom:10px">🎉 ' + escapeHtml(ev.judul) + '</div>' +
     '<div style="color:var(--text2);font-size:12px;margin-bottom:12px">📅 ' + fmtDate(ev.tanggal) + '</div>' +
     '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
-    (items||[]).map(it => '<tr><td style="padding:4px 0">' + it.nama_item + '</td><td style="text-align:right;font-weight:600">' + fmt(it.biaya) + '</td></tr>').join('') +
+    (items||[]).map(it => '<tr><td style="padding:4px 0">' + escapeHtml(it.nama_item) + '</td><td style="text-align:right;font-weight:600">' + fmt(it.biaya) + '</td></tr>').join('') +
     '<tr style="border-top:2px solid var(--border);font-weight:700;color:var(--accent)"><td style="padding-top:8px">TOTAL</td><td style="text-align:right;padding-top:8px">' + fmt(total) + '</td></tr>' +
     '</table>';
   currentEventId = eventId;
@@ -8152,7 +8182,10 @@ async function doFinalEvent() {
 
 async function tandaiSelesaiEvent(eventId) {
   if (!confirm('Tandai event ini sebagai Selesai?')) return;
-  await dbUpdate('events', `id=eq.${eventId}`, { status: 'selesai' });
+  // dbUpdate tidak melempar exception — tanpa pemeriksaan ini, kegagalan
+  // tetap disambut toast "Selesai ✓" padahal statusnya tidak berubah.
+  const { error } = await dbUpdate('events', `id=eq.${eventId}`, { status: 'selesai' });
+  if (error) { showToast('❌ Gagal menandai selesai: ' + (error.message || JSON.stringify(error)), 6000); return; }
   showToast('Event ditandai Selesai ✓');
   showEventDetail(eventId);
 }
@@ -8337,7 +8370,7 @@ async function loadDashboardCharts(savings, memberBalances) {
       : `<div style="width:28px;height:28px;border-radius:50%;background:${colors[i%colors.length]};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;flex-shrink:0">${(x.name[0]||'?').toUpperCase()}</div>`;
     return `<div style="display:flex;align-items:center;gap:8px">
       ${avatarEl}
-      <div style="width:62px;font-size:12px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.name}</div>
+      <div style="width:62px;font-size:12px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(x.name)}</div>
       <div style="flex:1;background:var(--surface2);border-radius:4px;height:16px;overflow:hidden">
         <div style="width:${Math.round((x.saldo/maxSaldo)*100)}%;height:100%;background:${colors[i%colors.length]};border-radius:4px;transition:width .5s"></div>
       </div>

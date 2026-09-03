@@ -943,6 +943,98 @@ tbody tr:hover { background: var(--surface2); }
   th, td { padding: 2.5px 4px !important; }
 }
 .print-header { display: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   v4.63.0 — BERANDA BARU, BILAH BAWAH, LATAR BEROMBAK
+   Pola HP yang sudah akrab bagi keluarga (BCA mobile, GoPay, Dana):
+   kartu utama di atas, kotak tindakan di bawahnya, bilah navigasi di
+   bawah layar. Aturan anti-dobel: bilah bawah = TEMPAT (halaman),
+   kotak = TINDAKAN (kata kerja). Menu samping tetap dipakai di layar lebar.
+   ══════════════════════════════════════════════════════════════ */
+.hero { position: relative; overflow: hidden; border-radius: 22px; padding: 18px 18px 16px; color: #fff;
+  background: linear-gradient(135deg, #2A3568 0%, #3d4a8c 60%, #5563a8 100%);
+  box-shadow: 0 10px 26px rgba(42,53,104,.3); margin-bottom: 14px; }
+.hero-ombak { position: absolute; right: -30px; bottom: -40px; width: 260px; opacity: .16; pointer-events: none; }
+.hero-label { font-size: 12px; opacity: .85; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; position: relative; }
+.hero-nilai { font-family: var(--mono); font-size: 30px; font-weight: 500; margin: 4px 0 12px; position: relative; }
+.hero-bar { height: 7px; border-radius: 99px; background: rgba(255,255,255,.22); overflow: hidden; display: flex; position: relative; }
+.hero-bar > div { height: 100%; background: #fff; transition: width .6s ease; }
+.hero-bar > div.luar { background: #f5b74a; }
+.hero-leg { display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 8px; opacity: .95; position: relative; }
+.hero-leg b { font-family: var(--mono); font-weight: 500; }
+.hero-chips { display: flex; gap: 8px; margin-top: 12px; position: relative; }
+.hero-chip { flex: 1; min-width: 0; background: rgba(255,255,255,.14); border-radius: 12px; padding: 8px 10px; }
+.hero-chip .k { font-size: 10px; opacity: .8; white-space: nowrap; }
+.hero-chip .n { font-family: var(--mono); font-size: 12.5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.perhatian { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; scrollbar-width: none; }
+.perhatian::-webkit-scrollbar { display: none; }
+.perhatian .ph { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; background: var(--amber-bg); border: 1px solid #fde68a;
+  color: var(--amber-text); border-radius: 14px; padding: 8px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.perhatian .ph.hijau { background: var(--green-bg); border-color: #bbf7d0; color: var(--green-text); cursor: default; }
+.perhatian .ph.biru { background: var(--accent-bg); border-color: #d4d9f2; color: var(--accent); }
+
+.dash-sec { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 10px; }
+.dash-sec h3 { font-size: 14px; font-weight: 800; }
+.dash-sec a { font-size: 12px; color: var(--accent); font-weight: 600; cursor: pointer; }
+
+.tindakan { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 6px; margin-bottom: 18px; }
+.tindakan.tiga { grid-template-columns: repeat(3, 1fr); }
+.tile { display: flex; flex-direction: column; align-items: center; gap: 7px; background: none; border: none; cursor: pointer;
+  font-family: var(--font); padding: 0; color: var(--text); }
+.tile-ic { width: 58px; height: 58px; border-radius: 19px; display: flex; align-items: center; justify-content: center; font-size: 25px;
+  background: var(--surface); box-shadow: 0 2px 8px rgba(30,34,56,.08); border: 1px solid var(--border); position: relative; transition: transform .12s; }
+.tile:active .tile-ic { transform: scale(.94); }
+.tile-ic.g { background: var(--green-bg); border-color: #d1fae5; }
+.tile-ic.r { background: var(--red-bg); border-color: #fecaca; }
+.tile-ic.b { background: var(--accent-bg); border-color: #d4d9f2; }
+.tile-ic.a { background: var(--amber-bg); border-color: #fde68a; }
+.tile-ic.p { background: var(--purple-bg); border-color: #e9d5ff; }
+.tile-badge { position: absolute; top: -5px; right: -5px; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; min-width: 18px;
+  height: 18px; border-radius: 9px; display: none; align-items: center; justify-content: center; border: 2px solid var(--bg); padding: 0 4px; }
+.tile-teks { font-size: 11px; font-weight: 600; text-align: center; line-height: 1.2; }
+
+/* sapaan di header HP */
+.hp-sapa { flex: 1; min-width: 0; line-height: 1.2; }
+.hp-hi { font-size: 12px; color: var(--text2); }
+.hp-nama { font-size: 17px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill-peran { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--accent-bg); color: var(--accent); margin-left: 6px; vertical-align: middle; }
+.pill-peran.admin { background: var(--purple-bg); color: var(--purple-text); }
+.hp-lonceng { width: 40px; height: 40px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); display: flex;
+  align-items: center; justify-content: center; position: relative; color: var(--accent); cursor: pointer; padding: 0; flex-shrink: 0; }
+
+/* bilah bawah */
+.nav-bawah { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; background: rgba(255,255,255,.94);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border);
+  padding: 6px 6px calc(10px + env(safe-area-inset-bottom)); }
+.nb { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10.5px; font-weight: 600; color: var(--text3);
+  background: none; border: none; font-family: var(--font); cursor: pointer; padding: 2px 0; }
+.nb .nb-ic { width: 44px; height: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 17px; transition: background .15s; }
+.nb.on { color: var(--accent); }
+.nb.on .nb-ic { background: var(--accent-bg); }
+
+/* latar berombak halus — dua ombak di atas, satu di bawah, semua halaman */
+.main { background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='390' height='200' viewBox='0 0 390 200'%3E%3Cpath d='M-20 120C80 60 160 180 260 120S400 60 420 120V-10H-20z' fill='%232A3568' opacity='.06'/%3E%3Cpath d='M-20 170C90 110 170 230 270 170S400 110 420 170V-10H-20z' fill='%232A3568' opacity='.04'/%3E%3C/svg%3E") no-repeat top center / 100% auto,
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='390' height='90' viewBox='0 0 390 90'%3E%3Cpath d='M-20 30C80-30 160 90 260 30S400-30 420 30V100H-20z' fill='%232A3568' opacity='.05'/%3E%3C/svg%3E") no-repeat bottom center / 100% auto,
+  var(--bg); }
+
+@media (min-width: 769px) {
+  .hero, .tindakan, .perhatian { max-width: 600px; }
+}
+@media (max-width: 768px) {
+  .nav-bawah { display: flex; }
+  .hamburger { display: none; }
+  .mobile-header { background: transparent; border-bottom: none; padding: 14px 16px 4px; position: static; gap: 10px; }
+  .main { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .page { padding-top: 8px; }
+  .dash-desktop-only { display: none; }
+  /* Formulir naik dari bawah sebagai lembar — jempol lebih mudah menjangkau tombolnya */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal { max-width: 100% !important; width: 100%; border-radius: 22px 22px 0 0 !important;
+    padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 88dvh; }
+  .modal::before { content: ''; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto 14px; }
+}
 </style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2A3568">
@@ -1146,97 +1238,102 @@ tbody tr:hover { background: var(--surface2); }
 
   <div class="main">
     <div class="mobile-header">
-      <button class="hamburger" onclick="openSidebar()">
+      <!-- v4.63.0: di HP, bilah bawah menggantikan menu samping — hamburger disembunyikan lewat CSS -->
+      <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:24px;height:24px;background:#2A3568;border-radius:5px;display:flex;align-items:center;justify-content:center">
-          <svg width="14" height="14" viewBox="0 0 48 48" fill="none"><rect x="4" y="16" width="40" height="28" rx="4" stroke="white" stroke-width="3" fill="none"/><path d="M16 16V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4" stroke="white" stroke-width="3" fill="none"/><path d="M30 22l5 5-7 2 2-7z" fill="white"/></svg>
-        </div>
-        <div style="font-size:14px;font-weight:700;color:#2A3568"><span>Koperasi</span><span style="color:#9b9ea6">Keluarga</span></div>
+      <div class="hp-sapa">
+        <div class="hp-hi" id="hp-sapa">Selamat datang 👋</div>
+        <div class="hp-nama"><span id="hp-nama">-</span><span class="pill-peran" id="hp-peran">Anggota</span></div>
       </div>
-      <button onclick="bukaNotifikasi()" style="position:relative;background:none;border:none;cursor:pointer;padding:4px;color:#2A3568" title="Notifikasi">
+      <button class="hp-lonceng" onclick="bukaNotifikasi()" title="Notifikasi" aria-label="Notifikasi">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span id="notif-badge-mobile" style="display:none;position:absolute;top:0;right:0;background:var(--red);color:white;border-radius:9px;min-width:16px;height:16px;font-size:10px;font-weight:700;line-height:16px;text-align:center;padding:0 3px"></span>
       </button>
     </div>
 
+    <!-- v4.63.0: BILAH NAVIGASI BAWAH (hanya HP) -->
+    <nav class="nav-bawah" id="nav-bawah" aria-label="Navigasi utama">
+      <button class="nb on" data-page="dashboard" onclick="showPage('dashboard')"><span class="nb-ic">🏠</span>Beranda</button>
+      <button class="nb" data-page="simpanan" onclick="showPage('simpanan')"><span class="nb-ic">💰</span>Simpanan</button>
+      <button class="nb" data-page="pinjaman" onclick="showPage('pinjaman')"><span class="nb-ic">🏦</span>Pinjaman</button>
+      <button class="nb" data-page="cicilan" onclick="showPage('cicilan')"><span class="nb-ic">📅</span>Cicilan</button>
+      <button class="nb" id="nb-lainnya" onclick="bukaLainnya()"><span class="nb-ic">☰</span>Lainnya</button>
+    </nav>
+    <div class="modal-overlay" id="sheet-lainnya" onclick="if (event.target === this) closeModal('sheet-lainnya')">
+      <div class="modal" style="max-width:420px">
+        <div class="modal-title">Lainnya</div>
+        <div class="modal-sub">Menu yang jarang dibuka</div>
+        <div class="tindakan tiga" style="margin-bottom:4px">
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('anggota')"><div class="tile-ic b">👥</div><span class="tile-teks">Anggota</span></button>
+          <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic">📊</div><span class="tile-teks">Laporan</span></button>
+          <button class="tile" onclick="pilihLainnya('event')"><div class="tile-ic p">🎉</div><span class="tile-teks">Event</span></button>
+          <button class="tile" onclick="closeModal('sheet-lainnya'); bukaPapanPoin()"><div class="tile-ic a">🏆</div><span class="tile-teks">Papan Poin</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('adjustment')"><div class="tile-ic">📒</div><span class="tile-teks">Log Perubahan</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('backup')"><div class="tile-ic">💾</div><span class="tile-teks">Backup</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('pengaturan')"><div class="tile-ic">⚙️</div><span class="tile-teks">Pengaturan</span></button>
+          <button class="tile" onclick="pilihLainnya('profil')"><div class="tile-ic">👤</div><span class="tile-teks">Profil</span></button>
+          <button class="tile" onclick="closeModal('sheet-lainnya'); doLogout(true)"><div class="tile-ic r">🚪</div><span class="tile-teks">Keluar</span></button>
+        </div>
+      </div>
+    </div>
+
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
-      <div class="page-header">
+      <div class="page-header dash-desktop-only">
         <div class="page-title">Dashboard</div>
         <div class="page-sub" id="dashboard-date">-</div>
       </div>
-      <!-- Dashboard Stats -->
-      <div style="margin-bottom:16px">
-        <!-- Card Utama: Total Kas Koperasi -->
-        <div class="card" style="margin-bottom:14px;padding:20px 24px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:4px">Total Kas Koperasi</div>
-              <div class="card-value blue" id="stat-kas" style="font-size:2rem;margin-bottom:14px">-</div>
-              <div style="display:flex;gap:20px;flex-wrap:wrap" class="kas-breakdown">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div style="width:12px;height:12px;border-radius:3px;background:#2563eb;flex-shrink:0"></div>
-                  <span style="font-size:13px;color:var(--text2)">Di dalam koperasi:</span>
-                  <span style="font-size:14px;font-weight:700;color:#2563eb" id="kas-dalam">-</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div style="width:12px;height:12px;border-radius:3px;background:#f59e0b;flex-shrink:0"></div>
-                  <span style="font-size:13px;color:var(--text2)">Sedang dipinjam:</span>
-                  <span style="font-size:14px;font-weight:700;color:#f59e0b" id="kas-luar">-</span>
-                </div>
-              </div>
-            </div>
-            <div style="min-width:200px;flex:1;max-width:320px;padding-top:4px">
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:6px">
-                <span>Komposisi Kas</span>
-                <span id="kas-pct-luar">-</span>
-              </div>
-              <div style="display:flex;border-radius:8px;overflow:hidden;height:14px;background:var(--surface2)">
-                <div id="kas-bar-dalam" style="background:#2563eb;transition:width 0.6s ease;width:100%"></div>
-                <div id="kas-bar-luar" style="background:#f59e0b;transition:width 0.6s ease;width:0%"></div>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:5px">
-                <span>Dalam</span>
-                <span>Dipinjam</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Stats Grid - 2 baris, 2 kolom, fit layar HP -->
-        <div class="stats-grid-2" id="stats-grid">
-          <div class="card stat-card2">
-            <div class="stat2-label">💰 Total Simpanan</div>
-            <div class="stat2-value green" id="stat-simpanan">-</div>
-            <div class="stat2-sub">Saldo tersimpan</div>
-          </div>
-          <div class="card stat-card2">
-            <div class="stat2-label">📈 Keuntungan Bunga</div>
-            <div class="stat2-value green" id="stat-bunga-masuk">-</div>
-            <div class="stat2-sub">Tinggal di kas koperasi</div>
-          </div>
-          <div class="card stat-card2">
-            <div class="stat2-label">👥 Peminjam Aktif</div>
-            <div class="stat2-value amber" id="stat-peminjam-aktif">-</div>
-            <div class="stat2-sub">Sedang meminjam</div>
-          </div>
-          <div class="card stat-card2">
-            <div class="stat2-label">✅ Anggota Aktif</div>
-            <div class="stat2-value" id="stat-anggota">-</div>
-            <div class="stat2-sub">Terdaftar</div>
-          </div>
-        </div>
-        <!-- Hidden stat tunggak (masih dipakai di JS) -->
-        <div style="display:none" id="stat-tunggak">-</div>
-      </div>
-      <div class="card" id="member-dashboard" style="display:none">
-        <div class="section-title">Ringkasan Akun Saya</div>
-        <div class="stats-grid" style="margin-bottom:0">
-          <div><div class="card-title">Saldo Simpanan</div><div class="card-value green" id="my-simpanan">-</div></div>
-          <div><div class="card-title">Pinjaman Aktif</div><div class="card-value amber" id="my-pinjaman">-</div></div>
+
+      <!-- v4.63.0 — KARTU UTAMA ADMIN: kas koperasi -->
+      <div class="hero admin-only" style="display:none" id="hero-admin">
+        <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/><path d="M0 120 C70 70 130 170 200 120 S300 70 300 120 V160 H0Z" fill="#fff" opacity=".6"/></svg>
+        <div class="hero-label">Kas koperasi</div>
+        <div class="hero-nilai" id="stat-kas">-</div>
+        <div class="hero-bar"><div id="kas-bar-dalam" style="width:100%"></div><div id="kas-bar-luar" class="luar" style="width:0%"></div></div>
+        <div class="hero-leg"><span>Di tangan <b id="kas-dalam">-</b></span><span>Dipinjam <b id="kas-luar">-</b> · <span id="kas-pct-luar">-</span></span></div>
+        <div class="hero-chips">
+          <div class="hero-chip"><div class="k">Simpanan</div><div class="n" id="stat-simpanan">-</div></div>
+          <div class="hero-chip"><div class="k">Bunga masuk</div><div class="n" id="stat-bunga-masuk">-</div></div>
+          <div class="hero-chip"><div class="k">Anggota · Peminjam</div><div class="n"><span id="stat-anggota">-</span> · <span id="stat-peminjam-aktif">-</span></div></div>
         </div>
       </div>
+      <div style="display:none" id="stat-tunggak">-</div>
+
+      <!-- KARTU UTAMA ANGGOTA: simpanan saya (id member-dashboard dipakai setRoleUI) -->
+      <div class="hero" id="member-dashboard" style="display:none">
+        <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/><path d="M0 120 C70 70 130 170 200 120 S300 70 300 120 V160 H0Z" fill="#fff" opacity=".6"/></svg>
+        <div class="hero-label">Simpanan saya</div>
+        <div class="hero-nilai" id="my-simpanan">-</div>
+        <div class="hero-chips">
+          <div class="hero-chip"><div class="k">Sisa pinjaman</div><div class="n" id="my-pinjaman">-</div></div>
+          <div class="hero-chip"><div class="k">Cicilan berikut</div><div class="n" id="my-jatuh-tempo">-</div></div>
+          <div class="hero-chip"><div class="k">Poin saya</div><div class="n" id="my-poin">-</div></div>
+        </div>
+      </div>
+
+      <!-- STRIP PERHATIAN: isi lonceng, ditarik ke depan -->
+      <div class="perhatian" id="strip-perhatian" style="display:none"></div>
+
+      <!-- TINDAKAN: kata kerja, bukan halaman (halaman ada di bilah bawah) -->
+      <div class="dash-sec"><h3>Tindakan</h3></div>
+      <div class="tindakan admin-only" style="display:none">
+        <button class="tile" onclick="bukaModalSetor()"><div class="tile-ic g">💰</div><span class="tile-teks">Setor</span></button>
+        <button class="tile" onclick="bukaModalCairkan()"><div class="tile-ic r">💸</div><span class="tile-teks">Cairkan</span></button>
+        <button class="tile" onclick="showPage('cicilan')"><div class="tile-ic b">📅</div><span class="tile-teks">Catat Cicilan</span></button>
+        <button class="tile" onclick="bukaPengajuanMenunggu()"><div class="tile-ic a">📝<span class="tile-badge" id="badge-pengajuan"></span></div><span class="tile-teks">Proses Pengajuan</span></button>
+      </div>
+      <div class="tindakan member-only" style="display:none">
+        <button class="tile" onclick="bukaModalAjukan()"><div class="tile-ic a">🏦</div><span class="tile-teks">Ajukan Pinjaman</span></button>
+        <button class="tile" onclick="bukaBuktiSaya()"><div class="tile-ic b">🧾</div><span class="tile-teks">Bukti Saya</span></button>
+        <button class="tile" onclick="bukaPapanPoin()"><div class="tile-ic p">🏆</div><span class="tile-teks">Papan Poin</span></button>
+        <button class="tile" onclick="hubungiAdminWA()"><div class="tile-ic g">💬</div><span class="tile-teks">Hubungi Admin</span></button>
+      </div>
+
+      <!-- TRANSAKSI TERBARU -->
+      <div class="dash-sec"><h3>Transaksi terbaru</h3><a onclick="showPage('simpanan')">Semua ›</a></div>
+      <div id="recent-transactions" style="margin-bottom:14px"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+
       <!-- Grafik Tren - full width -->
       <div class="card" style="margin-top:14px">
         <div class="section-title">📈 Uang Masuk & Keluar (8 Minggu)</div>
@@ -1296,10 +1393,6 @@ tbody tr:hover { background: var(--surface2); }
         <div id="kalk-empty" style="color:var(--text3);font-size:12px;text-align:center;padding:12px 0">Isi form di atas untuk melihat simulasi</div>
       </div>
 
-      <div class="card" style="margin-top:14px">
-        <div class="section-title">Transaksi Terbaru</div>
-        <div id="recent-transactions"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
-      </div>
     </div>
 
     <!-- SIMPANAN -->
@@ -1429,11 +1522,11 @@ tbody tr:hover { background: var(--surface2); }
       <div class="page-header">
         <div class="page-title">Manajemen Anggota</div>
         <div class="page-sub">Kelola data anggota koperasi</div>
-        <div class="page-actions">
+        <div class="page-actions admin-only" style="display:none">
           <button class="btn btn-primary" onclick="bukaModalTambahAnggota()">+ Tambah Anggota</button>
         </div>
       </div>
-      <div class="card">
+      <div class="card admin-only" style="display:none">
         <div class="filters">
           <input class="filter-input" type="text" id="filter-anggota" placeholder="Cari nama..." oninput="filterAnggota()">
           <select class="filter-input form-select" id="filter-anggota-status" onchange="filterAnggota()">
@@ -1447,9 +1540,9 @@ tbody tr:hover { background: var(--surface2); }
 
       <!-- Tabs: Log Aktivitas & Poin -->
       <div style="display:flex;gap:8px;margin-top:14px;margin-bottom:10px">
-        <button class="tab-btn active" onclick="switchAnggotaTab('log',this)">📋 Log Aktivitas</button>
+        <button class="tab-btn active admin-only" style="display:none" onclick="switchAnggotaTab('log',this)">📋 Log Aktivitas</button>
         <button class="tab-btn" onclick="switchAnggotaTab('poin',this)">⭐ Papan Poin</button>
-        <button class="tab-btn" onclick="switchAnggotaTab('edit',this)">✏️ Log Perubahan</button>
+        <button class="tab-btn admin-only" style="display:none" onclick="switchAnggotaTab('edit',this)">✏️ Log Perubahan</button>
       </div>
 
       <div id="anggota-tab-log" class="card">
@@ -2278,7 +2371,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.62.1';
+const APP_VERSION = 'v4.63.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2579,6 +2672,7 @@ function showPage(name) {
     if (n.getAttribute('onclick')?.includes("'" + name + "'")) n.classList.add('active');
   });
   closeSidebar();
+  sinkronNavBawah(name);
   if (name === 'dashboard') loadDashboard();
   if (name === 'simpanan') loadSimpanan();
   if (name === 'pinjaman') loadPinjaman();
@@ -2760,6 +2854,7 @@ async function initApp(user) {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
   setRoleUI();
+  renderSapaan();
   // Menandai awal sesi supaya batas 1 jam dihitung sejak sekarang
   try { localStorage.setItem(KUNCI_KEGIATAN, String(Date.now())); } catch(e) {}
   resetIdleTimer();
@@ -2865,10 +2960,15 @@ async function loadDashboard() {
   const todayStr = getTodayStr();
   const tunggak = activeLoans.filter(l => l.next_due_date && l.next_due_date.split('T')[0] < todayStr);
 
-  document.getElementById('stat-simpanan').textContent = fmt(totalSimpanan);
+  // Chip di kartu utama sempit (tiga sejajar di layar 375px): tanpa awalan
+  // "Rp " supaya angkanya tidak terpotong. Angka penuh tetap di kartu besar.
+  const fmtChip = (n) => fmt(n).replace(/^Rp\s?/, '');
+  const elSimp = document.getElementById('stat-simpanan');
+  elSimp.textContent = fmtChip(totalSimpanan); elSimp.title = fmt(totalSimpanan);
   document.getElementById('stat-kas').textContent = fmt(totalKas);
-  document.getElementById('stat-bunga-masuk').textContent = fmt(bungaTersedia);
-  document.getElementById('stat-peminjam-aktif').textContent = activeLoans.length + ' orang';
+  const elBunga = document.getElementById('stat-bunga-masuk');
+  elBunga.textContent = fmtChip(bungaTersedia); elBunga.title = fmt(bungaTersedia);
+  document.getElementById('stat-peminjam-aktif').textContent = String(activeLoans.length);
   // Kas dalam vs luar — memakai pokok yang masih tertanam (lihat catatan di atas)
   const kasDiluar = kasDiluarRil;
   const kasDalam  = Math.max(0, kasDalamRil);
@@ -2876,12 +2976,12 @@ async function loadDashboard() {
   document.getElementById('kas-dalam').textContent = fmt(kasDalam);
   document.getElementById('kas-luar').textContent = fmt(kasDiluar);
   const pctLuarEl = document.getElementById('kas-pct-luar');
-  if (pctLuarEl) pctLuarEl.textContent = pctLuar + '% dipinjam';
+  if (pctLuarEl) pctLuarEl.textContent = pctLuar + '%';
   document.getElementById('kas-bar-luar').style.width = pctLuar + '%';
   document.getElementById('kas-bar-dalam').style.width = (100 - pctLuar) + '%';
   document.getElementById('stat-pinjaman') && (document.getElementById('stat-pinjaman').textContent = fmt(kasDiluar));
   document.getElementById('stat-tunggak').textContent = tunggak.length + ' pinjaman';
-  document.getElementById('stat-anggota').textContent = (members || []).length + ' orang';
+  document.getElementById('stat-anggota').textContent = String((members || []).length);
 
   // Load grafik (async, tidak block UI)
   loadDashboardCharts(savings, memberBalances);
@@ -2891,7 +2991,17 @@ async function loadDashboard() {
     const myLoan = activeLoans.find(l => l.member_id === currentUser.id);
     document.getElementById('my-simpanan').textContent = fmt(mySavings);
     document.getElementById('my-pinjaman').textContent = myLoan ? fmt(myLoan.remaining_amount) : 'Tidak ada';
-    // Stat cards (total koperasi) tetap tampil untuk semua user
+    const elTempo = document.getElementById('my-jatuh-tempo');
+    // Tanpa tahun: chipnya sempit, dan jatuh tempo cicilan selalu dekat
+    if (elTempo) elTempo.textContent = myLoan?.next_due_date
+      ? new Date(myLoan.next_due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+      : '—';
+    // Poin dibaca segar dari database — total_points dihitung trigger, bukan aplikasi
+    const elPoin = document.getElementById('my-poin');
+    if (elPoin) {
+      const pr = await dbQuery('profiles', `id=eq.${currentUser.id}&select=total_points&limit=1`);
+      elPoin.textContent = '⭐ ' + (Number(pr?.[0]?.total_points) || 0);
+    }
   }
 
   // Recent transactions — filter by member jika bukan admin
@@ -6728,6 +6838,75 @@ function renderLonceng() {
     el.textContent = n > 9 ? '9+' : String(n);
     el.style.display = n > 0 ? 'block' : 'none';
   });
+  renderStripPerhatian();
+}
+
+// ══════════════════════════════════════════════════════════════
+// v4.63.0 — BERANDA BARU & BILAH BAWAH
+// ══════════════════════════════════════════════════════════════
+function renderSapaan() {
+  const jam = new Date().getHours();
+  const hi = jam < 11 ? 'Selamat pagi' : jam < 15 ? 'Selamat siang' : jam < 18 ? 'Selamat sore' : 'Selamat malam';
+  const nama = String(currentProfile?.full_name || currentUser?.email || '-').split(' ')[0];
+  const s = document.getElementById('hp-sapa'), n = document.getElementById('hp-nama'), p = document.getElementById('hp-peran');
+  if (s) s.textContent = hi + ' 👋';
+  if (n) n.textContent = nama;
+  if (p) { p.textContent = isAdmin() ? 'Admin' : 'Anggota'; p.className = 'pill-peran' + (isAdmin() ? ' admin' : ''); }
+}
+
+// Isi lonceng ditarik ke halaman depan: admin membuka aplikasi langsung
+// melihat apa yang menunggu tanpa mengetuk apa pun. Sumbernya _notifItems
+// (muatNotifikasi), jadi tidak ada logika baru yang bisa menyimpang.
+function renderStripPerhatian() {
+  const el = document.getElementById('strip-perhatian');
+  if (!el) return;
+  const items = _notifItems || [];
+  const badge = document.getElementById('badge-pengajuan');
+  const nAjuan = items.filter(i => String(i.kunci).startsWith('ajuan-')).length;
+  if (badge) { badge.textContent = nAjuan > 9 ? '9+' : String(nAjuan); badge.style.display = nAjuan ? 'flex' : 'none'; }
+  if (!items.length) {
+    el.innerHTML = isAdmin() ? '<div class="ph hijau">✅ Semua beres — tidak ada yang menunggu</div>' : '';
+    el.style.display = isAdmin() ? 'flex' : 'none';
+    return;
+  }
+  el.innerHTML = items.slice(0, 4).map((i, idx) =>
+    `<div class="ph ${i.ikon === '⏳' ? 'biru' : ''}" onclick="bukaNotifItem(${idx})">${i.ikon} ${escapeHtml(i.judul)}</div>`
+  ).join('');
+  el.style.display = 'flex';
+}
+
+function sinkronNavBawah(name) {
+  document.querySelectorAll('#nav-bawah .nb[data-page]').forEach(b => b.classList.toggle('on', b.dataset.page === name));
+  const lain = document.getElementById('nb-lainnya');
+  if (lain) lain.classList.toggle('on', !['dashboard', 'simpanan', 'pinjaman', 'cicilan'].includes(name));
+}
+function bukaLainnya() { openModal('sheet-lainnya'); }
+function pilihLainnya(name) { closeModal('sheet-lainnya'); showPage(name); }
+
+// Kotak "Proses Pengajuan": langsung ke tab Menunggu, bukan sekadar halaman Pinjaman
+function bukaPengajuanMenunggu() {
+  showPage('pinjaman');
+  const btn = Array.from(document.querySelectorAll('#page-pinjaman .tab-btn'))
+    .find(b => (b.getAttribute('onclick') || '').includes("'pending'"));
+  if (btn) switchPinjamanTab('pending', btn);
+}
+// Papan Poin hidup di halaman Anggota; bagian admin halaman itu ber-kelas admin-only
+function bukaPapanPoin() {
+  showPage('anggota');
+  const btn = Array.from(document.querySelectorAll('#page-anggota .tab-btn'))
+    .find(b => (b.getAttribute('onclick') || '').includes("'poin'"));
+  switchAnggotaTab('poin', btn);
+}
+function bukaBuktiSaya() {
+  showPage('simpanan');
+  setTimeout(() => document.getElementById('simpanan-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+}
+async function hubungiAdminWA() {
+  const jendela = bukaJendelaWA();   // sebelum await — lihat bukaJendelaWA
+  const admins = await dbQuery('profiles', 'role=eq.admin&status=eq.active&select=full_name,phone&order=full_name.asc');
+  const adm = (admins || []).find(a => normalkanNomorWA(a.phone)) || (admins || [])[0] || {};
+  const pesan = `Assalamualaikum 🙏\n\nSaya ${currentProfile?.full_name || 'anggota'} dari Koperasi Keluarga. Mau bertanya: `;
+  bukaWA(adm.phone, pesan, adm.full_name || 'Admin', jendela);
 }
 
 function bukaNotifikasi() {

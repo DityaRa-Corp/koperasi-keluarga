@@ -2482,7 +2482,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.66.0';
+const APP_VERSION = 'v4.67.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3788,7 +3788,7 @@ async function updateSimulasiCicilan() {
   document.getElementById('sim-total-bunga').textContent = fmt(totalBunga);
   document.getElementById('sim-total').textContent = fmt(totalTagihan);
   document.getElementById('sim-cicilan').textContent = fmt(cicilanPerPeriod);
-  const lunas = new Date(); lunas.setMonth(lunas.getMonth() + Math.ceil(months));
+  const lunas = tambahBulan(new Date(), Math.ceil(months));
   const elLunas = document.getElementById('sim-lunas');
   if (elLunas) elLunas.textContent = lunas.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
   document.getElementById('simulasi-cicilan').style.display = 'block';
@@ -3849,22 +3849,26 @@ async function doAjukanPinjaman() {
   // `pending` HARUS ikut ditahan. Tanpa itu pengajuan bisa ditumpuk tanpa
   // batas, lalu admin menyetujuinya satu per satu dan anggota memegang
   // beberapa pinjaman aktif sekaligus — persis yang ditemukan pada UAT.
-  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=in.(pending,active,menunggu_konfirmasi)&select=id,status&limit=1`);
+  //
+  // Rule 2 (tunggakan) menyatu di sini. Dulu ia berdiri sendiri sebagai kueri
+  // kedua `status=eq.active & next_due_date < hari ini` — dan tidak pernah
+  // sekali pun berjalan: setiap pinjaman menunggak PASTI berstatus `active`,
+  // jadi Rule 1 sudah memulangkan pemanggilnya beberapa baris di atas. Yang
+  // hilang karenanya bukan penjagaannya, melainkan pesannya: anggota yang
+  // menunggak diberi tahu "masih ada pinjaman aktif", padahal yang perlu ia
+  // dengar adalah cicilannya telat. Sekarang statusnya diperiksa sekali,
+  // pesannya dipilih dari baris yang sama.
+  const activeLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=in.(pending,active,menunggu_konfirmasi)&select=id,status,next_due_date&limit=1`);
   if (activeLoans && activeLoans.length > 0) {
-    const st = activeLoans[0].status;
-    showToast(st === 'menunggu_konfirmasi'
+    const l = activeLoans[0];
+    const menunggak = l.status === 'active' && l.next_due_date && l.next_due_date < getTodayStr();
+    showToast(l.status === 'menunggu_konfirmasi'
       ? '❌ Masih ada pengajuan yang menunggu persetujuan syarat. Setujui atau tolak dulu.'
-      : st === 'pending'
+      : l.status === 'pending'
         ? '❌ Masih ada pengajuan yang belum diproses admin. Tunggu diproses, atau minta admin menolaknya dulu.'
-        : '❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas', 6000);
-    return;
-  }
-
-  // Rule 2: Tidak bisa pinjam jika ada tunggakan (overdue)
-  const todayForQuery = getTodayStr();
-  const overdueLoans = await dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&next_due_date=lt.${todayForQuery}&select=id&limit=1`);
-  if (overdueLoans && overdueLoans.length > 0) {
-    showToast('❌ Tidak bisa mengajukan — masih ada cicilan yang menunggak');
+        : menunggak
+          ? '❌ Tidak bisa mengajukan — masih ada cicilan yang menunggak'
+          : '❌ Tidak bisa mengajukan — masih ada pinjaman aktif yang belum lunas', 6000);
     return;
   }
 
@@ -3893,8 +3897,7 @@ async function doAjukanPinjaman() {
         const lastPayments = await dbQuery('loan_payments', `loan_id=eq.${lastLoan[0].id}&select=created_at&is_reversed=is.false&order=created_at.desc&limit=1`);
         if (lastPayments && lastPayments.length > 0) {
           const lastPayDate = new Date(lastPayments[0].created_at);
-          const oneMonthLater = new Date(lastPayDate);
-          oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+          const oneMonthLater = tambahBulan(lastPayDate, 1);
           if (new Date() < oneMonthLater) {
             const waitUntil = oneMonthLater.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
             showToast('❌ Masa tunggu 1 bulan setelah pinjaman lunas. Bisa mengajukan lagi mulai ' + waitUntil);
@@ -3968,25 +3971,35 @@ async function doAjukanPinjaman() {
   document.getElementById('simulasi-cicilan').style.display = 'none';
 }
 
+// Menambah bulan tanpa meluap di akhir bulan.
+//
+// setMonth() polos meluap: 31 Jan + 1 bulan menjadi 3 Maret, karena
+// "31 Februari" dinormalkan maju — Februari terlewati seluruhnya. Karena itu
+// tanggalnya dijepit ke hari terakhir bulan tujuan: 31 Jan → 28/29 Feb.
+// Sekali terjepit ke 28, hitungan berikutnya tetap 28 — konvensi yang sama
+// dipakai perbankan, dan lebih baik dapat tanggal yang konsisten daripada
+// yang meleset.
+//
+// Dulu logika ini hanya ada di dalam getNextDueDate, sehingga masa tunggu
+// dan simulasi tanggal lunas masih memakai setMonth polos dan meleset 1–3
+// hari setiap kali titik awalnya jatuh di tanggal 29–31.
+function tambahBulan(tanggal, jumlah = 1) {
+  const d = new Date(tanggal);
+  const hari = d.getDate();
+  d.setDate(1);                       // ke tanggal aman dulu, baru pindah bulan
+  d.setMonth(d.getMonth() + jumlah);
+  const akhirBulan = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(hari, akhirBulan));
+  return d;
+}
+
 function getNextDueDate(type, fromDate) {
   // fromDate = next_due_date sebelumnya, bukan tanggal bayar
   // Kalau fromDate tidak ada, pakai hari ini (fallback)
-  const d = fromDate ? new Date(fromDate) : new Date();
+  let d = fromDate ? new Date(fromDate) : new Date();
   if (type === 'weekly') d.setDate(d.getDate() + 7);
   else if (type === 'biweekly') d.setDate(d.getDate() + 14);
-  else {
-    // setMonth() polos meluap di akhir bulan: 31 Jan + 1 bulan menjadi
-    // 3 Maret karena "31 Februari" dinormalkan maju — Februari terlewati
-    // seluruhnya. Karena itu tanggalnya dijepit ke hari terakhir bulan
-    // tujuan: 31 Jan → 28/29 Feb. Sekali terjepit ke 28, jatuh tempo
-    // berikutnya tetap 28 — konvensi yang sama dipakai perbankan, dan
-    // lebih baik dapat tanggal yang konsisten daripada yang meleset.
-    const hari = d.getDate();
-    d.setDate(1);                       // ke tanggal aman dulu, baru pindah bulan
-    d.setMonth(d.getMonth() + 1);
-    const akhirBulan = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    d.setDate(Math.min(hari, akhirBulan));
-  }
+  else d = tambahBulan(d, 1);
 // Gunakan local date components untuk hindari UTC timezone shift
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');

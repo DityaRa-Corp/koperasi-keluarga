@@ -2482,7 +2482,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.65.1';
+const APP_VERSION = 'v4.66.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2984,7 +2984,11 @@ async function initApp(user) {
 
 // MEMBERS
 async function loadAllMembers() {
-  const data = await dbQuery('profiles', 'order=full_name.asc&select=*');
+  // Daftar anggota hanya dibutuhkan admin (dropdown setor/cairkan/ajukan dan
+  // pencarian nama). Anggota biasa cukup mengenal dirinya sendiri — dan sejak
+  // v4.66.0 memang hanya itu yang boleh dibacanya.
+  const q = isAdmin() ? 'order=full_name.asc&select=*' : `id=eq.${currentUser.id}&select=*`;
+  const data = await dbQuery('profiles', q);
   allMembers = data || [];
   populateMemberSelects();
 }
@@ -3022,54 +3026,41 @@ function populateMemberSelects() {
 async function loadDashboard() {
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  const [savings, loans, members, allPayments, orgExpenses, pendapatanLain] = await Promise.all([
-    dbQuery('savings', 'select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc'),
-    dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected'),
-    dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active'),
-    dbQuery('loan_payments', 'select=interest_component&is_reversed=is.false'),
-    dbQuery('org_expenses', 'select=amount,category'),
-    dbQuery('pendapatan_lain', 'select=amount')
+  // v4.66.0 — baris transaksi hanya diambil sebatas hak orang yang masuk;
+  // angka SELURUH koperasi datang dari ringkasan (RPC), bukan dari membaca
+  // semua tabel. Inilah yang memungkinkan policy dipersempit (T2).
+  const admin = isAdmin();
+  const punyaSaya = admin ? '' : `&member_id=eq.${currentUser.id}`;
+  const [savings, loans, profiles, R] = await Promise.all([
+    dbQuery('savings', `select=type,amount,balance_after,member_id,created_at,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name,avatar_url)&order=created_at.desc${punyaSaya}`),
+    dbQuery('loans', `select=*,profiles!loans_member_id_fkey(full_name)&status=neq.rejected${punyaSaya}`),
+    admin ? dbQuery('profiles', 'select=id,full_name,avatar_url&status=eq.active') : Promise.resolve([]),
+    ringkasanKoperasi()
   ]);
-  // Alias profiles untuk dipakai di transaksi terbaru
-  const profiles = members;
 
-  // Calculate balances per member
+  // Saldo per anggota — untuk admin berisi semua orang (dipakai grafik
+  // "Simpanan per Anggota"), untuk anggota hanya dirinya sendiri.
   const memberBalances = {};
   (savings || []).forEach(s => {
     if (!memberBalances[s.member_id]) memberBalances[s.member_id] = 0;
     memberBalances[s.member_id] += s.type === 'deposit' ? Number(s.amount) : -Number(s.amount);
   });
-  const totalSimpanan = Object.values(memberBalances).reduce((a, b) => Number(a) + Number(b), 0);
-  const totalBungaMasuk = (allPayments || []).reduce((a, p) => a + Number(p.interest_component || 0), 0);
-  // Pengeluaran kas organisasi (biaya event) mengurangi kas koperasi.
-  // Nilainya TIDAK memotong simpanan anggota mana pun.
-  const totalOrgExpense = (orgExpenses || []).reduce((a, e) => a + Number(e.amount || 0), 0);
-  // Pemasukan lain (denda keterlambatan) juga menambah kas koperasi
-  const totalLain = (pendapatanLain || []).reduce((a, p) => a + Number(p.amount || 0), 0);
-  const totalKas = totalSimpanan + totalBungaMasuk + totalLain - totalOrgExpense;
 
-  // Untuk kartu "Keuntungan Bunga": yang ditampilkan adalah keuntungan yang
-  // MASIH ADA, yaitu bunga masuk dikurangi yang sudah dibagikan ke anggota
-  // yang mencairkan simpanan. totalKas di atas tetap memakai bunga bruto
-  // karena pengurangannya sudah diwakili oleh totalOrgExpense.
-  const bungaSudahDibagi = (orgExpenses || [])
-    .filter(e => e.category === 'profit_share')
-    .reduce((a, e) => a + Number(e.amount || 0), 0);
-  const bungaTersedia = Math.max(0, totalBungaMasuk - bungaSudahDibagi);
+  const totalSimpanan  = Number(R?.total_simpanan  ?? 0);
+  const totalKas       = Number(R?.total_aset      ?? 0);
+  const bungaTersedia  = Number(R?.bunga_tersedia  ?? 0);
+  const jumlahAnggota  = Number(R?.anggota_aktif   ?? 0);
+  const jumlahPeminjam = Number(R?.peminjam_aktif  ?? 0);
+  const jumlahTunggak  = Number(R?.tunggakan       ?? 0);
   const activeLoans = (loans || []).filter(l => l.status === 'active');
-  const totalPinjaman = activeLoans.reduce((a, l) => a + l.remaining_amount, 0);
 
   // Rincian "Di dalam koperasi" vs "Sedang dipinjam" memakai POKOK yang
   // masih tertanam, bukan remaining_amount. remaining_amount berisi pokok
   // tersisa DITAMBAH bunga yang belum dibayar, dan bunga yang belum
   // diterima bukan uang yang keluar dari kas — memakainya membuat uang
   // di tangan tampak lebih kecil dari kenyataan.
-  const kasInfo      = await hitungKasTersedia();
-  const kasDiluarRil = kasInfo ? kasInfo.piutangPokok : totalPinjaman;
-  const kasDalamRil  = kasInfo ? kasInfo.tersedia     : Math.max(0, totalKas - totalPinjaman);
-  const now = new Date();
-  const todayStr = getTodayStr();
-  const tunggak = activeLoans.filter(l => l.next_due_date && l.next_due_date.split('T')[0] < todayStr);
+  const kasDiluarRil = Number(R?.piutang_pokok ?? 0);
+  const kasDalamRil  = Number(R?.kas_tersedia  ?? 0);
 
   // Chip di kartu utama sempit (tiga sejajar di layar 375px): tanpa awalan
   // "Rp " supaya angkanya tidak terpotong. Angka penuh tetap di kartu besar.
@@ -3079,7 +3070,7 @@ async function loadDashboard() {
   document.getElementById('stat-kas').textContent = fmt(totalKas);
   const elBunga = document.getElementById('stat-bunga-masuk');
   elBunga.textContent = fmtChip(bungaTersedia); elBunga.title = fmt(bungaTersedia);
-  document.getElementById('stat-peminjam-aktif').textContent = String(activeLoans.length);
+  document.getElementById('stat-peminjam-aktif').textContent = String(jumlahPeminjam);
   // Kas dalam vs luar — memakai pokok yang masih tertanam (lihat catatan di atas)
   const kasDiluar = kasDiluarRil;
   const kasDalam  = Math.max(0, kasDalamRil);
@@ -3091,8 +3082,8 @@ async function loadDashboard() {
   document.getElementById('kas-bar-luar').style.width = pctLuar + '%';
   document.getElementById('kas-bar-dalam').style.width = (100 - pctLuar) + '%';
   document.getElementById('stat-pinjaman') && (document.getElementById('stat-pinjaman').textContent = fmt(kasDiluar));
-  document.getElementById('stat-tunggak').textContent = tunggak.length + ' pinjaman';
-  document.getElementById('stat-anggota').textContent = String((members || []).length);
+  document.getElementById('stat-tunggak').textContent = jumlahTunggak + ' pinjaman';
+  document.getElementById('stat-anggota').textContent = String(jumlahAnggota);
 
   // Load grafik (async, tidak block UI)
   loadDashboardCharts(savings, memberBalances);
@@ -3116,12 +3107,12 @@ async function loadDashboard() {
   }
 
   // Recent transactions — filter by member jika bukan admin
-  const recentFilter = isAdmin() ? '' : `&member_id=eq.${currentUser.id}`;
+  const recentFilter = punyaSaya;
   // Baris yang sudah dikoreksi beserta pembatalannya tidak ditampilkan di sini.
   // Tanpa penyaringan ini, satu koreksi setoran memunculkan tiga baris sekaligus
   // — salah satunya nominal yang justru sudah dibatalkan.
   const savingsTampil = (savings || []).filter(isBarisSimpananEfektif);
-  const recent = isAdmin() ? savingsTampil.slice(0, 8) : savingsTampil.filter(s => s.member_id === currentUser.id).slice(0, 8);
+  const recent = savingsTampil.slice(0, 8);
   const recentPayments = await dbQuery('loan_payments', `select=*,profiles!loan_payments_member_id_fkey(full_name,avatar_url)&is_reversed=is.false&order=created_at.desc&limit=5${recentFilter}`);
   const combined = [
     ...(recent || []).map(s => ({ ...s, kind: 'saving' })),
@@ -3133,6 +3124,9 @@ async function loadDashboard() {
   // Buat avatar map dari profiles yang sudah di-fetch
   const avatarMap = {};
   (profiles || []).forEach(p => { avatarMap[p.id] = { avatar_url: p.avatar_url, full_name: p.full_name }; });
+  // Anggota tidak lagi membaca daftar profil; namanya diambil dari embedded
+  // join pada barisnya sendiri (t.profiles), yang tetap terbaca oleh RLS.
+  if (!admin && currentProfile) avatarMap[currentUser.id] = { avatar_url: currentProfile.avatar_url, full_name: currentProfile.full_name };
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th></th><th>Tanggal</th><th>Anggota</th><th>Jenis</th><th>Jumlah</th></tr></thead>
     <tbody>${combined.map(t => {
@@ -4438,7 +4432,7 @@ async function beriTahuAdmin() {
   const jendela = bukaJendelaWA();   // sebelum await — lihat bukaJendelaWA
   const [rows, admins] = await Promise.all([
     dbQuery('loans', `id=eq.${currentLoanId}&select=principal,installment_count,installment_type&limit=1`),
-    dbQuery('profiles', 'role=eq.admin&status=eq.active&select=full_name,phone&order=full_name.asc')
+    dbRpc('kontak_admin').then(r => r.data)
   ]);
   const l = rows?.[0];
   if (!l) { tutupJendelaWA(jendela); showToast('Pinjaman tidak ditemukan'); return; }
@@ -5866,6 +5860,16 @@ function fmtShort(n) {
 // ANGGOTA
 let _anggotaPinjaman = {};   // member_id → status pinjaman berjalan (untuk badge di daftar)
 async function loadAnggota() {
+  // Anggota membuka halaman ini hanya untuk Papan Poin (bukaPapanPoin).
+  // Daftar anggota, badge pinjaman, dan log adalah milik admin — dan sejak
+  // v4.66.0 anggota memang tidak lagi bisa membacanya.
+  if (!isAdmin()) {
+    const judul = document.getElementById('anggota-judul');
+    const sub   = document.getElementById('anggota-sub');
+    if (judul) judul.textContent = 'Papan Poin';
+    if (sub)   sub.textContent   = 'Peringkat poin anggota koperasi';
+    return;
+  }
   const [data, pinj] = await Promise.all([
     dbQuery('profiles', 'select=*&order=full_name.asc'),
     dbQuery('loans', 'select=member_id,status&status=in.(active,pending,menunggu_konfirmasi)')
@@ -6489,11 +6493,11 @@ async function hitungPlafonPinjaman(memberId) {
   }
 
   if (p.mode === 'persen_kas') {
-    const savings = await dbQuery('savings', 'select=type,amount');
-    if (savings === null) return null;
-    const totalSimpanan = savings.reduce((a, s) =>
-      a + (s.type === 'deposit' ? Number(s.amount || 0) : -Number(s.amount || 0)), 0);
-    return Math.floor(totalSimpanan * nilai / 100);
+    // Total simpanan koperasi dari ringkasan — anggota tidak perlu (dan sejak
+    // v4.66.0 tidak boleh) membaca seluruh baris simpanan untuk menghitungnya.
+    const r = await ringkasanKoperasi();
+    if (!r) return null;
+    return Math.floor(Number(r.total_simpanan) * nilai / 100);
   }
   return null;
 }
@@ -7253,7 +7257,7 @@ function bukaBuktiSaya() {
 }
 async function hubungiAdminWA() {
   const jendela = bukaJendelaWA();   // sebelum await — lihat bukaJendelaWA
-  const admins = await dbQuery('profiles', 'role=eq.admin&status=eq.active&select=full_name,phone&order=full_name.asc');
+  const { data: admins } = await dbRpc('kontak_admin');
   const adm = (admins || []).find(a => normalkanNomorWA(a.phone)) || (admins || [])[0] || {};
   const pesan = `Assalamualaikum 🙏\n\nSaya ${currentProfile?.full_name || 'anggota'} dari Koperasi Keluarga. Mau bertanya: `;
   bukaWA(adm.phone, pesan, adm.full_name || 'Admin', jendela);
@@ -7514,28 +7518,30 @@ async function bypassMasaTunggu(memberId, memberName) {
 // karena isinya pokok tersisa DITAMBAH bunga yang belum dibayar —
 // bunga yang belum diterima bukan uang yang keluar dari kas.
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// KAS — dihitung DATABASE lewat RPC ringkasan_koperasi (v4.66.0)
+//
+// Sebelumnya angka ini dirakit di peramban dengan membaca SELURUH isi lima
+// tabel. Itu memaksa policy SELECT terbuka untuk semua yang login — anggota
+// bisa membaca transaksi tetangganya lewat API meski layarnya menyaring.
+// Sekarang yang berpindah hanya RINGKASANNYA, sehingga policy bisa
+// dipersempit ke "milik sendiri" tanpa merusak Beranda.
+//
+// Rumus di dalam RPC SAMA PERSIS dengan yang dulu ada di sini. Kalau salah
+// satu diubah, ubah keduanya — lihat .claude/sql/9A-rpc-ringkasan.sql.
+async function ringkasanKoperasi() {
+  const { data, error } = await dbRpc('ringkasan_koperasi');
+  if (error || !data) return null;
+  return data;
+}
+
 async function hitungKasTersedia() {
-  const [savings, loans, payments, orgExp, lain] = await Promise.all([
-    dbQuery('savings',         'select=type,amount'),
-    dbQuery('loans',           'select=principal&disbursed_at=not.is.null'),
-    dbQuery('loan_payments',   'select=principal_component,interest_component&is_reversed=is.false'),
-    dbQuery('org_expenses',    'select=amount'),
-    dbQuery('pendapatan_lain', 'select=amount')
-  ]);
-  if ([savings, loans, payments, orgExp, lain].some(x => x === null)) return null;
-
-  const simpananNeto = savings.reduce((a, s) =>
-    a + (s.type === 'deposit' ? Number(s.amount || 0) : -Number(s.amount || 0)), 0);
-  const pokokCair    = loans.reduce((a, l) => a + Number(l.principal || 0), 0);
-  const pokokKembali = payments.reduce((a, p) => a + Number(p.principal_component || 0), 0);
-  const bungaTerima  = payments.reduce((a, p) => a + Number(p.interest_component  || 0), 0);
-  const pengeluaran  = orgExp.reduce((a, e) => a + Number(e.amount || 0), 0);
-  const lainTerima   = lain.reduce((a, p) => a + Number(p.amount || 0), 0);
-
+  const r = await ringkasanKoperasi();
+  if (!r) return null;
   return {
-    tersedia:     simpananNeto - pokokCair + pokokKembali + bungaTerima + lainTerima - pengeluaran,
-    piutangPokok: pokokCair - pokokKembali,
-    totalAset:    simpananNeto + bungaTerima + lainTerima - pengeluaran
+    tersedia:     Number(r.kas_tersedia),
+    piutangPokok: Number(r.piutang_pokok),
+    totalAset:    Number(r.total_aset)
   };
 }
 
@@ -8842,25 +8848,16 @@ async function loadDashboardCharts(savings, memberBalances) {
     return Math.floor((t - mingguMulai[0]) / (7 * 86400000));
   };
 
+  // v4.66.0 — angka mingguan datang dari RPC tren_kas_mingguan, bukan dari
+  // membaca seluruh tabel di peramban. Minggu & batas hari dihitung dengan
+  // WIB di sisi database, sama dengan deret mingguMulai di atas.
   const masuk  = new Array(8).fill(0);
   const keluar = new Array(8).fill(0);
-  const tambah = (arr, waktu, nilai) => { const i = keMinggu(waktu); if (i >= 0 && i < 8) arr[i] += Number(nilai) || 0; };
-
-  // Arah uang dilihat dari KAS KOPERASI, sama seperti di daftar transaksi.
-  (savings || []).filter(isBarisSimpananEfektif).forEach(x =>
-    tambah(x.type === 'deposit' ? masuk : keluar, x.created_at, x.amount));
-
-  const sejak = mingguMulai[0].toISOString();
-  const [bayar, cair, lain, keluarKas] = await Promise.all([
-    dbQuery('loan_payments', `select=amount_paid,created_at&is_reversed=is.false&created_at=gte.${sejak}`),
-    dbQuery('loans', `select=principal,disbursed_at&status=in.(active,completed)&disbursed_at=gte.${sejak}`),
-    dbQuery('pendapatan_lain', `select=amount,created_at&created_at=gte.${sejak}`),
-    dbQuery('org_expenses', `select=amount,created_at&created_at=gte.${sejak}`)
-  ]);
-  (bayar || []).forEach(x => tambah(masuk, x.created_at, x.amount_paid));
-  (lain  || []).forEach(x => tambah(masuk, x.created_at, x.amount));
-  (cair  || []).forEach(x => x.disbursed_at && tambah(keluar, x.disbursed_at, x.principal));
-  (keluarKas || []).forEach(x => tambah(keluar, x.created_at, x.amount));
+  const { data: tren } = await dbRpc('tren_kas_mingguan');
+  (tren || []).forEach(t => {
+    const i = keMinggu(t.mulai + 'T00:00:00');
+    if (i >= 0 && i < 8) { masuk[i] = Number(t.masuk) || 0; keluar[i] = Number(t.keluar) || 0; }
+  });
 
   const elTren = document.getElementById('chart-tren');
   if (!elTren) return;
@@ -9132,7 +9129,9 @@ async function loadPoinData() {
   const elHist = document.getElementById('poin-history');
   if (!elLb) return;
 
-  const profiles = await dbQuery('profiles', 'select=id,full_name,total_points,avatar_url&status=eq.active&order=total_points.desc');
+  // v4.66.0 — RPC papan_poin: hanya nama, foto, dan poin. Tabel profiles
+  // memuat nomor telepon dan username yang tidak perlu dilihat anggota lain.
+  const { data: profiles } = await dbRpc('papan_poin');
   const medals = ['🥇','🥈','🥉'];
 
   if (!profiles || !profiles.length) {

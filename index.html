@@ -2482,7 +2482,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.65.0';
+const APP_VERSION = 'v4.65.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5437,7 +5437,15 @@ async function renderRingkasanLaporan() {
 
 async function switchLaporanTab(tab, btn) {
   currentLaporanTab = tab;
-  document.querySelectorAll('#page-laporan .tab-btn').forEach(b => b.classList.remove('active'));
+  // Selektor WAJIB mengecualikan chip rentang: keduanya memakai kelas
+  // .tab-btn di halaman yang sama, sehingga menghapus 'active' tanpa batas
+  // ikut memadamkan tanda periode yang sedang dipilih — dan karena
+  // setLaporanRange memanggil loadLaporan (yang memanggil fungsi ini),
+  // tandanya hilang tepat setelah dipasang. Kesalahan sekeluarga dengan
+  // BUG-05 dulu: querySelector tak berbatas pada kelas yang dipakai bersama.
+  document.querySelectorAll('#page-laporan .tab-btn').forEach(b => {
+    if (!b.closest('#laporan-chip-rentang')) b.classList.remove('active');
+  });
   if (btn) btn.classList.add('active');
   const el = document.getElementById('laporan-content');
   el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat...</div>';
@@ -5872,6 +5880,10 @@ async function loadAnggota() {
   if (judul) judul.textContent = isAdmin() ? 'Anggota' : 'Papan Poin';
   filterAnggota();
   loadAnggotaEditLog();
+  // Tab "Log Aktivitas" aktif secara bawaan bagi admin, tetapi isinya hanya
+  // dimuat oleh switchAnggotaTab — yang baru berjalan kalau tabnya diketuk.
+  // Tanpa panggilan ini, tab itu menampilkan "Memuat..." selamanya.
+  if (isAdmin()) loadActivityLog();
 }
 
 // HP: satu baris per anggota; semua aksi admin dibuka lewat lembar dari

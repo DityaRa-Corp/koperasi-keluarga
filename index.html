@@ -1035,6 +1035,55 @@ tbody tr:hover { background: var(--surface2); }
     padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 88dvh; }
   .modal::before { content: ''; display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto 14px; }
 }
+
+/* ══ v4.64.0 — Simpanan · Pinjaman · Cicilan gaya v5 ══ */
+.hero.kecil { padding: 14px 16px; }
+.hero.kecil .hero-nilai { font-size: 24px; margin-bottom: 6px; }
+.btn-baris { display: flex; gap: 8px; margin-bottom: 14px; }
+.btn-baris .btn { flex: 1; justify-content: center; padding: 11px; font-weight: 700; border-radius: 14px; }
+.cari { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 12px; margin-bottom: 12px; }
+.cari input { flex: 1; border: none; background: none; font-family: var(--font); font-size: 14px; color: var(--text); outline: none; min-width: 0; }
+.daftar-ringkas { padding: 0; }
+.baris-anggota { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.baris-anggota:last-child { border-bottom: 0; }
+.baris-anggota.redup { opacity: .55; }
+.baris-anggota .m { flex: 1; min-width: 0; }
+.baris-anggota .n { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.baris-anggota .j { font-size: 11.5px; color: var(--text2); margin-top: 1px; }
+.baris-anggota .amt { font-family: var(--mono); font-size: 13.5px; font-weight: 500; }
+.baris-anggota .amt.nol { color: var(--text3); }
+.tabs-chip { overflow-x: auto; scrollbar-width: none; }
+.tabs-chip::-webkit-scrollbar { display: none; }
+.tabs-chip .tab-btn { white-space: nowrap; border-radius: 99px; }
+.tab-btn .hit { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--surface2); color: var(--text2); font-size: 10.5px; line-height: 18px; text-align: center; }
+.tab-btn .hit:empty { display: none; }
+.tab-btn.active .hit { background: rgba(255,255,255,.25); color: #fff; }
+.kartu-pinjaman { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.05); cursor: pointer; }
+.kartu-pinjaman.menunggu { border-color: #fde68a; background: #fffdf5; }
+.kartu-pinjaman.telat { border-color: #fecaca; }
+.kp-kepala { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.kp-kepala .m { flex: 1; min-width: 0; }
+.kp-kepala .n { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kp-kepala .j { font-size: 11.5px; color: var(--text2); margin-top: 1px; }
+.kp-badge { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+.prog { height: 8px; border-radius: 99px; background: var(--surface2); overflow: hidden; margin: 6px 0 8px; }
+.prog i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .5s; }
+.kv { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; }
+.kv .k { color: var(--text3); font-size: 11px; margin-bottom: 2px; }
+.kv .v { font-weight: 700; font-family: var(--mono); }
+.kv .v.amber { color: var(--amber); } .kv .v.merah { color: var(--red); } .kv .v.biru { color: var(--accent); }
+.tombol-cepat { display: flex; gap: 6px; margin-top: 8px; }
+.tombol-cepat button { flex: 1; font-family: var(--font); font-size: 12px; font-weight: 600; padding: 7px 4px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--accent); cursor: pointer; }
+.tombol-cepat button:active { background: var(--accent-bg); }
+.pratinjau { background: var(--surface2); border-radius: 12px; padding: 10px 12px; font-size: 12px; margin-bottom: 12px; line-height: 1.6; }
+.pratinjau b { display: block; margin-bottom: 2px; }
+.pratinjau .mono { font-family: var(--mono); font-weight: 500; }
+.info-lembut { font-size: 12px; color: var(--text2); background: var(--accent-bg); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; }
+@media (max-width: 768px) {
+  /* Kartu pembungkus daftar dilepas di HP: kartu di dalam kartu terlihat berlapis */
+  .kartu-polos-hp { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+  .kartu-polos-hp > .section-title { position: static !important; margin: 0 0 10px !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: none !important; font-size: 14px; font-weight: 800; }
+}
 </style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2A3568">
@@ -1397,18 +1446,24 @@ tbody tr:hover { background: var(--surface2); }
 
     <!-- SIMPANAN -->
     <div class="page" id="page-simpanan">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:14px">
         <div class="page-title">Simpanan</div>
-        <div class="page-sub">Kelola setoran dan penarikan simpanan anggota</div>
-        <div class="page-actions">
-          <button class="btn btn-success admin-only" style="display:none" onclick="bukaModalSetor()">+ Setor</button>
-          <button class="btn btn-danger admin-only" style="display:none" onclick="bukaModalCairkan()">💸 Cairkan Simpanan</button>
-        </div>
+        <div class="page-sub" id="simpanan-sub">Kelola setoran dan penarikan simpanan anggota</div>
       </div>
-      <div class="card" style="margin-bottom:14px">
-        <div class="section-title">Saldo per Anggota</div>
-        <div id="simpanan-saldo"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+      <!-- v4.64.0 — kartu ringkas + tindakan halaman -->
+      <div class="hero kecil" id="hero-simpanan">
+        <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/></svg>
+        <div class="hero-label" id="simpanan-total-label">Total simpanan</div>
+        <div class="hero-nilai" id="simpanan-total">-</div>
+        <div class="hero-leg"><span>Setor bulan ini <b id="simpanan-setor-bulan">-</b></span><span>Tarik bulan ini <b id="simpanan-tarik-bulan">-</b></span></div>
       </div>
+      <div class="btn-baris admin-only" style="display:none">
+        <button class="btn btn-success" onclick="bukaModalSetor()">💰 Setor</button>
+        <button class="btn btn-danger" onclick="bukaModalCairkan()">💸 Cairkan</button>
+      </div>
+      <div class="cari admin-only" style="display:none"><span>🔍</span><input type="text" id="cari-simpanan" placeholder="Cari anggota…" oninput="renderSaldoSimpanan()"></div>
+      <div class="dash-sec"><h3 id="simpanan-saldo-judul">Saldo per anggota</h3></div>
+      <div id="simpanan-saldo" style="margin-bottom:16px"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       <div class="card">
         <div class="section-title">Riwayat Transaksi Simpanan</div>
         <div class="filters">
@@ -1423,33 +1478,33 @@ tbody tr:hover { background: var(--surface2); }
 
     <!-- PINJAMAN -->
     <div class="page" id="page-pinjaman">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:14px">
         <div class="page-title">Pinjaman</div>
-        <div class="page-sub">Kelola pengajuan dan pencairan pinjaman</div>
-        <div class="page-actions">
-          <button class="btn btn-accent member-only" style="display:none" onclick="bukaModalAjukan()">+ Ajukan Pinjaman</button>
-          <button class="btn btn-accent admin-only" style="display:none" onclick="bukaModalAjukan()">+ Buat Pinjaman</button>
-        </div>
+        <div class="page-sub" id="pinjaman-sub">Kelola pengajuan dan pencairan pinjaman</div>
       </div>
-      <div class="tabs">
-        <button class="tab-btn active" onclick="switchPinjamanTab('aktif', this)">Aktif</button>
-        <button class="tab-btn" onclick="switchPinjamanTab('pending', this)">Menunggu</button>
-        <button class="tab-btn" onclick="switchPinjamanTab('lunas', this)">Lunas</button>
+      <div class="btn-baris">
+        <button class="btn btn-accent member-only" style="display:none" onclick="bukaModalAjukan()">🏦 Ajukan Pinjaman</button>
+        <button class="btn btn-accent admin-only" style="display:none" onclick="bukaModalAjukan()">➕ Buat Pinjaman</button>
+      </div>
+      <div class="tabs tabs-chip">
+        <button class="tab-btn active" onclick="switchPinjamanTab('aktif', this)">Aktif <span class="hit" id="hit-aktif"></span></button>
+        <button class="tab-btn" onclick="switchPinjamanTab('pending', this)">Menunggu <span class="hit" id="hit-pending"></span></button>
+        <button class="tab-btn" onclick="switchPinjamanTab('lunas', this)">Lunas <span class="hit" id="hit-lunas"></span></button>
         <button class="tab-btn" onclick="switchPinjamanTab('semua', this)">Semua</button>
       </div>
-      <div class="card">
+      <div class="card kartu-polos-hp" id="pinjaman-card">
         <div class="table-wrap"><div id="pinjaman-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
     </div>
 
     <!-- CICILAN -->
     <div class="page" id="page-cicilan">
-      <div class="page-header">
-        <div class="page-title">Cicilan</div>
-        <div class="page-sub">Catat pembayaran cicilan pinjaman</div>
+      <div class="page-header" style="margin-bottom:14px">
+        <div class="page-title" id="cicilan-judul">Cicilan</div>
+        <div class="page-sub" id="cicilan-sub">Catat pembayaran cicilan pinjaman</div>
       </div>
-      <div class="card" style="margin-bottom:14px" id="tunggak-card">
-        <div class="section-title">⚡ Cicilan Aktif</div>
+      <div class="card kartu-polos-hp" style="margin-bottom:14px" id="tunggak-card">
+        <div class="section-title" id="cicilan-aktif-judul">⚡ Jatuh tempo terdekat</div>
         <div id="cicilan-tunggak"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div class="card">
@@ -1832,12 +1887,19 @@ tbody tr:hover { background: var(--surface2); }
     <div class="modal-sub">Catat setoran masuk dari anggota</div>
     <div class="form-group">
       <label class="form-label">Anggota</label>
-      <select class="form-input form-select" id="setor-member"></select>
+      <select class="form-input form-select" id="setor-member" onchange="siapkanSetor()"></select>
     </div>
     <div class="form-group">
       <label class="form-label">Jumlah Setoran (Rp)</label>
-      <input class="form-input" type="number" id="setor-amount" placeholder="Contoh: 500000" min="1000">
+      <input class="form-input" type="number" id="setor-amount" placeholder="Contoh: 500000" min="1000" oninput="previewSetor()">
+      <div class="tombol-cepat">
+        <button type="button" onclick="isiSetor(100000)">100rb</button>
+        <button type="button" onclick="isiSetor(250000)">250rb</button>
+        <button type="button" onclick="isiSetor(500000)">500rb</button>
+        <button type="button" onclick="isiSetor(1000000)">1jt</button>
+      </div>
     </div>
+    <div class="pratinjau" id="setor-preview" style="display:none"></div>
     <div class="form-group">
       <label class="form-label">Keterangan (opsional)</label>
       <input class="form-input" type="text" id="setor-note" placeholder="Misal: Simpanan bulan Juni">
@@ -1969,6 +2031,7 @@ tbody tr:hover { background: var(--surface2); }
       <label class="form-label">Anggota</label>
       <select class="form-input form-select" id="ajukan-member"></select>
     </div>
+    <div id="ajukan-saldo-info" class="member-only" style="display:none;font-size:12px;color:var(--text2);margin:-6px 0 12px"></div>
     <div id="ajukan-plafon-info" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
     <div class="form-group">
       <label class="form-label">Pokok Pinjaman (Rp)</label>
@@ -1993,8 +2056,10 @@ tbody tr:hover { background: var(--surface2); }
         <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Total Bunga</div><div id="sim-total-bunga" style="font-weight:600">-</div></div>
         <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Total Tagihan</div><div id="sim-total" style="font-weight:600">-</div></div>
         <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Cicilan/periode</div><div id="sim-cicilan" style="font-weight:700;color:var(--accent)">-</div></div>
+        <div><div style="color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Lunas kira-kira</div><div id="sim-lunas" style="font-weight:600">-</div></div>
       </div>
     </div>
+    <div class="member-only" style="display:none;font-size:11px;color:var(--text2);margin-bottom:12px">Admin bisa mengubah syarat. Kalau berubah, Anda diminta menyetujui dulu sebelum uang cair.</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-ajukan')">Batal</button>
       <button class="btn btn-accent" onclick="doAjukanPinjaman()">Ajukan Pinjaman</button>
@@ -2148,6 +2213,11 @@ tbody tr:hover { background: var(--surface2); }
     <div class="form-group">
       <label class="form-label">Jumlah Dibayar (Rp)</label>
       <input class="form-input" type="number" id="cicilan-amount" placeholder="Nominal pembayaran" min="1" oninput="previewCicilan()">
+      <div class="tombol-cepat">
+        <button type="button" onclick="isiCicilan(1)">1 cicilan</button>
+        <button type="button" onclick="isiCicilan(2)">2 cicilan</button>
+        <button type="button" onclick="isiCicilan('lunas')">Lunasi</button>
+      </div>
     </div>
     <div id="cicilan-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
     <div id="cicilan-denda-box" style="display:none;background:var(--amber-bg);border-left:4px solid var(--amber);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px">
@@ -2336,6 +2406,7 @@ tbody tr:hover { background: var(--surface2); }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
       <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
+      <button class="btn btn-success admin-only" style="display:none" id="btn-catat-dari-detail" onclick="closeModal('modal-detail-pinjaman'); openCatatCicilan(currentLoanId)">📅 Catat Cicilan</button>
       <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="openTolakForm()">Tolak</button>
       <button class="btn btn-ghost admin-only" style="display:none" id="btn-tanda-terima" onclick="cetakTandaTerimaPinjaman()" title="Cetak tanda terima saat uang diserahkan">🧾 Tanda Terima</button>
       <button class="btn btn-ghost" style="display:none" id="btn-wa-konfirmasi" onclick="ingatkanKonfirmasi()" title="Kirim pengingat lewat WhatsApp">💬 Ingatkan lewat WA</button>
@@ -2371,7 +2442,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.63.0';
+const APP_VERSION = 'v4.64.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3047,13 +3118,39 @@ async function loadDashboard() {
 }
 
 // SIMPANAN
+let _simpananBaris = [];
+// Daftar saldo ditampilkan sebagai baris ringkas (foto · nama · jumlah
+// transaksi · saldo), bukan tabel — pola yang sama dengan riwayat transaksi.
+function renderSaldoSimpanan() {
+  const el = document.getElementById('simpanan-saldo');
+  if (!el) return;
+  const q = (document.getElementById('cari-simpanan')?.value || '').trim().toLowerCase();
+  const rows = _simpananBaris.filter(r => !q || r.name.toLowerCase().includes(q));
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">' + (q ? 'Tidak ada yang cocok' : 'Belum ada anggota') + '</div></div>'; return; }
+  el.innerHTML = '<div class="card daftar-ringkas">' + rows.map(r => {
+    const saldo = r.deposit - r.withdraw;
+    const nonaktif = r.status && r.status !== 'active';
+    const av = r.avatar
+      ? `<img class="tx-foto" src="${escapeHtml(r.avatar)}" alt="">`
+      : `<div class="tx-foto tx-foto-huruf">${escapeHtml((r.name[0] || '?').toUpperCase())}</div>`;
+    const sub = r.n
+      ? `${r.n} transaksi · terakhir ${r.terakhir ? new Date(r.terakhir).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '-'}`
+      : 'belum menabung';
+    return `<div class="baris-anggota${nonaktif && saldo === 0 ? ' redup' : ''}">
+      ${av}
+      <div class="m"><div class="n">${escapeHtml(r.name)}${nonaktif ? ' <span class="badge badge-gray">Nonaktif</span>' : ''}${r.admin ? ' <span class="badge badge-purple">Admin</span>' : ''}</div><div class="j">${sub}</div></div>
+      <div class="amt${saldo > 0 ? '' : ' nol'}">${fmt(saldo)}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
 async function loadSimpanan() {
-  let savQ = 'select=member_id,type,amount,is_reversed,corrects_id,is_pembatalan';
+  let savQ = 'select=member_id,type,amount,is_reversed,corrects_id,is_pembatalan,created_at';
   // Anggota nonaktif ikut diambil. Menyaringnya membuat bekas anggota yang
   // simpanannya belum dicairkan muncul sebagai baris "Unknown" — padahal
   // justru merekalah kewajiban yang paling perlu terlihat. Lihat juga
   // perbaikan yang sama pada berkas Excel (v4.40.0).
-  let memQ = 'select=id,full_name,avatar_url,status&order=full_name.asc';
+  let memQ = 'select=id,full_name,avatar_url,status,role&order=full_name.asc';
   if (!isAdmin()) {
     savQ += `&member_id=eq.${currentUser.id}`;
     memQ += `&id=eq.${currentUser.id}`;
@@ -3065,41 +3162,32 @@ async function loadSimpanan() {
   const memberMap = {};
   (members || []).forEach(m => memberMap[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status });
   const balances = {};
-  (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status, deposit: 0, withdraw: 0 });
+  (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status, admin: m.role === 'admin', deposit: 0, withdraw: 0, n: 0, terakhir: null });
+  // Batas bulan berjalan (WIB) untuk keterangan "setor/tarik bulan ini"
+  const kini = new Date(); const bulanIni = kini.getFullYear() + '-' + String(kini.getMonth() + 1).padStart(2, '0');
+  let setorBulan = 0, tarikBulan = 0;
   (savings || []).forEach(s => {
     if (!isBarisSimpananEfektif(s)) return;   // abaikan setoran terkoreksi & pembatalannya
-    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Anggota terhapus', avatar: null, status: null, deposit: 0, withdraw: 0 };
-    if (s.type === 'deposit') balances[s.member_id].deposit += Number(s.amount);
-    else balances[s.member_id].withdraw += Number(s.amount);
+    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Anggota terhapus', avatar: null, status: null, admin: false, deposit: 0, withdraw: 0, n: 0, terakhir: null };
+    const b = balances[s.member_id];
+    if (s.type === 'deposit') b.deposit += Number(s.amount); else b.withdraw += Number(s.amount);
+    b.n++;
+    if (!b.terakhir || s.created_at > b.terakhir) b.terakhir = s.created_at;
+    const t = new Date(s.created_at); const bulanTx = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0');
+    if (bulanTx === bulanIni) { if (s.type === 'deposit') setorBulan += Number(s.amount); else tarikBulan += Number(s.amount); }
   });
-  const rows = Object.values(balances);
-  const el = document.getElementById('simpanan-saldo');
-  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada anggota</div></div>'; }
-  else {
-    el.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>No</th><th></th><th>Nama Anggota</th><th>Total Setor</th><th>Total Tarik</th><th>Saldo</th></tr></thead>
-      <tbody>${rows.map((r, i) => {
-        const saldo = r.deposit - r.withdraw;
-        const avatarEl = r.avatar
-          ? `<img src="${escapeHtml(r.avatar)}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
-          : `<div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px">${(r.name[0]||'?').toUpperCase()}</div>`;
-        // Bekas anggota yang saldonya masih tersisa perlu menonjol: itu
-        // kewajiban yang belum diselesaikan, bukan sekadar baris riwayat.
-        const nonaktif = r.status && r.status !== 'active';
-        const tanda = nonaktif
-          ? ` <span class="badge badge-gray" title="Sudah tidak aktif">Nonaktif</span>`
-          : '';
-        return `<tr${nonaktif && saldo === 0 ? ' style="opacity:0.55"' : ''}>
-          <td>${i+1}</td>
-          <td style="padding:6px 4px;width:36px">${avatarEl}</td>
-          <td>${escapeHtml(r.name)}${tanda}</td>
-          <td class="td-mono">${fmt(r.deposit)}</td>
-          <td class="td-mono">${fmt(r.withdraw)}</td>
-          <td class="td-mono" style="font-weight:700;color:${saldo > 0 ? 'var(--green)' : 'var(--text3)'}">${fmt(saldo)}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>`;
-  }
+  // Bekas anggota yang saldonya masih tersisa perlu menonjol: itu kewajiban
+  // yang belum diselesaikan — diurutkan ikut saldo, bukan disembunyikan.
+  _simpananBaris = Object.values(balances).sort((a, b) => (b.deposit - b.withdraw) - (a.deposit - a.withdraw) || a.name.localeCompare(b.name));
+  const total = _simpananBaris.reduce((a, r) => a + r.deposit - r.withdraw, 0);
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('simpanan-total', fmt(total));
+  set('simpanan-total-label', isAdmin() ? 'Total simpanan koperasi' : 'Simpanan saya');
+  set('simpanan-setor-bulan', fmt(setorBulan).replace(/^Rp\s?/, '+'));
+  set('simpanan-tarik-bulan', fmt(tarikBulan).replace(/^Rp\s?/, '−'));
+  set('simpanan-sub', isAdmin() ? `${_simpananBaris.length} anggota · ${_simpananBaris.filter(r => r.deposit - r.withdraw > 0).length} bersaldo` : 'Saldo dan riwayat simpanan Anda');
+  set('simpanan-saldo-judul', isAdmin() ? 'Saldo per anggota' : 'Saldo saya');
+  renderSaldoSimpanan();
   await loadSimpananHistory();
 }
 
@@ -3550,43 +3638,62 @@ async function loadPinjaman() {
   const statusMap = { aktif: 'active', pending: 'pending', lunas: 'completed' };
   if (currentPinjamanTab === 'pending') qParams += '&status=in.(pending,menunggu_konfirmasi)';
   else if (currentPinjamanTab !== 'semua') qParams += `&status=eq.${statusMap[currentPinjamanTab] || currentPinjamanTab}`;
+  // Hitungan per tab & keterangan judul — satu query ringan, tak tergantung tab
+  let hitQ = 'select=status,remaining_amount';
+  if (!isAdmin()) hitQ += `&member_id=eq.${currentUser.id}`;
+  dbQuery('loans', hitQ).then(semua => {
+    if (!semua) return;
+    const n = st => semua.filter(l => st.includes(l.status)).length;
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v || ''; };
+    set('hit-aktif', n(['active'])); set('hit-pending', n(['pending', 'menunggu_konfirmasi'])); set('hit-lunas', n(['completed']));
+    const sisa = semua.filter(l => l.status === 'active').reduce((a, l) => a + Number(l.remaining_amount || 0), 0);
+    set('pinjaman-sub', `${n(['active'])} aktif · ${n(['pending', 'menunggu_konfirmasi'])} menunggu · ${fmt(sisa)} sisa tagihan`);
+  });
   const data = await dbQuery('loans', qParams);
   const el = document.getElementById('pinjaman-list');
   if (!(data || []).length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada pinjaman</div></div>'; return; }
   const isMobilePinjaman = window.innerWidth <= 768;
   if (isMobilePinjaman) {
-    // Mobile: card layout
+    // HP: kartu pinjaman — kepala (foto, nama, ringkasan), badge, batang
+    // kemajuan, dua angka yang paling ditunggu, lalu tombol yang relevan
+    // dengan statusnya. Pengajuan yang menunggu bisa diproses langsung dari
+    // kartunya (admin), tanpa masuk ke detail dulu.
     el.innerHTML = data.map(l => {
       const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
       const todayStr2 = getTodayStr();
       const overdue = l.next_due_date && l.next_due_date.split('T')[0] < todayStr2 && l.status === 'active';
       const overdueLvl = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
+      const punyaSaya = l.member_id === currentUser.id;
       const statusBadges = {
         active: `<span class="badge ${overdue ? 'badge-red' : 'badge-blue'}">${overdue ? 'Menunggak' : 'Aktif'}</span>${overdueLvl}`,
         pending: '<span class="badge badge-amber">Menunggu</span>',
-        menunggu_konfirmasi: '<span class="badge badge-purple">Menunggu Persetujuan Anda</span>',
+        menunggu_konfirmasi: `<span class="badge badge-purple">${punyaSaya ? 'Perlu persetujuan Anda' : 'Menunggu persetujuan'}</span>`,
         completed: '<span class="badge badge-green">Lunas</span>',
         rejected: '<span class="badge badge-gray">Ditolak</span>'
       };
-      const typeLabel = { weekly: 'Mingguan', biweekly: '2 Mingguan', monthly: 'Bulanan' };
-      const pctColor = pct >= 100 ? 'var(--green)' : pct > 50 ? 'var(--accent)' : 'var(--amber)';
-      return `<div class="card" style="margin-bottom:10px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-          <div style="font-weight:700;font-size:15px">${escapeHtml(l.profiles?.full_name || '-')}</div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">${statusBadges[l.status] || ''}</div>
+      const typeLabel = { weekly: 'mingguan', biweekly: '2 mingguan', monthly: 'bulanan' };
+      const nama = l.profiles?.full_name || '-';
+      const ke = Math.min((l.paid_count || 0) + 1, l.installment_count);
+      let aksi = '';
+      if (isAdmin() && l.status === 'pending') {
+        aksi = `<div class="btn-baris" style="margin:12px 0 0"><button class="btn btn-danger" onclick="event.stopPropagation();currentLoanId='${l.id}';openTolakForm()">Tolak</button><button class="btn btn-success" style="flex:2" onclick="event.stopPropagation();currentLoanId='${l.id}';openApproveForm()">Setujui & Cairkan</button></div>`;
+      } else if (l.status === 'menunggu_konfirmasi' && punyaSaya) {
+        aksi = `<div class="btn-baris" style="margin:12px 0 0"><button class="btn btn-accent" onclick="event.stopPropagation();showDetailPinjaman('${l.id}')">Lihat & Setujui Syarat</button></div>`;
+      } else if (isAdmin() && l.status === 'active') {
+        aksi = `<div class="btn-baris" style="margin:12px 0 0"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ingatkanCicilan('${l.id}')">💬 Ingatkan</button><button class="btn btn-success btn-sm" style="flex:2" onclick="event.stopPropagation();openCatatCicilan('${l.id}')">📅 Catat Cicilan</button></div>`;
+      }
+      const kv = l.status === 'active' || l.status === 'completed'
+        ? `<div class="kv"><div><div class="k">Sisa tagihan</div><div class="v amber">${fmt(l.remaining_amount)}</div></div><div><div class="k">${l.status === 'completed' ? 'Total dibayar' : 'Jatuh tempo'}</div><div class="v${overdue ? ' merah' : ''}">${l.status === 'completed' ? fmt(l.amount_paid) : (l.next_due_date ? new Date(l.next_due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '—') + ' · ke-' + ke + '/' + l.installment_count}</div></div></div>`
+        : `<div class="kv"><div><div class="k">Total tagihan</div><div class="v">${fmt(l.total_amount)}</div></div><div><div class="k">Cicilan/periode</div><div class="v">${fmt(l.installment_amount)}</div></div></div>`;
+      return `<div class="kartu-pinjaman${l.status === 'pending' ? ' menunggu' : ''}" onclick="showDetailPinjaman('${l.id}')">
+        <div class="kp-kepala">
+          <div class="tx-foto tx-foto-huruf">${escapeHtml((nama[0] || '?').toUpperCase())}</div>
+          <div class="m"><div class="n">${escapeHtml(nama)}</div><div class="j">${fmt(l.principal)} · ${l.installment_count}× ${typeLabel[l.installment_type] || ''}${l.status === 'pending' ? ' · diajukan ' + fmtDate(l.created_at) : ''}</div></div>
+          <div class="kp-badge">${statusBadges[l.status] || ''}</div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:10px">
-          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Pokok Pinjaman</div><div style="font-weight:600">${fmt(l.principal)}</div></div>
-          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Total Tagihan</div><div style="font-weight:600">${fmt(l.total_amount)}</div></div>
-          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Sisa Tagihan</div><div style="font-weight:600;color:var(--amber)">${fmt(l.remaining_amount)}</div></div>
-          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Cicilan/${typeLabel[l.installment_type]||'Periode'}</div><div style="font-weight:600">${fmt(l.installment_amount)}</div></div>
-          ${l.next_due_date ? `<div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Jatuh Tempo</div><div style="font-weight:600;color:${overdue?'var(--red)':'var(--text2)'}">${fmtDate(l.next_due_date)}</div></div>` : ''}
-          <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Progress</div><div style="font-weight:600;color:${pctColor}">${pct}% lunas</div></div>
-        </div>
-        <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;margin-bottom:10px">
-          <div style="width:${pct}%;height:100%;background:${pctColor};border-radius:4px;transition:width .5s"></div>
-        </div>
-        <button class="btn btn-ghost btn-sm aksi-kartu-tunggal" onclick="showDetailPinjaman('${l.id}')">Lihat Detail</button>
+        ${l.status === 'active' || l.status === 'completed' ? `<div class="prog"><i style="width:${pct}%${pct >= 100 ? ';background:var(--green)' : ''}"></i></div>` : ''}
+        ${kv}
+        ${aksi}
       </div>`;
     }).join('');
   } else {
@@ -3647,6 +3754,9 @@ async function updateSimulasiCicilan() {
   document.getElementById('sim-total-bunga').textContent = fmt(totalBunga);
   document.getElementById('sim-total').textContent = fmt(totalTagihan);
   document.getElementById('sim-cicilan').textContent = fmt(cicilanPerPeriod);
+  const lunas = new Date(); lunas.setMonth(lunas.getMonth() + Math.ceil(months));
+  const elLunas = document.getElementById('sim-lunas');
+  if (elLunas) elLunas.textContent = lunas.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
   document.getElementById('simulasi-cicilan').style.display = 'block';
 }
 
@@ -3654,6 +3764,14 @@ async function updateSimulasiCicilan() {
 // tidak baru ketahuan ditolak setelah semuanya diisi.
 async function bukaModalAjukan() {
   openModal('modal-ajukan');
+  // Anggota melihat simpanannya di sini — syarat pertama pengajuan (≥ Rp 100.000)
+  const infoSaldo = document.getElementById('ajukan-saldo-info');
+  if (infoSaldo && !isAdmin()) {
+    infoSaldo.textContent = 'Memuat simpanan…';
+    getMemberBalance(currentUser.id).then(saldo => {
+      infoSaldo.innerHTML = `Simpanan Anda <b>${fmt(saldo)}</b> · ${saldo >= 100000 ? 'syarat simpanan terpenuhi ✅' : 'belum mencapai Rp 100.000 ⚠️'}`;
+    });
+  }
   const info = document.getElementById('ajukan-plafon-info');
   if (!info) return;
   info.style.display = 'none';
@@ -3900,6 +4018,8 @@ async function showDetailPinjaman(loanId) {
   if (isAdmin()) {
     btnApprove.style.display = loan.status === 'pending' ? '' : 'none';
     btnReject.style.display = loan.status === 'pending' ? '' : 'none';
+    const bCatat = document.getElementById('btn-catat-dari-detail');
+    if (bCatat) bCatat.style.display = loan.status === 'active' ? '' : 'none';
   }
 
   // ── Konfirmasi syarat oleh anggota yang bersangkutan ──
@@ -4374,41 +4494,76 @@ async function loadCicilan() {
   const sevenDaysStr = (() => { const d = new Date(new Date().getTime() + 7*24*60*60*1000); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
   const upcoming = activeLoans || []; // Tampilkan SEMUA pinjaman aktif
   const el = document.getElementById('cicilan-tunggak');
-  if (!upcoming.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan aktif</div><div class="empty-state-sub">Semua pinjaman sudah lunas</div></div>'; }
+  const menunggak = upcoming.filter(l => l.next_due_date && l.next_due_date.split('T')[0] < todayStr3).length;
+  const setT = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  if (isAdmin()) {
+    setT('cicilan-judul', 'Cicilan');
+    setT('cicilan-sub', `${upcoming.length} pinjaman berjalan · ${menunggak} menunggak`);
+    setT('cicilan-aktif-judul', '⚡ Jatuh tempo terdekat');
+  } else {
+    setT('cicilan-judul', 'Cicilan saya');
+    setT('cicilan-sub', upcoming.length ? `Pinjaman ${fmt(upcoming[0].principal)} · ${upcoming[0].installment_count}× ${({ weekly: 'mingguan', biweekly: '2 mingguan', monthly: 'bulanan' })[upcoming[0].installment_type] || ''}` : 'Tidak ada pinjaman berjalan');
+    setT('cicilan-aktif-judul', 'Pinjaman berjalan');
+  }
+  // Selisih hari dari hari ini (WIB) — positif = masih ada waktu, negatif = telat
+  const selisihHari = (dueStr) => Math.round((new Date(dueStr) - new Date(todayStr3)) / 86400000);
+  if (!upcoming.length) {
+    el.innerHTML = isAdmin()
+      ? '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan aktif</div><div class="empty-state-sub">Semua pinjaman sudah lunas</div></div>'
+      : '<div class="empty-state"><div class="empty-state-title">Tidak ada pinjaman berjalan</div><div class="empty-state-sub">Butuh pinjaman? Ajukan lewat halaman Pinjaman.</div><button class="btn btn-accent" style="margin-top:12px" onclick="bukaModalAjukan()">🏦 Ajukan Pinjaman</button></div>';
+  }
+  else if (!isAdmin()) {
+    // ANGGOTA: satu pinjaman berjalan — kartu ringkas cicilan berikutnya,
+    // "perjalanan pinjaman" (batang + pil per periode), dan petunjuk cara bayar.
+    el.innerHTML = upcoming.map(l => {
+      const dueStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
+      const d = dueStr ? selisihHari(dueStr) : null;
+      const ket = d === null ? '' : d < 0 ? `Telat ${-d} hari` : d === 0 ? 'Hari ini' : `${d} hari lagi`;
+      const nominal = nominalCicilanPeriodeIni(l);
+      const pct = l.total_amount ? Math.round((l.amount_paid / l.total_amount) * 100) : 0;
+      const pil = Array.from({ length: l.installment_count }, (_, i) =>
+        `<span class="badge ${i < (l.paid_count || 0) ? 'badge-green' : 'badge-gray'}">${i < (l.paid_count || 0) ? '✓ ' : ''}ke-${i + 1}</span>`).join('');
+      return `<div class="hero kecil">
+          <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/></svg>
+          <div class="hero-label">Cicilan berikutnya</div>
+          <div class="hero-nilai">${fmt(nominal)}</div>
+          <div class="hero-leg"><span>Jatuh tempo <b>${fmtDate(l.next_due_date)}</b></span><span${d !== null && d < 0 ? ' style="color:#fcd34d;font-weight:700"' : ''}>${ket}</span></div>
+        </div>
+        <div class="card" style="padding:14px;margin-bottom:12px">
+          <div style="font-weight:700;margin-bottom:6px">Perjalanan pinjaman</div>
+          <div class="prog"><i style="width:${pct}%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2)"><span>Terbayar ${fmt(l.amount_paid)}</span><span>Sisa ${fmt(l.remaining_amount)}</span></div>
+          <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">${pil}</div>
+        </div>
+        <div class="info-lembut">💡 Bayar ke admin saat kumpulan. Setelah dicatat, kwitansinya muncul di riwayat di bawah dan bisa dibagikan ke WhatsApp.</div>`;
+    }).join('');
+  }
   else {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
-      // Mobile: card layout
+      // ADMIN di HP: kartu per pinjaman, diurutkan jatuh tempo terdekat —
+      // badge hari, dua angka (cicilan & jatuh tempo), tombol Ingatkan + Catat Bayar.
       el.innerHTML = upcoming.map(l => {
-        const dueDateStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
-        const overdue  = dueDateStr && dueDateStr < todayStr3;
-        const todayDue = dueDateStr && dueDateStr === todayStr3;
-        const statusBadge = overdue
-          ? '<span class="badge badge-red">Menunggak</span>'
-          : todayDue ? '<span class="badge badge-amber">Jatuh Tempo Hari Ini</span>'
-          : '<span class="badge badge-blue">Aktif</span>';
-        const overdueLvlBadge = isAdmin() ? renderOverdueBadge(l.next_due_date, l.status) : '';
-        // Tombol aksi utama kartu: disandingkan dalam satu baris dan dibuat
-        // setinggi 42px. Sebelumnya "Catat Bayar" hanya 24px dan tombol
-        // pengingat menggantung sendiri di bawahnya sebagai ikon tanpa
-        // keterangan — terbaca seperti elemen nyasar di layar sentuh.
-        const catatBtn = isAdmin() ? `<div class="aksi-kartu">
-          <button class="btn btn-success btn-sm utama" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>
-          <button class="btn btn-ghost btn-sm" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')">💬 Ingatkan</button>
-        </div>` : '';
-        const dueDateColor = overdue ? 'var(--red)' : todayDue ? 'var(--amber)' : 'var(--text2)';
-        return `<div class="card" style="margin-bottom:10px;padding:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
-            <div style="font-weight:700;font-size:15px">${escapeHtml(l.profiles?.full_name)}</div>
-            <div style="display:flex;gap:4px;flex-wrap:wrap">${statusBadge}${overdueLvlBadge}</div>
+        const dueStr = l.next_due_date ? l.next_due_date.split('T')[0] : null;
+        const d = dueStr ? selisihHari(dueStr) : null;
+        const overdue = d !== null && d < 0, todayDue = d === 0;
+        const badge = overdue ? `<span class="badge badge-red">Telat ${-d} hari</span>`
+          : todayDue ? '<span class="badge badge-amber">Hari ini</span>'
+          : d !== null ? `<span class="badge badge-blue">${d} hari lagi</span>` : '';
+        const overdueLvlBadge = renderOverdueBadge(l.next_due_date, l.status);
+        const nama = l.profiles?.full_name || '-';
+        const ke = Math.min((l.paid_count || 0) + 1, l.installment_count);
+        return `<div class="kartu-pinjaman${overdue ? ' telat' : ''}">
+          <div class="kp-kepala">
+            <div class="tx-foto tx-foto-huruf">${escapeHtml((nama[0] || '?').toUpperCase())}</div>
+            <div class="m"><div class="n">${escapeHtml(nama)}</div><div class="j">Cicilan ke-${ke} dari ${l.installment_count} · sisa ${fmt(l.remaining_amount)}</div></div>
+            <div class="kp-badge">${badge}${overdueLvlBadge}</div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px">
-            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Cicilan/Periode</div><div style="font-weight:600">${fmt(l.installment_amount)}</div></div>
-            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Sisa Tagihan</div><div style="font-weight:600;color:var(--accent)">${fmt(l.remaining_amount)}</div></div>
-            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Jatuh Tempo</div><div style="font-weight:600;color:${dueDateColor}">${fmtDate(l.next_due_date)}</div></div>
-            <div><div style="color:var(--text3);font-size:11px;margin-bottom:2px">Cicilan ke-</div><div style="font-weight:600">${Math.min(l.paid_count+1, l.installment_count)} / ${l.installment_count}</div></div>
+          <div class="kv"><div><div class="k">Cicilan</div><div class="v biru">${fmt(nominalCicilanPeriodeIni(l))}</div></div><div><div class="k">Jatuh tempo</div><div class="v${overdue ? ' merah' : ''}">${fmtDate(l.next_due_date)}</div></div></div>
+          <div class="btn-baris" style="margin:12px 0 0">
+            <button class="btn btn-ghost" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')">💬 Ingatkan</button>
+            <button class="btn btn-success" style="flex:2" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>
           </div>
-          ${catatBtn}
         </div>`;
       }).join('');
     } else {
@@ -4587,6 +4742,17 @@ function majukanJatuhTempo(type, dariTanggal, jumlahPeriode) {
   return d;
 }
 
+// Tombol cepat: 1 cicilan = nominal periode ini (residu ikut diserap pada
+// periode terakhir), 2 cicilan = dua periode, Lunasi = seluruh sisa tagihan.
+function isiCicilan(berapa) {
+  const loan = currentCicilanLoan; if (!loan) return;
+  const el = document.getElementById('cicilan-amount');
+  const sisa = Number(loan.remaining_amount) || 0;
+  if (berapa === 'lunas') el.value = sisa;
+  else el.value = Math.min(sisa, nominalCicilanPeriodeIni(loan) + (berapa - 1) * (Number(loan.installment_amount) || 0));
+  previewCicilan();
+}
+
 // Pratinjau di modal: memakai fungsi perhitungan yang sama dengan pencatatan,
 // jadi angka yang dilihat admin persis sama dengan yang akan tersimpan.
 function previewCicilan() {
@@ -4615,6 +4781,13 @@ function previewCicilan() {
     : a.periodsAdvanced === 0
       ? '<span style="color:var(--amber);font-weight:600">⚠️ Pembayaran sebagian — belum menyelesaikan satu cicilan, jatuh tempo tidak bergeser</span>'
       : `<span style="font-weight:600">Melunasi <b>${a.periodsAdvanced}</b> cicilan</span>`;
+  // Poin mengikuti aturan autoPoinCicilan: +5 per periode bila tepat waktu, −5 sekali bila telat
+  const dueStrP = loan.next_due_date ? loan.next_due_date.split('T')[0] : null;
+  const telatP  = dueStrP && dueStrP < getTodayStr();
+  const poinP = a.periodsAdvanced > 0
+    ? (telatP ? '<div style="margin-top:6px;color:var(--red);font-weight:600">⚠️ Telat dari jatuh tempo · −5 poin</div>'
+              : `<div style="margin-top:6px;color:var(--green);font-weight:600">✓ Tepat waktu · ⭐ +${5 * a.periodsAdvanced} poin</div>`)
+    : '';
 
   el.innerHTML = `
     <div style="margin-bottom:8px">${ringkas}</div>
@@ -4623,7 +4796,7 @@ function previewCicilan() {
       <div><div style="color:var(--text3)">Komponen Bunga</div><div style="font-weight:600">${fmt(a.interest)}</div></div>
       <div><div style="color:var(--text3)">Sisa setelah bayar</div><div style="font-weight:600;color:var(--amber)">${fmt(a.remainingAfter)}</div></div>
       <div><div style="color:var(--text3)">Jatuh tempo berikutnya</div><div style="font-weight:600">${nextDue ? fmtDate(nextDue) : '—'}</div></div>
-    </div>`;
+    </div>${poinP}`;
 }
 
 async function doCatatCicilan() {
@@ -7867,7 +8040,39 @@ function bukaModalSetor() {
   bersihkan('setor-member');
   bersihkan('setor-amount');
   bersihkan('setor-note');
+  _setorSaldo = null;
+  const pv = document.getElementById('setor-preview'); if (pv) pv.style.display = 'none';
   openModal('modal-setor');
+  siapkanSetor();
+}
+
+// Pratinjau "setelah dicatat": saldo baru & poin — angka yang sama dengan
+// yang akan tersimpan, dihitung dari fungsi yang sama (hitungPoinSetor).
+let _setorSaldo = null;
+async function siapkanSetor() {
+  const memberId = document.getElementById('setor-member')?.value;
+  _setorSaldo = null;
+  if (!memberId) { previewSetor(); return; }
+  _setorSaldo = await getMemberBalance(memberId);
+  previewSetor();
+}
+function isiSetor(n) {
+  const el = document.getElementById('setor-amount');
+  el.value = n; previewSetor();
+}
+function previewSetor() {
+  const el = document.getElementById('setor-preview');
+  if (!el) return;
+  const amount = parseInt(document.getElementById('setor-amount').value) || 0;
+  const memberId = document.getElementById('setor-member')?.value;
+  if (!amount || !memberId) { el.style.display = 'none'; return; }
+  const nama = allMembers.find(m => m.id === memberId)?.full_name || 'Anggota';
+  const poin = hitungPoinSetor(amount);
+  el.style.display = 'block';
+  el.innerHTML = `<b>Setelah dicatat</b>`
+    + (amount < 1000 ? `<span style="color:var(--red)">Minimal Rp 1.000</span>`
+      : `Saldo ${escapeHtml(nama.split(' ')[0])} → <span class="mono">${_setorSaldo === null ? '…' : fmt(_setorSaldo + amount)}</span>`
+        + (poin ? ` · ⭐ +${poin} poin` : '') + ' · kwitansi dibuat otomatis');
 }
 
 function bukaModalCairkan() {

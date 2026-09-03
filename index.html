@@ -1084,6 +1084,39 @@ tbody tr:hover { background: var(--surface2); }
   .kartu-polos-hp { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
   .kartu-polos-hp > .section-title { position: static !important; margin: 0 0 10px !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: none !important; font-size: 14px; font-weight: 800; }
 }
+
+/* ══ v4.65.0 — Anggota · Laporan · Event · Profil · Pengaturan · Backup ══ */
+.cari-pilih { border: none; background: var(--surface2); border-radius: 10px; padding: 6px 8px; font-family: var(--font); font-size: 12px; color: var(--text2); }
+.li-aksi { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 13px 14px; border: none; border-bottom: 1px solid var(--border);
+  background: none; font-family: var(--font); font-size: 13.5px; font-weight: 600; color: var(--text); cursor: pointer; }
+.li-aksi:last-child, .akordeon:last-child > .li-aksi { border-bottom: 0; }
+.li-aksi .ico { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: var(--surface2); flex-shrink: 0; }
+.li-aksi > span:nth-child(2) { flex: 1; min-width: 0; }
+.li-aksi small { display: block; font-size: 11px; font-weight: 500; color: var(--text2); margin-top: 1px; }
+.li-aksi .r { margin-left: auto; color: var(--text3); font-weight: 500; font-size: 16px; }
+.li-aksi .nilai { font-family: var(--mono); font-weight: 500; color: var(--accent); font-size: 14px; }
+.li-aksi.bahaya { color: var(--red); }
+.akordeon-isi { display: none; padding: 4px 14px 16px; border-bottom: 1px solid var(--border); }
+.akordeon.buka > .akordeon-isi { display: block; }
+.akordeon.buka > .li-aksi .panah { transform: rotate(90deg); }
+.li-aksi .panah { transition: transform .15s; }
+.card.akordeon.peng { margin-bottom: 10px; }
+.card.akordeon.peng > .akordeon-isi { border-bottom: 0; }
+.kartu-profil { text-align: center; padding: 22px 14px; margin-bottom: 12px; }
+.kartu-event { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--purple); border-radius: 16px; padding: 14px; margin-bottom: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
+.stat2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.stat2 .card { margin: 0; padding: 12px; }
+.stat2 .l { font-size: 11px; color: var(--text2); }
+.stat2 .n { font-family: var(--mono); font-size: 15px; font-weight: 500; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat2 .n.hijau { color: var(--green); } .stat2 .n.merah { color: var(--red); } .stat2 .n.biru { color: var(--accent); }
+.btn-wa { background: #25d366; color: #fff; border-color: #25d366; }
+.btn-wa:hover { background: #1fb457; }
+@media (min-width: 769px) {
+  .akordeon-isi { display: block; }
+  .li-aksi .panah { display: none; }
+  .li-aksi { cursor: default; }
+  .kartu-profil, .card.akordeon.peng, #page-profil > .card { max-width: 520px; }
+}
 </style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2A3568">
@@ -1326,6 +1359,10 @@ tbody tr:hover { background: var(--surface2); }
         </div>
       </div>
     </div>
+    <!-- v4.65.0: lembar aksi per anggota (HP) — isinya dibangun bukaAksiAnggota() -->
+    <div class="modal-overlay" id="sheet-aksi-anggota" onclick="if (event.target === this) closeModal('sheet-aksi-anggota')">
+      <div class="modal" style="max-width:420px" id="sheet-aksi-anggota-isi"></div>
+    </div>
 
     <!-- DASHBOARD -->
     <div class="page active" id="page-dashboard">
@@ -1521,18 +1558,32 @@ tbody tr:hover { background: var(--surface2); }
 
     <!-- LAPORAN -->
     <div class="page" id="page-laporan">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:14px">
         <div class="page-title">Laporan</div>
-        <div class="page-sub">Ringkasan dan detail transaksi koperasi</div>
+        <div class="page-sub" id="laporan-sub">Semua periode</div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
-        <div class="tabs" style="margin-bottom:0">
-          <button class="tab-btn active" onclick="switchLaporanTab('simpanan', this)">Simpanan</button>
-          <button class="tab-btn" onclick="switchLaporanTab('pinjaman', this)">Pinjaman</button>
-          <button class="tab-btn" onclick="switchLaporanTab('cicilan', this)">Cicilan</button>
-          <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('adjustment', this)">Adjustment</button>
-          <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('jurnal', this)">📒 Jurnal Kas</button>
-        </div>
+      <!-- v4.65.0: periode sebagai chip, ringkasan uang masuk/keluar, tombol utama -->
+      <div class="tabs tabs-chip" id="laporan-chip-rentang">
+        <button class="tab-btn" data-range="thisMonth" onclick="setLaporanRange('thisMonth')">Bulan ini</button>
+        <button class="tab-btn" data-range="lastMonth" onclick="setLaporanRange('lastMonth')">Bulan lalu</button>
+        <button class="tab-btn" data-range="thisYear" onclick="setLaporanRange('thisYear')">Tahun ini</button>
+        <button class="tab-btn active" data-range="all" onclick="setLaporanRange('all')">Semua</button>
+        <button class="tab-btn" data-range="custom" onclick="toggleRentangLaporan()">📅 Pilih tanggal</button>
+      </div>
+      <div class="stat2 admin-only" id="laporan-ringkasan" style="display:none"></div>
+      <div class="btn-baris">
+        <button class="btn btn-wa admin-only" style="display:none;flex:2" onclick="bagikanLaporanPeriode()">💬 Laporan ke WhatsApp</button>
+        <button class="btn btn-ghost" onclick="exportLaporan()">Excel</button>
+        <button class="btn btn-ghost" onclick="cetakLaporan()">Cetak</button>
+      </div>
+      <div class="tabs tabs-chip">
+        <button class="tab-btn active" onclick="switchLaporanTab('simpanan', this)">Simpanan</button>
+        <button class="tab-btn" onclick="switchLaporanTab('pinjaman', this)">Pinjaman</button>
+        <button class="tab-btn" onclick="switchLaporanTab('cicilan', this)">Cicilan</button>
+        <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('jurnal', this)">📒 Jurnal Kas</button>
+        <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('adjustment', this)">Adjustment</button>
+      </div>
+      <div style="display:none" id="laporan-tombol-lama">
         <button class="btn btn-ghost btn-sm" onclick="exportLaporan()" style="gap:6px">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export Excel
@@ -1545,58 +1596,51 @@ tbody tr:hover { background: var(--surface2); }
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Cetak
         </button>
-        <button class="btn btn-ghost btn-sm admin-only" style="display:none;gap:6px" onclick="showPage('backup')">
+        <button class="btn btn-ghost btn-sm" style="display:none;gap:6px" onclick="showPage('backup')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Backup
         </button>
       </div>
-      <!-- Filter Rentang Tanggal -->
-      <div class="card" style="margin-bottom:14px;padding:14px 18px">
-        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">
-          <span style="font-size:13px;font-weight:600;color:var(--text2)">Rentang Tanggal:</span>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input type="date" class="filter-input" id="laporan-date-from" style="width:160px" onchange="loadLaporan()">
-            <span style="color:var(--text3);font-size:13px">s/d</span>
-            <input type="date" class="filter-input" id="laporan-date-to" style="width:160px" onchange="loadLaporan()">
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="setLaporanRange('thisMonth')">Bulan Ini</button>
-            <button class="btn btn-ghost btn-sm" onclick="setLaporanRange('lastMonth')">Bulan Lalu</button>
-            <button class="btn btn-ghost btn-sm" onclick="setLaporanRange('thisYear')">Tahun Ini</button>
-            <button class="btn btn-ghost btn-sm" onclick="setLaporanRange('all')">Semua</button>
-          </div>
+      <!-- Rentang tanggal bebas — muncul saat chip "Pilih tanggal" ditekan -->
+      <div class="card" id="laporan-rentang" style="display:none;margin-bottom:14px;padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <input type="date" class="filter-input" id="laporan-date-from" style="flex:1;min-width:130px" onchange="rentangManualLaporan()">
+          <span style="color:var(--text3);font-size:13px">s/d</span>
+          <input type="date" class="filter-input" id="laporan-date-to" style="flex:1;min-width:130px" onchange="rentangManualLaporan()">
         </div>
       </div>
-      <div class="card">
+      <div class="card kartu-polos-hp">
         <div id="laporan-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
     </div>
 
     <!-- ANGGOTA (admin) -->
     <div class="page" id="page-anggota">
-      <div class="page-header">
-        <div class="page-title">Manajemen Anggota</div>
-        <div class="page-sub">Kelola data anggota koperasi</div>
-        <div class="page-actions admin-only" style="display:none">
-          <button class="btn btn-primary" onclick="bukaModalTambahAnggota()">+ Tambah Anggota</button>
-        </div>
+      <div class="page-header" style="margin-bottom:14px">
+        <div class="page-title" id="anggota-judul">Anggota</div>
+        <div class="page-sub" id="anggota-sub">Kelola data anggota koperasi</div>
       </div>
-      <div class="card admin-only" style="display:none">
-        <div class="filters">
-          <input class="filter-input" type="text" id="filter-anggota" placeholder="Cari nama..." oninput="filterAnggota()">
-          <select class="filter-input form-select" id="filter-anggota-status" onchange="filterAnggota()">
-            <option value="">Semua status</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Nonaktif</option>
-          </select>
-        </div>
+      <div class="btn-baris admin-only" style="display:none">
+        <button class="btn btn-primary" onclick="bukaModalTambahAnggota()">➕ Tambah Anggota</button>
+      </div>
+      <div class="cari admin-only" style="display:none">
+        <span>🔍</span>
+        <input type="text" id="filter-anggota" placeholder="Cari nama atau username…" oninput="filterAnggota()">
+        <select id="filter-anggota-status" class="cari-pilih" onchange="filterAnggota()">
+          <option value="">Semua</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </select>
+      </div>
+      <div class="card kartu-polos-hp admin-only" style="display:none">
         <div class="table-wrap"><div id="anggota-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
       </div>
+      <div class="admin-only" style="display:none;font-size:11px;color:var(--text3);text-align:center;margin:-6px 0 14px" id="anggota-petunjuk">Ketuk nama untuk edit, reset sandi, bypass tunggu, kelola poin, nonaktifkan</div>
 
       <!-- Tabs: Log Aktivitas & Poin -->
-      <div style="display:flex;gap:8px;margin-top:14px;margin-bottom:10px">
+      <div class="tabs tabs-chip" style="margin-top:4px">
         <button class="tab-btn active admin-only" style="display:none" onclick="switchAnggotaTab('log',this)">📋 Log Aktivitas</button>
-        <button class="tab-btn" onclick="switchAnggotaTab('poin',this)">⭐ Papan Poin</button>
+        <button class="tab-btn" onclick="switchAnggotaTab('poin',this)">🏆 Papan Poin</button>
         <button class="tab-btn admin-only" style="display:none" onclick="switchAnggotaTab('edit',this)">✏️ Log Perubahan</button>
       </div>
 
@@ -1604,16 +1648,14 @@ tbody tr:hover { background: var(--surface2); }
         <div class="section-title">📋 Log Aktivitas Admin</div>
         <div id="activity-log-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
-      <div id="anggota-tab-poin" class="card" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div class="section-title" style="margin-bottom:0">⭐ Papan Poin Anggota</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary btn-sm" onclick="poinAktifBulanan()">📅 Poin Aktif Bulanan</button>
-            <button class="btn btn-danger btn-sm" onclick="resetPoinTahunan()">🔄 Reset Tahunan</button>
-          </div>
+      <div id="anggota-tab-poin" class="card kartu-polos-hp" style="display:none">
+        <div class="section-title">🏆 Papan Poin</div>
+        <div class="card" style="padding:8px"><div id="poin-leaderboard"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
+        <div class="btn-baris admin-only" style="display:none">
+          <button class="btn btn-primary" onclick="poinAktifBulanan()">📅 +2 Aktif Bulanan</button>
+          <button class="btn btn-danger" onclick="resetPoinTahunan()">🔄 Reset Tahunan</button>
         </div>
-        <div id="poin-leaderboard" style="margin-bottom:16px"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
-        <div class="section-title">Riwayat Poin</div>
+        <div class="section-title" style="margin-top:6px">Riwayat Poin</div>
         <div id="poin-history"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div id="anggota-tab-edit" class="card" style="display:none">
@@ -1652,47 +1694,24 @@ tbody tr:hover { background: var(--surface2); }
         <div class="page-sub">Cadangkan dan pulihkan data koperasi</div>
       </div>
 
-      <!-- Backup -->
-      <div class="card" style="margin-bottom:14px">
-        <div class="section-title">💾 Backup Data</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Export seluruh data koperasi ke file Excel. Simpan file ini di tempat aman sebagai cadangan.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-          <div class="card" style="padding:14px;background:var(--surface2)">
-            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Yang akan dibackup:</div>
-            <div style="font-size:13px;line-height:1.8">
-              ✅ Data anggota<br>
-              ✅ Riwayat simpanan<br>
-              ✅ Data pinjaman<br>
-              ✅ Riwayat cicilan<br>
-              ✅ Data event<br>
-              ✅ Poin reward<br>
-              ✅ Pengeluaran kas<br>
-              ✅ Denda keterlambatan<br>
-              ✅ Pengaturan (rujukan)
-            </div>
-          </div>
-          <div class="card" style="padding:14px;background:var(--surface2)">
-            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Info backup:</div>
-            <div style="font-size:13px;line-height:1.8">
-              📅 Tanggal: <span id="backup-date">-</span><br>
-              📊 Format: Excel (.xlsx)<br>
-              🔒 Data: Lengkap & aman<br>
-              ⏱️ Waktu: ~5-10 detik
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="doBackup()" id="btn-backup">
-            💾 Download Backup Sekarang
-          </button>
-        </div>
+      <!-- v4.65.0: kartu "backup terakhir" dari activity_log, lalu dua kartu tindakan -->
+      <div class="hero kecil">
+        <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/></svg>
+        <div class="hero-label">Backup terakhir</div>
+        <div class="hero-nilai" style="font-family:var(--font);font-size:18px;font-weight:700" id="backup-terakhir">Memuat…</div>
+        <div class="hero-leg"><span id="backup-terakhir-sub">9 sheet · semua tabel</span><span>Disarankan tiap bulan</span></div>
+      </div>
+      <div class="card" style="margin-bottom:14px;padding:14px">
+        <div style="font-weight:700;margin-bottom:4px">💾 Unduh backup</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Excel 9 sheet: anggota, simpanan, pinjaman, cicilan, event, poin, pengeluaran, denda, pengaturan. Hari ini <span id="backup-date">-</span>. Simpan ke iCloud / Google Drive.</p>
+        <button class="btn btn-primary btn-full" onclick="doBackup()" id="btn-backup">💾 Download Backup Sekarang</button>
         <div id="backup-status" style="margin-top:12px;font-size:13px;color:var(--text2)"></div>
       </div>
 
       <!-- Restore -->
-      <div class="card">
-        <div class="section-title">📥 Restore Data</div>
-        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
+      <div class="card" style="padding:14px">
+        <div style="font-weight:700;margin-bottom:4px">♻️ Pulihkan dari backup</div>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px;color:#92400e">
           ⚠️ <strong>Perhatian:</strong> Restore memulihkan Pinjaman, Simpanan, Event, Cicilan, Pengeluaran Kas, dan Poin.
           Baris yang sudah ada <strong>tidak ditimpa</strong> — hanya yang belum ada yang ditambahkan, jadi aman dijalankan berulang.
           <br><br>
@@ -1709,8 +1728,8 @@ tbody tr:hover { background: var(--surface2); }
           <div style="font-weight:600;margin-bottom:8px">Preview file backup:</div>
           <div id="restore-preview-content"></div>
         </div>
-        <button class="btn btn-danger" onclick="doRestore()" id="btn-restore" style="display:none">
-          📥 Restore Data dari File Ini
+        <button class="btn btn-danger btn-full" onclick="doRestore()" id="btn-restore" style="display:none">
+          ♻️ Pulihkan dari berkas ini
         </button>
         <div id="restore-status" style="margin-top:12px;font-size:13px"></div>
       </div>
@@ -1718,12 +1737,12 @@ tbody tr:hover { background: var(--surface2); }
 
     <!-- EVENT -->
     <div class="page" id="page-event">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:14px">
         <div class="page-title">Event Keluarga</div>
-        <div class="page-sub">Rencanakan dan kelola kegiatan bersama keluarga</div>
-        <div class="page-actions">
-          <button class="btn btn-primary admin-only" style="display:none" onclick="openModalBuatEvent()">+ Buat Event</button>
-        </div>
+        <div class="page-sub" id="event-sub">Rencanakan dan kelola kegiatan bersama keluarga</div>
+      </div>
+      <div class="btn-baris admin-only" style="display:none">
+        <button class="btn btn-primary" onclick="openModalBuatEvent()">➕ Buat Event</button>
       </div>
       <div id="event-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
     </div>
@@ -1737,143 +1756,164 @@ tbody tr:hover { background: var(--surface2); }
     </div>
 
     <div class="page" id="page-profil">
-      <div class="page-header">
-        <div class="page-title">Profil &amp; Password</div>
-        <div class="page-sub">Kelola informasi akun Anda</div>
+      <div class="page-header" style="margin-bottom:14px">
+        <div class="page-title">Profil</div>
+        <div class="page-sub">Akun, sandi, dan notifikasi</div>
       </div>
-      <div class="card" style="max-width:480px;margin-bottom:14px">
-        <div class="section-title">Informasi Akun</div>
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-          <div style="position:relative;flex-shrink:0">
-            <div id="my-avatar" style="width:72px;height:72px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:700;overflow:hidden;border:3px solid var(--border)">?</div>
-            <button onclick="openMyAvatar()" style="position:absolute;bottom:0;right:0;width:22px;height:22px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;color:white" title="Ganti foto">✏️</button>
+      <!-- v4.65.0: kartu identitas + daftar menu berlipat (akordeon); semua id formulir lama dipertahankan -->
+      <div class="card kartu-profil">
+        <div style="position:relative;display:inline-block;margin:0 auto 10px">
+          <div id="my-avatar" style="width:76px;height:76px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:700;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 14px rgba(42,53,104,.25)">-</div>
+          <button onclick="openMyAvatar()" aria-label="Ganti foto" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);border:2px solid #fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">📷</button>
+        </div>
+        <div style="font-weight:800;font-size:17px" id="profil-nama">-</div>
+        <div style="font-size:12px;color:var(--text2)" id="profil-username-display">-</div>
+        <div style="margin-top:6px;display:flex;justify-content:center;gap:6px;align-items:center"><span id="profil-role">-</span><span id="profil-status">-</span></div>
+        <div style="margin-top:8px;font-size:12px;color:var(--amber);font-weight:700" id="profil-poin">⭐ -</div>
+        <span id="profil-username" style="display:none"></span>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="akordeon">
+          <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--accent-bg)">👤</span><span>Ganti username</span><span class="r panah">›</span></button>
+          <div class="akordeon-isi">
+            <div class="form-group">
+              <label class="form-label">Username Baru</label>
+              <input class="form-input" type="text" id="profil-new-username" placeholder="Huruf kecil, angka, underscore" autocapitalize="none" autocorrect="off">
+              <div class="form-hint" id="profil-username-hint">Username saat ini: <span id="profil-current-username">-</span></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alasan Perubahan <span style="color:var(--red)">*</span></label>
+              <input class="form-input" type="text" id="profil-username-reason" placeholder="Wajib diisi">
+            </div>
+            <button class="btn btn-primary btn-full" onclick="changeMyUsername()">Ubah Username</button>
           </div>
-          <div>
-            <div style="font-weight:700;font-size:16px" id="profil-nama">-</div>
-            <div style="color:var(--text2);font-size:13px" id="profil-username-display">-</div>
+        </div>
+        <div class="akordeon">
+          <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--accent-bg)">🔑</span><span>Ganti password</span><span class="r panah">›</span></button>
+          <div class="akordeon-isi">
+            <div class="form-group">
+              <label class="form-label">Password Baru</label>
+              <input class="form-input" type="password" id="profil-new-password" placeholder="Min. 6 karakter">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Konfirmasi Password</label>
+              <input class="form-input" type="password" id="profil-confirm-password" placeholder="Ulangi password baru">
+            </div>
+            <button class="btn btn-primary btn-full" onclick="changeMyPassword()">Ubah Password Saya</button>
           </div>
         </div>
-        <div class="detail-grid" style="margin-bottom:16px">
-          <div class="detail-item"><label>Username</label><span id="profil-username" class="td-mono" style="color:var(--accent)">-</span></div>
-          <div class="detail-item"><label>Role</label><span id="profil-role">-</span></div>
-          <div class="detail-item"><label>Status</label><span id="profil-status">-</span></div>
-          <div class="detail-item"><label>Total Poin</label><span id="profil-poin" style="color:var(--amber);font-weight:700">⭐ -</span></div>
+        <div class="akordeon">
+          <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--green-bg)">🔔</span><span>Notifikasi di perangkat ini</span><span class="r panah">›</span></button>
+          <div class="akordeon-isi"><div id="profil-push"></div></div>
+        </div>
+        <div class="akordeon admin-only" style="display:none">
+          <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--purple-bg)">🛡️</span><span>Reset sandi anggota <span class="badge badge-purple">admin</span></span><span class="r panah">›</span></button>
+          <div class="akordeon-isi">
+            <div class="form-group">
+              <label class="form-label">Pilih Anggota</label>
+              <select class="form-input form-select" id="profil-reset-member"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password Baru</label>
+              <input class="form-input" type="password" id="profil-reset-pw-new" placeholder="Min. 6 karakter">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Konfirmasi Password</label>
+              <input class="form-input" type="password" id="profil-reset-pw-confirm" placeholder="Ulangi password">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alasan Reset <span style="color:var(--red)">*</span></label>
+              <input class="form-input" type="text" id="profil-reset-reason" placeholder="Misal: Diminta anggota / Lupa password">
+            </div>
+            <button class="btn btn-primary btn-full" onclick="adminResetMemberPassword()">Reset Password Anggota</button>
+          </div>
         </div>
       </div>
-      <div class="card" style="max-width:480px;margin-bottom:14px">
-        <div class="section-title">Ubah Username Saya</div>
-        <div class="form-group">
-          <label class="form-label">Username Baru</label>
-          <input class="form-input" type="text" id="profil-new-username" placeholder="Huruf kecil, angka, underscore" autocapitalize="none" autocorrect="off">
-          <div class="form-hint" id="profil-username-hint">Username saat ini: <span id="profil-current-username">-</span></div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Alasan Perubahan <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="text" id="profil-username-reason" placeholder="Wajib diisi">
-        </div>
-        <button class="btn btn-primary" onclick="changeMyUsername()">Ubah Username</button>
-      </div>
-      <div class="card" style="max-width:480px;margin-bottom:14px">
-        <div class="section-title">Ubah Password Saya</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Masukkan password baru untuk akun Anda.</p>
-        <div class="form-group">
-          <label class="form-label">Password Baru</label>
-          <input class="form-input" type="password" id="profil-new-password" placeholder="Min. 6 karakter">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Konfirmasi Password</label>
-          <input class="form-input" type="password" id="profil-confirm-password" placeholder="Ulangi password baru">
-        </div>
-        <button class="btn btn-primary" onclick="changeMyPassword()">Ubah Password Saya</button>
-      </div>
-      <!-- Admin only: reset password anggota lain -->
-      <div class="card admin-only" style="max-width:480px;display:none">
-        <div class="section-title">Reset Password Anggota Lain</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Sebagai Admin, Anda dapat mereset password anggota lain.</p>
-        <div class="form-group">
-          <label class="form-label">Pilih Anggota</label>
-          <select class="form-input form-select" id="profil-reset-member"></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password Baru</label>
-          <input class="form-input" type="password" id="profil-reset-pw-new" placeholder="Min. 6 karakter">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Konfirmasi Password</label>
-          <input class="form-input" type="password" id="profil-reset-pw-confirm" placeholder="Ulangi password">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Alasan Reset <span style="color:var(--red)">*</span></label>
-          <input class="form-input" type="text" id="profil-reset-reason" placeholder="Misal: Diminta anggota / Lupa password">
-        </div>
-        <button class="btn btn-primary" onclick="adminResetMemberPassword()">Reset Password Anggota</button>
-      </div>
+      <div class="card"><button class="li-aksi bahaya" onclick="doLogout(true)"><span class="ico" style="background:var(--red-bg)">🚪</span><span>Keluar dari akun</span></button></div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px" id="profil-versi"></div>
     </div>
 
     <!-- PENGATURAN (admin) -->
     <div class="page" id="page-pengaturan">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:14px">
         <div class="page-title">Pengaturan</div>
-        <div class="page-sub">Konfigurasi koperasi</div>
+        <div class="page-sub">Aturan koperasi — berlaku untuk transaksi baru</div>
       </div>
-      <div class="card" style="max-width:480px">
-        <div class="section-title">Bunga Pinjaman</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Bunga flat dihitung dari pokok pinjaman. Berlaku untuk pinjaman baru.</p>
-        <div class="form-group">
-          <label class="form-label">Bunga per Bulan (%)</label>
-          <input class="form-input" type="number" id="setting-bunga" min="0" max="100" step="0.1" placeholder="Contoh: 2">
-          <div class="form-hint">Bunga saat ini: <strong id="current-bunga">-</strong>% per bulan</div>
+      <!-- v4.65.0: tiap aturan = kartu berlipat dengan nilai berlaku di kepalanya; id formulir lama dipertahankan -->
+      <div class="card akordeon peng">
+        <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--accent-bg)">📈</span><span>Bunga pinjaman<small>Dipakai saat anggota mengajukan; admin bisa mengubah saat menyetujui</small></span><b class="nilai" id="ring-bunga">-</b><span class="r panah">›</span></button>
+        <div class="akordeon-isi">
+          <div class="form-group">
+            <label class="form-label">Bunga per Bulan (%)</label>
+            <input class="form-input" type="number" id="setting-bunga" min="0" max="100" step="0.1" placeholder="Contoh: 2">
+            <div class="form-hint">Bunga saat ini: <strong id="current-bunga">-</strong>% per bulan · bunga flat dari pokok</div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="saveBunga()">Simpan Bunga</button>
         </div>
-        <button class="btn btn-primary" onclick="saveBunga()">Simpan Pengaturan</button>
       </div>
-      <div class="card" style="max-width:480px;margin-top:14px">
-        <div class="section-title">Batas Maksimal Pinjaman</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Menentukan berapa banyak seorang anggota boleh meminjam. Berlaku saat pengajuan baru.</p>
-        <div class="form-group">
-          <label class="form-label">Cara Menghitung Batas</label>
-          <select class="form-input form-select" id="plafon-mode" onchange="ubahModePlafon()">
-            <option value="off">Tanpa batas</option>
-            <option value="kelipatan">Kelipatan simpanan anggota</option>
-            <option value="nominal">Nominal tetap</option>
-            <option value="persen_kas">Persentase total simpanan koperasi</option>
-          </select>
+      <div class="card akordeon peng">
+        <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--amber-bg)">🎯</span><span>Batas pinjaman<small id="ring-plafon">-</small></span><span class="r panah">›</span></button>
+        <div class="akordeon-isi">
+          <div class="form-group">
+            <label class="form-label">Cara Menghitung Batas</label>
+            <select class="form-input form-select" id="plafon-mode" onchange="ubahModePlafon()">
+              <option value="off">Tanpa batas</option>
+              <option value="kelipatan">Kelipatan simpanan anggota</option>
+              <option value="nominal">Nominal tetap</option>
+              <option value="persen_kas">Persentase total simpanan koperasi</option>
+            </select>
+          </div>
+          <div class="form-group" id="plafon-nilai-group" style="display:none">
+            <label class="form-label" id="plafon-nilai-label">Nilai</label>
+            <input class="form-input" type="number" id="plafon-nilai" min="0" step="0.1" placeholder="Contoh: 3">
+            <div class="form-hint" id="plafon-nilai-hint"></div>
+          </div>
+          <div id="plafon-contoh" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
+          <button class="btn btn-primary btn-full" onclick="savePlafon()">Simpan Batas Pinjaman</button>
         </div>
-        <div class="form-group" id="plafon-nilai-group" style="display:none">
-          <label class="form-label" id="plafon-nilai-label">Nilai</label>
-          <input class="form-input" type="number" id="plafon-nilai" min="0" step="0.1" placeholder="Contoh: 3">
-          <div class="form-hint" id="plafon-nilai-hint"></div>
-        </div>
-        <div id="plafon-contoh" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
-        <button class="btn btn-primary" onclick="savePlafon()">Simpan Batas Pinjaman</button>
       </div>
-      <div class="card" style="max-width:480px;margin-top:14px">
-        <div class="section-title">Denda Keterlambatan</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Denda dikenakan sekali untuk setiap pembayaran cicilan yang melewati jatuh tempo. Uangnya masuk ke kas koperasi sebagai pemasukan tersendiri.</p>
-        <div class="form-group">
-          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-            <input type="checkbox" id="denda-aktif" onchange="ubahAktifDenda()">
-            <span style="font-weight:600;font-size:13px">Aktifkan denda keterlambatan</span>
-          </label>
+      <div class="card akordeon peng">
+        <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--red-bg)">⏰</span><span>Denda keterlambatan<small id="ring-denda">-</small></span><span class="r panah">›</span></button>
+        <div class="akordeon-isi">
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Dikenakan sekali untuk setiap pembayaran cicilan yang melewati jatuh tempo. Uangnya masuk kas koperasi sebagai pemasukan tersendiri.</p>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="denda-aktif" onchange="ubahAktifDenda()">
+              <span style="font-weight:600;font-size:13px">Aktifkan denda keterlambatan</span>
+            </label>
+          </div>
+          <div class="form-group" id="denda-nominal-group" style="display:none">
+            <label class="form-label">Nominal Denda (Rp)</label>
+            <input class="form-input" type="number" id="denda-nominal" min="0" step="1000" placeholder="Contoh: 10000">
+            <div class="form-hint">Dikenakan sekali per pembayaran yang telat, bukan per hari.</div>
+          </div>
+          <div id="denda-contoh" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
+          <button class="btn btn-primary btn-full" onclick="saveDenda()">Simpan Pengaturan Denda</button>
         </div>
-        <div class="form-group" id="denda-nominal-group" style="display:none">
-          <label class="form-label">Nominal Denda (Rp)</label>
-          <input class="form-input" type="number" id="denda-nominal" min="0" step="1000" placeholder="Contoh: 10000">
-          <div class="form-hint">Dikenakan sekali per pembayaran yang telat, bukan per hari.</div>
-        </div>
-        <div id="denda-contoh" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
-        <button class="btn btn-primary" onclick="saveDenda()">Simpan Pengaturan Denda</button>
       </div>
-      <div class="card" style="max-width:480px;margin-top:14px">
-        <div class="section-title">Ubah Password Admin</div>
-        <div class="form-group">
-          <label class="form-label">Password Baru</label>
-          <input class="form-input" type="password" id="new-password" placeholder="Min. 6 karakter">
+      <div class="card" style="padding:14px">
+        <div style="font-weight:700;margin-bottom:6px">⭐ Aturan poin (tetap)</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+          Setor ≥ 1 jt <b>+200</b> · &gt; 100 rb <b>+10</b> · tepat 100 rb <b>+7</b> · ≥ 50 rb <b>+3</b> · ≥ 25 rb <b>+1</b><br>
+          Cicilan tepat waktu <b>+5</b> per periode · telat <b>−5</b> sekali<br>
+          Aktif bulanan <b>+2</b> (tombol di Papan Poin) · reset tahunan menolkan semua<br>
+          <span style="color:var(--text3)">Total poin dihitung database dari buku poin dan tidak pernah negatif.</span>
         </div>
-        <div class="form-group">
-          <label class="form-label">Konfirmasi Password</label>
-          <input class="form-input" type="password" id="confirm-password" placeholder="Ulangi password baru">
+      </div>
+      <div class="card akordeon peng">
+        <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--purple-bg)">🔑</span><span>Ganti password admin<small>Juga tersedia di halaman Profil</small></span><span class="r panah">›</span></button>
+        <div class="akordeon-isi">
+          <div class="form-group">
+            <label class="form-label">Password Baru</label>
+            <input class="form-input" type="password" id="new-password" placeholder="Min. 6 karakter">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Konfirmasi Password</label>
+            <input class="form-input" type="password" id="confirm-password" placeholder="Ulangi password baru">
+          </div>
+          <button class="btn btn-primary btn-full" onclick="changePassword()">Ubah Password</button>
         </div>
-        <button class="btn btn-primary" onclick="changePassword()">Ubah Password</button>
       </div>
     </div>
   </div>
@@ -2442,7 +2482,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.64.0';
+const APP_VERSION = 'v4.65.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -5290,6 +5330,9 @@ function setLaporanRange(range) {
     from.value = '';
     to.value   = '';
   }
+  tandaiChipRentang(range === 'thisMonth' || range === 'lastMonth' || range === 'thisYear' ? range : 'all');
+  const rentang = document.getElementById('laporan-rentang');
+  if (rentang) rentang.style.display = 'none';
   loadLaporan();
 }
 
@@ -5349,7 +5392,47 @@ function getLaporanDateFilter() {
 }
 
 async function loadLaporan() {
-  switchLaporanTab(currentLaporanTab, document.querySelector('#page-laporan .tab-btn.active'));
+  const sub = document.getElementById('laporan-sub');
+  if (sub) sub.textContent = 'Periode: ' + periodeAktif();
+  renderRingkasanLaporan();
+  // tab aktif dicari di baris tab laporan (bukan chip rentang, yang juga memakai .tab-btn)
+  const btnAktif = Array.from(document.querySelectorAll('#page-laporan .tab-btn.active'))
+    .find(b => !b.closest('#laporan-chip-rentang'));
+  switchLaporanTab(currentLaporanTab, btnAktif);
+}
+
+// Chip rentang: menandai yang aktif; "Pilih tanggal" membuka dua kolom tanggal
+function tandaiChipRentang(range) {
+  document.querySelectorAll('#laporan-chip-rentang .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+}
+function toggleRentangLaporan() {
+  const el = document.getElementById('laporan-rentang');
+  const buka = el.style.display === 'none';
+  el.style.display = buka ? 'block' : 'none';
+  if (buka) tandaiChipRentang('custom');
+}
+function rentangManualLaporan() { tandaiChipRentang('custom'); loadLaporan(); }
+
+// Ringkasan periode untuk admin: uang masuk, uang keluar, saldo awal & akhir —
+// angkanya dari fungsi yang sama dengan laporan WhatsApp dan jurnal kas.
+async function renderRingkasanLaporan() {
+  const el = document.getElementById('laporan-ringkasan');
+  if (!el || !isAdmin()) return;
+  el.style.display = 'grid';
+  el.innerHTML = '<div class="card"><div class="l">Menghitung…</div></div>';
+  try {
+    const d = await kumpulkanLaporanPeriode();
+    const dari = document.getElementById('laporan-date-from')?.value;
+    const awal = dari ? (await hitungSaldoAwalKas(waktuLokalKeUTC(dari, '00:00:00'))) : 0;
+    const akhir = (awal || 0) + d.totalMasuk - d.totalKeluar;
+    el.innerHTML = `
+      <div class="card"><div class="l">Uang masuk</div><div class="n hijau">+${fmt(d.totalMasuk).replace(/^Rp\s?/, '')}</div></div>
+      <div class="card"><div class="l">Uang keluar</div><div class="n merah">−${fmt(d.totalKeluar).replace(/^Rp\s?/, '')}</div></div>
+      <div class="card"><div class="l">${dari ? 'Saldo awal' : 'Saldo awal (sejak berdiri)'}</div><div class="n">${fmt(awal || 0)}</div></div>
+      <div class="card"><div class="l">Saldo akhir</div><div class="n biru">${fmt(akhir)}</div></div>`;
+  } catch (e) {
+    el.innerHTML = '<div class="card"><div class="l">Ringkasan gagal dimuat</div></div>';
+  }
 }
 
 async function switchLaporanTab(tab, btn) {
@@ -5773,18 +5856,80 @@ function fmtShort(n) {
 }
 
 // ANGGOTA
+let _anggotaPinjaman = {};   // member_id → status pinjaman berjalan (untuk badge di daftar)
 async function loadAnggota() {
-  const data = await dbQuery('profiles', 'select=*&order=full_name.asc');
+  const [data, pinj] = await Promise.all([
+    dbQuery('profiles', 'select=*&order=full_name.asc'),
+    dbQuery('loans', 'select=member_id,status&status=in.(active,pending,menunggu_konfirmasi)')
+  ]);
   anggotaData = data || [];
-  renderAnggotaTable(anggotaData);
+  _anggotaPinjaman = {};
+  (pinj || []).forEach(l => { _anggotaPinjaman[l.member_id] = l.status; });
+  const aktif = anggotaData.filter(a => a.status === 'active').length;
+  const sub = document.getElementById('anggota-sub');
+  if (sub) sub.textContent = isAdmin() ? `${aktif} aktif · ${anggotaData.length - aktif} nonaktif` : 'Papan poin anggota';
+  const judul = document.getElementById('anggota-judul');
+  if (judul) judul.textContent = isAdmin() ? 'Anggota' : 'Papan Poin';
+  filterAnggota();
   loadAnggotaEditLog();
 }
 
+// HP: satu baris per anggota; semua aksi admin dibuka lewat lembar dari
+// bawah (bukaAksiAnggota), bukan deretan tombol kecil. Laptop tetap tabel.
+function renderDaftarAnggotaHp(data, el) {
+  if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada anggota ditemukan</div></div>'; return; }
+  el.innerHTML = '<div class="card daftar-ringkas">' + data.map(a => {
+    const av = a.avatar_url
+      ? `<img class="tx-foto" src="${escapeHtml(a.avatar_url)}" alt="">`
+      : `<div class="tx-foto tx-foto-huruf">${escapeHtml((a.full_name || '?')[0].toUpperCase())}</div>`;
+    const pj = _anggotaPinjaman[a.id];
+    const tandaPj = pj === 'active' ? ' · 🏦 pinjam' : pj === 'pending' ? ' · 📝 mengajukan' : pj === 'menunggu_konfirmasi' ? ' · ⏳ konfirmasi' : '';
+    const status = a.status === 'active' ? '<span class="badge badge-green">Aktif</span>'
+      : a.status === 'locked' ? '<span class="badge badge-red">🔒 Terkunci</span>' : '<span class="badge badge-gray">Nonaktif</span>';
+    return `<div class="baris-anggota${a.status !== 'active' ? ' redup' : ''}" onclick="bukaAksiAnggota('${a.id}')">
+      ${av}
+      <div class="m"><div class="n">${escapeHtml(a.full_name)}${a.role === 'admin' ? ' <span class="badge badge-purple">Admin</span>' : ''}</div>
+      <div class="j">@${escapeHtml(a.username || '-')} · ⭐ ${a.total_points || 0}${tandaPj}</div></div>
+      <div>${status}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function bukaAksiAnggota(id) {
+  const a = anggotaData.find(x => x.id === id);
+  if (!a) return;
+  const nama = escapeAttr(a.full_name), uname = escapeAttr(a.username || ''), tel = escapeAttr(a.phone || '');
+  const tutup = "closeModal('sheet-aksi-anggota');";
+  const baris = (ikon, teks, onclick, kelas = '') =>
+    `<button class="li-aksi${kelas}" onclick="${tutup} ${onclick}"><span class="ico">${ikon}</span><span>${teks}</span><span class="r">›</span></button>`;
+  const sendiri = a.id === currentUser.id;
+  const av = a.avatar_url
+    ? `<img class="tx-foto" src="${escapeHtml(a.avatar_url)}" alt="" style="width:44px;height:44px">`
+    : `<div class="tx-foto tx-foto-huruf" style="width:44px;height:44px;font-size:16px">${escapeHtml((a.full_name || '?')[0].toUpperCase())}</div>`;
+  document.getElementById('sheet-aksi-anggota-isi').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">${av}
+      <div style="min-width:0"><div class="modal-title" style="margin:0">${escapeHtml(a.full_name)}</div>
+      <div class="modal-sub" style="margin:0">@${escapeHtml(a.username || '-')} · ⭐ ${a.total_points || 0} · ${a.status === 'active' ? 'Aktif' : a.status === 'locked' ? 'Terkunci' : 'Nonaktif'}</div></div></div>
+    <div class="card" style="margin-bottom:10px">
+      ${baris('✏️', 'Edit data', `openEditAnggota('${a.id}','${nama}','${a.role}','${uname}','${tel}')`)}
+      ${baris('🔑', 'Reset sandi', `openResetPassword('${a.id}','${nama}',false)`)}
+      ${baris('⏩', 'Bypass masa tunggu', `bypassMasaTunggu('${a.id}','${nama}')`)}
+      ${baris('⭐', 'Kelola poin', `openTambahPoin('${a.id}','${nama}')`)}
+      ${sendiri ? '' : a.status === 'locked'
+        ? baris('🔓', 'Buka kunci akun', `openResetPassword('${a.id}','${nama}',true)`)
+        : baris(a.status === 'active' ? '⏸️' : '▶️', a.status === 'active' ? 'Nonaktifkan' : 'Aktifkan', `toggleMemberStatus('${a.id}','${a.status}')`)}
+    </div>
+    ${sendiri ? '<div style="font-size:11px;color:var(--text3);text-align:center">Ini akun Anda sendiri</div>'
+      : `<div class="card">${baris('🗑️', 'Hapus akun (hanya tanpa riwayat)', `hapusAnggota('${a.id}','${nama}')`, ' bahaya')}</div>`}
+    <div class="modal-actions" style="margin-top:12px"><button class="btn btn-ghost" onclick="closeModal('sheet-aksi-anggota')">Tutup</button></div>`;
+  openModal('sheet-aksi-anggota');
+}
+
 function filterAnggota() {
-  const keyword = document.getElementById('filter-anggota').value.toLowerCase();
-  const status = document.getElementById('filter-anggota-status').value;
+  const keyword = (document.getElementById('filter-anggota')?.value || '').toLowerCase();
+  const status = document.getElementById('filter-anggota-status')?.value || '';
   const filtered = anggotaData.filter(a => {
-    const matchName = a.full_name.toLowerCase().includes(keyword);
+    const matchName = a.full_name.toLowerCase().includes(keyword) || (a.username || '').toLowerCase().includes(keyword);
     const matchStatus = !status || a.status === status;
     return matchName && matchStatus;
   });
@@ -5793,6 +5938,7 @@ function filterAnggota() {
 
 function renderAnggotaTable(data) {
   const el = document.getElementById('anggota-list');
+  if (window.innerWidth <= 768) { renderDaftarAnggotaHp(data, el); return; }
   if (!data.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Tidak ada anggota ditemukan</div></div>'; return; }
   el.innerHTML = `<table>
     <thead><tr><th></th><th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Poin</th><th>Bergabung</th><th>Aksi</th></tr></thead>
@@ -6271,6 +6417,7 @@ async function loadPengaturan() {
   const bunga = await getBunga();
   document.getElementById('current-bunga').textContent = bunga;
   document.getElementById('setting-bunga').value = bunga;
+  const rb = document.getElementById('ring-bunga'); if (rb) rb.textContent = bunga + '%';
   await muatPengaturan();
   tampilkanPengaturanPlafon();
   tampilkanPengaturanDenda();
@@ -6434,6 +6581,7 @@ function tampilkanPengaturanDenda() {
   if (!cek || !inp) return;
   cek.checked = !!d.aktif;
   inp.value = Number(d.nominal) || '';
+  const r = document.getElementById('ring-denda'); if (r) r.textContent = d.aktif ? `${fmt(d.nominal)} per pembayaran telat` : 'Mati — telat hanya −5 poin';
   ubahAktifDenda();
 }
 
@@ -6463,6 +6611,7 @@ function tampilkanPengaturanPlafon() {
   if (!sel || !inp) return;
   sel.value = p.mode || 'off';
   inp.value = Number(p.nilai) || '';
+  const r = document.getElementById('ring-plafon'); if (r) r.textContent = labelPlafon();
   ubahModePlafon();
 }
 
@@ -6473,6 +6622,7 @@ async function saveBunga() {
   if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
   currentBunga = rate;
   document.getElementById('current-bunga').textContent = rate;
+  const rb = document.getElementById('ring-bunga'); if (rb) rb.textContent = rate + '%';
   showToast(rate === 0 ? 'Bunga diset 0% (tanpa bunga) ✓' : `Bunga ${rate}% per bulan disimpan ✓`);
 }
 
@@ -6531,6 +6681,9 @@ async function loadProfil() {
     const poinEl = document.getElementById('profil-poin');
     if (poinEl) poinEl.textContent = '⭐ ' + (currentProfile.total_points || 0) + ' poin';
   }
+  const versiEl = document.getElementById('profil-versi');
+  if (versiEl) versiEl.textContent = APP_VERSION + ' · KoperasiKeluarga © 2026';
+  renderTombolPush();
 }
 
 async function changeMyUsername() {
@@ -6847,18 +7000,20 @@ async function sinkronkanPushDiamDiam() {
 }
 
 async function renderTombolPush() {
-  const el = document.getElementById('notif-push-baris');
-  if (!el) return;
+  // Dua tempat: lonceng (#notif-push-baris) dan halaman Profil (#profil-push)
+  const targets = ['notif-push-baris', 'profil-push'].map(id => document.getElementById(id)).filter(Boolean);
+  if (!targets.length) return;
   const s = await statusPush();
+  const isi = (html) => targets.forEach(el => { el.innerHTML = html; });
   if (!s.bisa) {
-    el.innerHTML = `<div style="font-size:12px;color:var(--text2);padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">🔕 ${escapeHtml(s.alasan)}</div>`;
+    isi(`<div style="font-size:12px;color:var(--text2);padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">🔕 ${escapeHtml(s.alasan)}</div>`);
     return;
   }
   if (s.ditolak) {
-    el.innerHTML = `<div style="font-size:12px;color:var(--text2);padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">🔕 Notifikasi diblokir untuk situs ini. Ubah lewat pengaturan peramban.</div>`;
+    isi(`<div style="font-size:12px;color:var(--text2);padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">🔕 Notifikasi diblokir untuk situs ini. Ubah lewat pengaturan peramban.</div>`);
     return;
   }
-  el.innerHTML = s.aktif
+  isi(s.aktif
     ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)">
          <span style="font-size:12px">🔔 Notifikasi aktif di perangkat ini</span>
          <button class="btn btn-ghost btn-sm" onclick="matikanPush()">Matikan</button>
@@ -6866,7 +7021,7 @@ async function renderTombolPush() {
     : `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;background:var(--accent-bg);border-radius:var(--radius-sm)">
          <span style="font-size:12px">Dapatkan pemberitahuan walau aplikasi tertutup</span>
          <button class="btn btn-primary btn-sm" onclick="aktifkanPush()">Aktifkan</button>
-       </div>`;
+       </div>`);
 }
 
 // Melapor ke Edge Function bahwa sebuah kejadian terjadi. Kegagalan di sini
@@ -7046,6 +7201,16 @@ function renderStripPerhatian() {
     `<div class="ph ${i.ikon === '⏳' ? 'biru' : ''}" onclick="bukaNotifItem(${idx})">${i.ikon} ${escapeHtml(i.judul)}</div>`
   ).join('');
   el.style.display = 'flex';
+}
+
+// Kartu berlipat (Profil, Pengaturan): kepala diketuk → isinya muncul.
+// Di layar lebar semua terbuka lewat CSS, jadi laptop tidak kehilangan apa pun.
+function toggleAkordeon(btn) {
+  const wadah = btn.closest('.akordeon');
+  if (!wadah) return;
+  const buka = !wadah.classList.contains('buka');
+  wadah.classList.toggle('buka', buka);
+  if (buka && window.innerWidth <= 768) setTimeout(() => wadah.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 120);
 }
 
 function sinkronNavBawah(name) {
@@ -8284,20 +8449,23 @@ async function loadEvent() {
   }
   const statusBadge = { draft: 'badge-amber', final: 'badge-green', selesai: 'badge-gray' };
   const statusLabel = { draft: '📝 Draft', final: '✅ Final', selesai: '🏁 Selesai' };
-  el.innerHTML = '<div style="display:grid;gap:14px">' +
-    events.map(e => `<div class="card" style="cursor:pointer" onclick="showEventDetail('${e.id}')">
+  const warna = { draft: 'var(--amber)', final: 'var(--green)', selesai: 'var(--text3)' };
+  const sub = document.getElementById('event-sub');
+  if (sub) sub.textContent = `${events.filter(e => e.status === 'draft').length} draft · ${events.filter(e => e.status === 'final').length} final · ${events.filter(e => e.status === 'selesai').length} selesai`;
+  el.innerHTML = events.map(e => `<div class="kartu-event" style="border-left-color:${warna[e.status] || 'var(--text3)'}" onclick="showEventDetail('${e.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-        <div style="flex:1">
-          <div style="font-size:16px;font-weight:700;margin-bottom:4px">${escapeHtml(e.judul)}</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:8px">${escapeHtml(e.deskripsi || '')}</div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text2)">
-            <span>📅 ${fmtDate(e.tanggal)}</span>
-            <span>💰 ${fmt(e.total_biaya || 0)}</span>
-          </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:800;margin-bottom:2px">🎉 ${escapeHtml(e.judul)}</div>
+          ${e.deskripsi ? `<div style="font-size:12px;color:var(--text2);margin-bottom:6px">${escapeHtml(e.deskripsi)}</div>` : ''}
+          <div style="font-size:12px;color:var(--text2)">📅 ${fmtDate(e.tanggal)}</div>
         </div>
-        <span class="badge ${statusBadge[e.status] || 'badge-gray'}">${statusLabel[e.status] || e.status}</span>
+        <span class="badge ${statusBadge[e.status] || 'badge-gray'}" style="flex-shrink:0">${statusLabel[e.status] || e.status}</span>
       </div>
-    </div>`).join('') + '</div>';
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;border-top:1px solid var(--border);padding-top:8px">
+        <span style="color:var(--text2)">${e.status === 'draft' ? 'Anggaran' : 'Biaya dari kas'}</span>
+        <span class="amt ${e.status === 'draft' ? 'n' : 'dn'}" style="font-family:var(--mono);font-weight:500;${e.status === 'draft' ? '' : 'color:var(--red)'}">${e.status === 'draft' ? '' : '−'}${fmt(e.total_biaya || 0)}</span>
+      </div>
+    </div>`).join('');
 }
 
 async function showEventDetail(eventId) {
@@ -9291,9 +9459,19 @@ function cetakLaporan() {
 // ══════════════════════════════════════════════════════════════
 // BATCH 3B: BACKUP & RESTORE
 // ══════════════════════════════════════════════════════════════
-function loadBackupPage() {
+async function loadBackupPage() {
   const dateEl = document.getElementById('backup-date');
   if (dateEl) dateEl.textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  // Backup terakhir dibaca dari activity_log (aksi BACKUP dicatat doBackup)
+  const el = document.getElementById('backup-terakhir'), sub = document.getElementById('backup-terakhir-sub');
+  if (!el) return;
+  const rows = await dbQuery('activity_log', 'select=created_at&action=eq.BACKUP&order=created_at.desc&limit=1');
+  if (rows === null) { el.textContent = 'Tidak bisa memuat'; return; }
+  if (!rows.length) { el.textContent = 'Belum pernah'; if (sub) sub.textContent = 'Buat backup pertama sekarang'; return; }
+  const t = new Date(rows[0].created_at);
+  const hari = Math.floor((Date.now() - t.getTime()) / 86400000);
+  el.textContent = fmtDate(rows[0].created_at) + ' · ' + (hari === 0 ? 'hari ini' : `${hari} hari lalu`);
+  if (sub) sub.textContent = hari > 31 ? '⚠️ Sudah lebih dari sebulan' : '9 sheet · semua tabel';
 }
 
 async function doBackup() {

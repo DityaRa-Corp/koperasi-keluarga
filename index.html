@@ -1069,6 +1069,47 @@ img.hp-foto { display: block; }
 .baris-anggota .j { font-size: 11.5px; color: var(--text2); margin-top: 1px; }
 .baris-anggota .amt { font-family: var(--mono); font-size: 13.5px; font-weight: 500; }
 .baris-anggota .amt.nol { color: var(--text3); }
+/* v4.72.0 — baris saldo yang bisa dibuka */
+.baris-anggota.bisa-buka { cursor: pointer; }
+.baris-anggota.bisa-buka:active { background: var(--surface2); }
+.baris-panah { color: var(--text3); font-size: 17px; margin-left: 2px; flex-shrink: 0; }
+
+/* lembar detail anggota */
+.la-kepala { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.la-foto { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 17px; }
+.la-nama { font-size: 15px; font-weight: 800; line-height: 1.25; }
+.la-sub { font-size: 11.5px; color: var(--text2); margin-top: 2px; }
+.la-kotak { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.la-k { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 8px; text-align: center; }
+.la-k .l { font-size: 9px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.la-k .v { font-size: 13px; font-weight: 800; margin-top: 3px; font-family: var(--mono); }
+.la-k .v.g { color: var(--green-text); } .la-k .v.r { color: var(--red-text); }
+/* Saldo dicat, bukan sekadar diletakkan — angka terpenting harus menang
+   duluan atas dua kotak di sebelahnya tanpa perlu ukuran berbeda. */
+.la-k.sorot { background: var(--accent); border-color: var(--accent); }
+.la-k.sorot .l { color: rgba(255,255,255,.75); }
+.la-k.sorot .v { color: #fff; font-size: 14px; }
+.la-tgl { font-size: 10px; font-weight: 700; color: var(--text2); background: var(--surface2);
+  display: inline-block; padding: 3px 9px; border-radius: 20px; margin: 10px 0 6px; }
+.la-mut { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+.la-mut:last-child { border-bottom: 0; }
+.la-ic { width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; font-size: 14px; flex-shrink: 0; font-weight: 700; }
+.la-ic.masuk { background: var(--green-bg); color: var(--green-text); }
+.la-ic.keluar { background: var(--red-bg); color: var(--red-text); }
+.la-tx { flex: 1; min-width: 0; }
+.la-t1 { font-size: 12px; font-weight: 700; }
+.la-t2 { font-size: 10px; color: var(--text3); margin-top: 2px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.la-nom { text-align: right; flex-shrink: 0; }
+.la-n1 { font-size: 13px; font-weight: 800; font-family: var(--mono); }
+.la-n1.g { color: var(--green-text); } .la-n1.r { color: var(--red-text); }
+.la-n2 { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+.la-kw { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2);
+  border: 1px solid var(--border); font-size: 13px; flex-shrink: 0; margin-left: 6px; cursor: pointer; }
 .tabs-chip { overflow-x: auto; scrollbar-width: none; }
 .tabs-chip::-webkit-scrollbar { display: none; }
 .tabs-chip .tab-btn { white-space: nowrap; border-radius: 99px; }
@@ -1944,6 +1985,11 @@ img.hp-foto { display: block; }
 
 <!-- MODALS -->
 <!-- Setor Simpanan -->
+<!-- v4.72.0: lembar detail anggota — dibuka dari daftar Saldo per anggota -->
+<div class="modal-overlay" id="sheet-anggota" onclick="if (event.target === this) closeModal('sheet-anggota')">
+  <div class="modal" style="max-width:440px" id="sheet-anggota-isi"></div>
+</div>
+
 <!-- v4.70.0: konfirmasi sebelum menutup aplikasi. Muncul saat Kembali
      ditekan di Beranda — akar navigasi, satu-satunya tempat yang memang
      berujung keluar. -->
@@ -2519,7 +2565,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.71.0';
+const APP_VERSION = 'v4.72.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3338,6 +3384,124 @@ async function loadDashboard() {
 
 // SIMPANAN
 let _simpananBaris = [];
+
+// Lembar detail anggota (v4.72.0)
+//
+// Dibuka dengan mengetuk baris di "Saldo per anggota". Isinya sengaja
+// ringkas — saldo, dua angka pendamping, dan beberapa mutasi terakhir —
+// karena tugasnya mengintip, bukan menggantikan riwayat lengkap.
+//
+// Angkanya TIDAK dihitung ulang di sini. Setoran, penarikan, dan jumlah
+// transaksi diambil dari baris yang sudah dihitung loadSimpanan, sehingga
+// angka di lembar ini mustahil berbeda dengan angka di daftar di belakangnya.
+async function bukaLembarAnggota(memberId) {
+  const r = _simpananBaris.find(x => x.id === memberId);
+  if (!r) { showToast('Data anggota tidak ditemukan. Muat ulang halaman.'); return; }
+
+  const el = document.getElementById('sheet-anggota-isi');
+  const saldo = r.deposit - r.withdraw;
+  const foto = r.avatar
+    ? `<img class="la-foto" src="${escapeHtml(r.avatar)}" alt="">`
+    : `<div class="la-foto">${escapeHtml((r.name[0] || '?').toUpperCase())}</div>`;
+
+  // Kerangka dulu, isinya menyusul. Ketukan langsung dijawab; menunggu
+  // kueri selesai baru membuka lembar membuatnya terasa tidak merespons.
+  el.innerHTML = `
+    <div class="la-kepala">
+      ${foto}
+      <div style="flex:1;min-width:0">
+        <div class="la-nama">${escapeHtml(r.name)}</div>
+        <div class="la-sub" id="la-sub">${r.n ? r.n + ' transaksi' : 'belum menabung'}</div>
+      </div>
+      <div id="la-wa"></div>
+    </div>
+    <div class="la-kotak">
+      <div class="la-k"><div class="l">Setoran</div><div class="v g">${fmt(r.deposit).replace(/^Rp\s?/, '')}</div></div>
+      <div class="la-k"><div class="l">Penarikan</div><div class="v r">${fmt(r.withdraw).replace(/^Rp\s?/, '')}</div></div>
+      <div class="la-k sorot"><div class="l">Saldo</div><div class="v">${fmt(saldo).replace(/^Rp\s?/, '')}</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:2px">Mutasi terakhir</div>
+    <div id="la-mutasi"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+    <div class="modal-actions" id="la-aksi" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="closeModal('sheet-anggota')">Tutup</button>
+    </div>`;
+  openModal('sheet-anggota');
+
+  // Poin lewat RPC papan_poin: satu-satunya jalan yang boleh dipakai anggota
+  // untuk melihat poin orang lain sejak T2, dan ia memang tidak memuat
+  // telepon atau username siapa pun.
+  dbRpc('papan_poin').then(({ data }) => {
+    const p = (data || []).find(x => x.id === memberId);
+    const sub = document.getElementById('la-sub');
+    if (p && sub) sub.innerHTML = (r.n ? r.n + ' transaksi' : 'belum menabung')
+      + ` · <b style="color:var(--purple-text)">★ ${Number(p.total_points || 0)} poin</b>`;
+  }).catch(() => {});
+
+  // Tombol hubungi hanya untuk admin yang membuka anggota LAIN. Menelepon
+  // diri sendiri tidak ada gunanya, dan anggota memang tidak boleh membaca
+  // nomor orang lain.
+  if (isAdmin() && memberId !== currentUser?.id) {
+    dbQuery('profiles', `id=eq.${memberId}&select=phone&limit=1`).then(rows => {
+      const tel = rows?.[0]?.phone;
+      const w = document.getElementById('la-wa');
+      if (tel && w && normalkanNomorWA(tel)) {
+        w.innerHTML = `<button class="hp-lonceng" style="width:38px;height:38px;background:var(--green-bg);color:var(--green-text);border-color:#bbf7d0" title="Hubungi lewat WhatsApp" onclick="hubungiAnggotaWA('${escapeHtml(tel)}','${escapeHtml(r.name)}')">✆</button>`;
+      }
+    }).catch(() => {});
+  }
+
+  const rows = await dbQuery('savings',
+    `member_id=eq.${memberId}&select=id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,is_pembatalan&order=created_at.desc&limit=25`);
+  const box = document.getElementById('la-mutasi');
+  if (!box) return;                       // lembar sudah ditutup sebelum kueri selesai
+  if (rows === null) { box.innerHTML = '<div class="empty-state"><div class="empty-state-title">Gagal memuat mutasi</div></div>'; return; }
+
+  // Diurutkan ulang di sini meski kuerinya sudah meminta terbaru dulu:
+  // "enam teratas" harus berarti enam TERBARU, dan itu tidak boleh
+  // bergantung pada urutan yang dikirim server.
+  const efektif = (rows || []).filter(isBarisSimpananEfektif)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    .slice(0, 6);
+  if (!efektif.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada transaksi</div></div>';
+  } else {
+    let tglTerakhir = '';
+    box.innerHTML = efektif.map(t => {
+      const tgl = new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      const kepala = tgl === tglTerakhir ? '' : `<div class="la-tgl">${tgl}</div>`;
+      tglTerakhir = tgl;
+      const masuk = t.type === 'deposit';
+      // Baris pengganti hasil koreksi ditandai. Koreksi tidak pernah
+      // menghapus apa pun, jadi jejaknya harus terbaca — bukan membingungkan.
+      const tanda = t.corrects_id ? ' <span class="badge badge-amber">koreksi</span>' : '';
+      return `${kepala}<div class="la-mut">
+        <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? '↓' : '↑'}</div>
+        <div class="la-tx">
+          <div class="la-t1">${masuk ? 'Setoran' : 'Penarikan'}${tanda}</div>
+          <div class="la-t2">${escapeHtml(t.note || '-')}</div>
+        </div>
+        <div class="la-nom">
+          <div class="la-n1 ${masuk ? 'g' : 'r'}">${masuk ? '+' : '−'}${fmt(t.amount).replace(/^Rp\s?/, '')}</div>
+          <div class="la-n2">${fmt(t.balance_after).replace(/^Rp\s?/, '')}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" onclick="cetakUlangBuktiSimpanan('${t.id}')">🧾</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Tindakan admin ditambahkan belakangan supaya tombolnya tidak sempat
+  // terlihat oleh anggota selama sekejap sebelum peran diperiksa.
+  const aksi = document.getElementById('la-aksi');
+  if (aksi && isAdmin()) {
+    aksi.insertAdjacentHTML('beforeend',
+      `<button class="btn btn-success" onclick="closeModal('sheet-anggota'); bukaModalSetor()">💰 Setor</button>`);
+  }
+}
+
+function hubungiAnggotaWA(nomor, nama) {
+  const pesan = `Assalamualaikum ${nama} 🙏\n\nDari Koperasi Keluarga: `;
+  bukaWA(nomor, pesan, nama);
+}
 // Daftar saldo ditampilkan sebagai baris ringkas (foto · nama · jumlah
 // transaksi · saldo), bukan tabel — pola yang sama dengan riwayat transaksi.
 function renderSaldoSimpanan() {
@@ -3355,10 +3519,14 @@ function renderSaldoSimpanan() {
     const sub = r.n
       ? `${r.n} transaksi · terakhir ${r.terakhir ? new Date(r.terakhir).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '-'}`
       : 'belum menabung';
-    return `<div class="baris-anggota${nonaktif && saldo === 0 ? ' redup' : ''}">
+    // Baris tanpa id = anggota yang profilnya sudah terhapus tetapi
+    // simpanannya masih tercatat. Tidak ada yang bisa dibuka untuknya.
+    const bisaDibuka = !!r.id;
+    return `<div class="baris-anggota${nonaktif && saldo === 0 ? ' redup' : ''}${bisaDibuka ? ' bisa-buka' : ''}"${bisaDibuka ? ` onclick="bukaLembarAnggota('${r.id}')" role="button" tabindex="0"` : ''}>
       ${av}
       <div class="m"><div class="n">${escapeHtml(r.name)}${nonaktif ? ' <span class="badge badge-gray">Nonaktif</span>' : ''}${r.admin ? ' <span class="badge badge-purple">Admin</span>' : ''}</div><div class="j">${sub}</div></div>
       <div class="amt${saldo > 0 ? '' : ' nol'}">${fmt(saldo)}</div>
+      ${bisaDibuka ? '<span class="baris-panah">›</span>' : ''}
     </div>`;
   }).join('') + '</div>';
 }
@@ -3381,13 +3549,13 @@ async function loadSimpanan() {
   const memberMap = {};
   (members || []).forEach(m => memberMap[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status });
   const balances = {};
-  (members || []).forEach(m => balances[m.id] = { name: m.full_name, avatar: m.avatar_url, status: m.status, admin: m.role === 'admin', deposit: 0, withdraw: 0, n: 0, terakhir: null });
+  (members || []).forEach(m => balances[m.id] = { id: m.id, name: m.full_name, avatar: m.avatar_url, status: m.status, admin: m.role === 'admin', deposit: 0, withdraw: 0, n: 0, terakhir: null });
   // Batas bulan berjalan (WIB) untuk keterangan "setor/tarik bulan ini"
   const kini = new Date(); const bulanIni = kini.getFullYear() + '-' + String(kini.getMonth() + 1).padStart(2, '0');
   let setorBulan = 0, tarikBulan = 0;
   (savings || []).forEach(s => {
     if (!isBarisSimpananEfektif(s)) return;   // abaikan setoran terkoreksi & pembatalannya
-    if (!balances[s.member_id]) balances[s.member_id] = { name: memberMap[s.member_id]?.name || 'Anggota terhapus', avatar: null, status: null, admin: false, deposit: 0, withdraw: 0, n: 0, terakhir: null };
+    if (!balances[s.member_id]) balances[s.member_id] = { id: s.member_id, name: memberMap[s.member_id]?.name || 'Anggota terhapus', avatar: null, status: null, admin: false, deposit: 0, withdraw: 0, n: 0, terakhir: null };
     const b = balances[s.member_id];
     if (s.type === 'deposit') b.deposit += Number(s.amount); else b.withdraw += Number(s.amount);
     b.n++;

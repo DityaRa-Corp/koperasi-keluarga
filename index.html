@@ -1108,6 +1108,23 @@ img.hp-foto { display: block; }
 .la-n1 { font-size: 13px; font-weight: 800; font-family: var(--mono); }
 .la-n1.g { color: var(--green-text); } .la-n1.r { color: var(--red-text); }
 .la-n2 { font-size: 10px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+/* halaman detail anggota */
+.ad-kepala { display: flex; align-items: center; gap: 13px; margin-bottom: 14px; }
+.ad-foto { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 21px; }
+.ad-nama { font-size: 18px; font-weight: 800; line-height: 1.2; }
+.ad-sub { font-size: 11.5px; color: var(--text2); margin-top: 3px; }
+.ad-tiga { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.ad-baris { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
+.ad-baris:last-child { border-bottom: 0; }
+.ad-baris .ic { width: 28px; height: 28px; border-radius: 9px; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; flex-shrink: 0; }
+.ad-baris .tx { flex: 1; font-size: 12.5px; color: var(--text2); }
+.ad-baris .tx b { color: var(--text); font-weight: 700; }
+.ad-baris .vl { font-size: 12.5px; font-weight: 800; font-family: var(--mono); flex-shrink: 0; }
+.ad-kosong { font-size: 12px; color: var(--text3); padding: 14px 0; text-align: center; }
+
 .la-kw { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2);
   border: 1px solid var(--border); font-size: 13px; flex-shrink: 0; margin-left: 6px; cursor: pointer; }
 .tabs-chip { overflow-x: auto; scrollbar-width: none; }
@@ -1809,6 +1826,11 @@ img.hp-foto { display: block; }
         <button class="btn btn-primary" onclick="openModalBuatEvent()">➕ Buat Event</button>
       </div>
       <div id="event-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+    </div>
+
+    <!-- DETAIL ANGGOTA (v4.73.0) -->
+    <div class="page" id="page-anggota-detail">
+      <div id="anggota-detail-isi"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
     </div>
 
     <!-- DETAIL EVENT -->
@@ -2565,7 +2587,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.72.0';
+const APP_VERSION = 'v4.73.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3006,6 +3028,8 @@ function showPage(name) {
   if (name === 'profil') loadProfil();
   if (name === 'event') loadEvent();
   if (name === 'backup') loadBackupPage();
+  // anggota-detail sengaja tidak punya pemuat di sini: ia butuh id, dan
+  // pengisiannya dikerjakan bukaDetailAnggota() sebelum halamannya dibuka.
 }
 
 function setRoleUI() {
@@ -3424,6 +3448,7 @@ async function bukaLembarAnggota(memberId) {
     <div id="la-mutasi"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
     <div class="modal-actions" id="la-aksi" style="margin-top:16px">
       <button class="btn btn-ghost" onclick="closeModal('sheet-anggota')">Tutup</button>
+      <button class="btn btn-primary" onclick="bukaDetailAnggota('${memberId}')">Buka detail lengkap ›</button>
     </div>`;
   openModal('sheet-anggota');
 
@@ -3496,6 +3521,231 @@ async function bukaLembarAnggota(memberId) {
     aksi.insertAdjacentHTML('beforeend',
       `<button class="btn btn-success" onclick="closeModal('sheet-anggota'); bukaModalSetor()">💰 Setor</button>`);
   }
+}
+
+// ── HALAMAN DETAIL ANGGOTA (v4.73.0) ─────────────────────────────────────
+//
+// Lembar (v4.72.0) untuk mengintip; halaman ini untuk menelusuri. Isinya
+// dihitung dari SELURUH baris simpanan anggota itu, bukan enam terakhir.
+//
+// Kebiasaan menabung adalah bagian yang tidak ada di layar mana pun:
+// saldo bercerita "berapa", kartu itu bercerita "bagaimana".
+let _detailAnggotaId = null;
+
+// Kunci bulan WIB, dipakai untuk mengelompokkan setoran per bulan.
+function kunciBulan(iso) {
+  const d = new Date(iso);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function labelBulan(kunci) {
+  const [y, m] = kunci.split('-');
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+}
+// Rentetan bulan berturut-turut menyetor, dihitung MUNDUR dari bulan ini.
+// Bulan berjalan yang belum ada setorannya tidak memutus rentetan — ia
+// belum selesai. Yang memutus adalah bulan penuh yang terlewat.
+function hitungRentetan(bulanSetor) {
+  const kini = new Date();
+  let y = kini.getFullYear(), m = kini.getMonth();
+  const kunci = () => y + '-' + String(m + 1).padStart(2, '0');
+  let n = 0;
+  if (!bulanSetor.has(kunci())) { m--; if (m < 0) { m = 11; y--; } }
+  while (bulanSetor.has(kunci())) { n++; m--; if (m < 0) { m = 11; y--; } }
+  return n;
+}
+
+async function bukaDetailAnggota(memberId) {
+  _detailAnggotaId = memberId;
+  closeModal('sheet-anggota');
+  showPage('anggota-detail');
+  const el = document.getElementById('anggota-detail-isi');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat...</div>';
+
+  const [profil, savings, loans, poinRes] = await Promise.all([
+    dbQuery('profiles', `id=eq.${memberId}&select=id,full_name,avatar_url,role,status,created_at,phone&limit=1`),
+    dbQuery('savings', `member_id=eq.${memberId}&select=id,type,amount,balance_after,created_at,note,is_reversed,corrects_id,is_pembatalan`),
+    dbQuery('loans', `member_id=eq.${memberId}&status=eq.active&select=id,remaining_amount,next_due_date,installment_amount&limit=1`),
+    dbRpc('papan_poin')
+  ]);
+
+  if (_detailAnggotaId !== memberId) return;   // pengguna sudah pindah halaman
+  const p = profil?.[0];
+  if (!p) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Anggota tidak ditemukan</div></div>'; return; }
+
+  const efektif = (savings || []).filter(isBarisSimpananEfektif)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+
+  let setoran = 0, penarikan = 0;
+  const perBulan = {};              // kunci bulan → jumlah setoran
+  const bulanSetor = new Set();
+  let setoranTerakhir = null;
+  efektif.forEach(t => {
+    const n = Number(t.amount);
+    if (t.type === 'deposit') {
+      setoran += n;
+      const k = kunciBulan(t.created_at);
+      perBulan[k] = (perBulan[k] || 0) + n;
+      bulanSetor.add(k);
+      if (!setoranTerakhir || t.created_at > setoranTerakhir) setoranTerakhir = t.created_at;
+    } else penarikan += n;
+  });
+  const saldo = setoran - penarikan;
+  const bulanIni = kunciBulan(new Date().toISOString());
+  const sudahBulanIni = bulanSetor.has(bulanIni);
+  const rentetan = hitungRentetan(bulanSetor);
+  const kunciTertinggi = Object.keys(perBulan).sort((a, b) => perBulan[b] - perBulan[a])[0];
+  const jmlBulanAktif = Object.keys(perBulan).length || 1;
+  const rata = Math.round(setoran / jmlBulanAktif);
+  const hariLalu = setoranTerakhir
+    ? Math.max(0, Math.floor((Date.now() - new Date(setoranTerakhir).getTime()) / 86400000))
+    : null;
+  const poin = ((poinRes?.data) || []).find(x => x.id === memberId)?.total_points || 0;
+
+  const foto = p.avatar_url
+    ? `<img class="ad-foto" src="${escapeHtml(p.avatar_url)}" alt="">`
+    : `<div class="ad-foto">${escapeHtml((p.full_name[0] || '?').toUpperCase())}</div>`;
+  // Tanggal bergabung dilewati kalau tidak diketahui, bukan ditulis "-".
+  // "Bergabung -" membaca seperti data rusak; ketiadaannya lebih jujur.
+  const bergabung = p.created_at
+    ? 'Bergabung ' + new Date(p.created_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) + ' · '
+    : '';
+  const sendiri = memberId === currentUser?.id;
+  const admin = isAdmin();
+  const bisaWA = admin && !sendiri && normalkanNomorWA(p.phone);
+
+  const pinjaman = loans?.[0];
+
+  el.innerHTML = `
+    <div class="page-header" style="margin-bottom:14px">
+      <div class="page-title">${sendiri ? 'Simpanan Saya' : 'Detail Anggota'}</div>
+      <div class="page-sub">Saldo, kebiasaan menabung, dan seluruh mutasi</div>
+    </div>
+
+    <div class="card" style="padding:14px;margin-bottom:12px">
+      <div class="ad-kepala" style="margin-bottom:0">
+        ${foto}
+        <div style="flex:1;min-width:0">
+          <div class="ad-nama">${escapeHtml(p.full_name)}${p.role === 'admin' ? ' <span class="badge badge-purple">Admin</span>' : ''}${p.status !== 'active' ? ' <span class="badge badge-gray">Nonaktif</span>' : ''}</div>
+          <div class="ad-sub">${bergabung}<b style="color:var(--purple-text)">★ ${poin} poin</b></div>
+        </div>
+        ${bisaWA ? `<button class="hp-lonceng" style="background:var(--green-bg);color:var(--green-text);border-color:#bbf7d0" title="Hubungi lewat WhatsApp" onclick="hubungiAnggotaWA('${escapeHtml(p.phone)}','${escapeHtml(p.full_name)}')">✆</button>` : ''}
+      </div>
+    </div>
+
+    <div class="hero kecil" style="margin-bottom:12px">
+      <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/></svg>
+      <div class="hero-label">Saldo simpanan</div>
+      <div class="hero-nilai">${fmt(saldo)}</div>
+      <div class="hero-chips">
+        <div class="hero-chip"><div class="k">Bulan ini</div><div class="n">${sudahBulanIni ? '+' + fmt(perBulan[bulanIni]).replace(/^Rp\s?/, '') : 'belum'}</div></div>
+        <div class="hero-chip"><div class="k">Transaksi</div><div class="n">${efektif.length}</div></div>
+        <div class="hero-chip"><div class="k">Rata²/bln</div><div class="n">${fmt(rata).replace(/^Rp\s?/, '')}</div></div>
+      </div>
+    </div>
+
+    <div class="ad-tiga">
+      <div class="la-k"><div class="l">Setoran</div><div class="v g">${fmt(setoran).replace(/^Rp\s?/, '')}</div></div>
+      <div class="la-k"><div class="l">Penarikan</div><div class="v r">${fmt(penarikan).replace(/^Rp\s?/, '')}</div></div>
+      <div class="la-k sorot"><div class="l">Saldo</div><div class="v">${fmt(saldo).replace(/^Rp\s?/, '')}</div></div>
+    </div>
+
+    <div class="card" style="padding:14px;margin-bottom:12px">
+      <div class="dash-sec"><h3>Kebiasaan menabung</h3></div>
+      ${efektif.length ? `
+      <div class="ad-baris">
+        <div class="ic ${sudahBulanIni ? 'la-ic masuk' : 'la-ic keluar'}" style="background:${sudahBulanIni ? 'var(--green-bg)' : 'var(--amber-bg)'};color:${sudahBulanIni ? 'var(--green-text)' : 'var(--amber-text)'}">${sudahBulanIni ? '✓' : '!'}</div>
+        <div class="tx">Bulan ini <b>${sudahBulanIni ? 'sudah menyetor' : 'belum menyetor'}</b></div>
+        <div class="vl">${labelBulan(bulanIni)}</div>
+      </div>
+      <div class="ad-baris">
+        <div class="ic" style="background:var(--accent-bg);color:var(--accent)">🔥</div>
+        <div class="tx">Menyetor <b>${rentetan} bulan berturut-turut</b></div>
+        <div class="vl">${rentetan ? '' : '—'}</div>
+      </div>
+      <div class="ad-baris">
+        <div class="ic" style="background:var(--surface2);color:var(--text2)">◷</div>
+        <div class="tx">Terakhir menyetor</div>
+        <div class="vl">${hariLalu === null ? '—' : (hariLalu === 0 ? 'hari ini' : hariLalu + ' hari lalu')}</div>
+      </div>
+      <div class="ad-baris">
+        <div class="ic" style="background:var(--purple-bg);color:var(--purple-text)">↗</div>
+        <div class="tx">Bulan tertinggi</div>
+        <div class="vl">${kunciTertinggi ? labelBulan(kunciTertinggi) + ' · ' + fmt(perBulan[kunciTertinggi]).replace(/^Rp\s?/, '') : '—'}</div>
+      </div>` : '<div class="ad-kosong">Belum ada setoran, jadi belum ada kebiasaan yang bisa dibaca.</div>'}
+    </div>
+
+    ${pinjaman ? `
+    <div class="card" style="padding:14px;margin-bottom:12px;background:var(--amber-bg);border-color:#fde68a">
+      <div class="dash-sec"><h3 style="color:var(--amber-text)">Pinjaman berjalan</h3></div>
+      <div class="ad-baris" style="border-bottom-color:#fde68a">
+        <div class="ic" style="background:#fff;color:var(--amber-text)">₽</div>
+        <div class="tx">Sisa tagihan</div><div class="vl">${fmt(pinjaman.remaining_amount)}</div>
+      </div>
+      <div class="ad-baris">
+        <div class="ic" style="background:#fff;color:var(--amber-text)">📅</div>
+        <div class="tx">Cicilan berikutnya</div>
+        <div class="vl">${pinjaman.next_due_date ? fmtDate(pinjaman.next_due_date) : '—'}</div>
+      </div>
+    </div>` : ''}
+
+    <div class="card" style="padding:14px;margin-bottom:12px">
+      <div class="dash-sec"><h3>Mutasi simpanan</h3><span style="font-size:12px;color:var(--text3)">${efektif.length} transaksi</span></div>
+      <div class="tabs tabs-chip" id="ad-saring" style="margin-bottom:8px">
+        <button class="tab-btn active" onclick="saringMutasiAnggota('semua', this)">Semua</button>
+        <button class="tab-btn" onclick="saringMutasiAnggota('deposit', this)">Setoran</button>
+        <button class="tab-btn" onclick="saringMutasiAnggota('withdraw', this)">Penarikan</button>
+      </div>
+      <div id="ad-mutasi"></div>
+    </div>
+
+    ${admin ? `
+    <div class="card" style="padding:14px">
+      <div class="dash-sec"><h3>Tindakan</h3></div>
+      <div class="btn-baris">
+        <button class="btn btn-success" onclick="bukaModalSetor()">💰 Setor</button>
+        <button class="btn btn-danger" onclick="bukaModalCairkan()">💸 Cairkan</button>
+      </div>
+    </div>` : ''}`;
+
+  _mutasiAnggota = efektif;
+  renderMutasiAnggota('semua');
+}
+
+let _mutasiAnggota = [];
+function saringMutasiAnggota(jenis, tombol) {
+  // Selektor DIBATASI ke bilah saringnya sendiri. Menyapu seluruh .tab-btn
+  // halaman akan memadamkan tab lain yang kebetulan ada di layar — persis
+  // cacat yang diperbaiki v4.65.1 pada halaman Laporan.
+  document.querySelectorAll('#ad-saring .tab-btn').forEach(b => b.classList.remove('active'));
+  if (tombol) tombol.classList.add('active');
+  renderMutasiAnggota(jenis);
+}
+
+function renderMutasiAnggota(jenis) {
+  const box = document.getElementById('ad-mutasi');
+  if (!box) return;
+  const rows = _mutasiAnggota.filter(t => jenis === 'semua' || t.type === jenis);
+  if (!rows.length) { box.innerHTML = '<div class="ad-kosong">Tidak ada transaksi pada saringan ini.</div>'; return; }
+  let tglTerakhir = '';
+  box.innerHTML = rows.map(t => {
+    const tgl = new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    const kepala = tgl === tglTerakhir ? '' : `<div class="la-tgl">${tgl}</div>`;
+    tglTerakhir = tgl;
+    const masuk = t.type === 'deposit';
+    const tanda = t.corrects_id ? ' <span class="badge badge-amber">koreksi</span>' : '';
+    return `${kepala}<div class="la-mut">
+      <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? '↓' : '↑'}</div>
+      <div class="la-tx">
+        <div class="la-t1">${masuk ? 'Setoran' : 'Penarikan'}${tanda}</div>
+        <div class="la-t2">${escapeHtml(t.note || '-')}</div>
+      </div>
+      <div class="la-nom">
+        <div class="la-n1 ${masuk ? 'g' : 'r'}">${masuk ? '+' : '−'}${fmt(t.amount).replace(/^Rp\s?/, '')}</div>
+        <div class="la-n2">${fmt(t.balance_after).replace(/^Rp\s?/, '')}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" onclick="cetakUlangBuktiSimpanan('${t.id}')">🧾</button>
+    </div>`;
+  }).join('');
 }
 
 function hubungiAnggotaWA(nomor, nama) {

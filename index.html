@@ -2494,7 +2494,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.69.0';
+const APP_VERSION = 'v4.69.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2807,6 +2807,26 @@ let riwayatSiap = false;
 let dariRiwayat = false;   // true saat popstate memutar ulang, supaya tidak menumpuk entri
 let waktuMintaKeluar = 0;  // kapan penahan keluar terakhir kali diperlihatkan
 const JEDA_KELUAR = 2500;  // ms — dua tekanan dalam rentang ini dianggap sengaja
+let abaikanPopstate = false;   // popstate yang kita picu sendiri lewat forward()
+
+// Mengembalikan posisi ke entri tempat kita berada sebelum Kembali ditekan.
+//
+// Sengaja memakai forward() dan BUKAN pushState(). Chrome Android membuang
+// entri riwayat yang dibuat program tanpa sentuhan pengguna — perlindungan
+// bawaan supaya situs tidak bisa menjebak tombol Back. Menambah entri dari
+// dalam penangan popstate adalah persis pola yang ditandai itu, sehingga di
+// HP entrinya dilewati dan Kembali melompat lebih jauh: keluar dari aplikasi
+// padahal semestinya pulang ke Beranda. Di laptop entrinya dihormati, jadi
+// gejalanya tidak pernah muncul saat diuji di sana.
+//
+// forward() tidak membuat entri apa pun. Ia hanya kembali ke entri yang
+// SUDAH ada — yang dulu dibuat oleh sentuhan pengguna sungguhan — sehingga
+// tidak ada yang bisa dibuang Chrome.
+function pulihkanPosisiRiwayat() {
+  if (!riwayatSiap) return;
+  abaikanPopstate = true;
+  try { history.forward(); } catch (e) { abaikanPopstate = false; }
+}
 
 function mulaiRiwayat(halamanAwal) {
   halamanSekarang = halamanAwal;
@@ -2849,10 +2869,13 @@ function tutupLapisanTeratas() {
 }
 
 window.addEventListener('popstate', (e) => {
-  // Lapisan dulu. Entri yang barusan terpakai dikembalikan supaya menutup
-  // modal tidak ikut memundurkan halaman di belakangnya.
+  // Langkah yang kita picu sendiri lewat forward() — bukan tekanan pengguna.
+  if (abaikanPopstate) { abaikanPopstate = false; return; }
+
+  // Lapisan dulu. Posisi dikembalikan supaya menutup modal tidak ikut
+  // memundurkan halaman di belakangnya.
   if (tutupLapisanTeratas()) {
-    try { history.pushState({ kk: 'halaman', page: halamanSekarang }, ''); } catch (_) {}
+    pulihkanPosisiRiwayat();
     return;
   }
   const st = e.state;
@@ -2870,8 +2893,7 @@ window.addEventListener('popstate', (e) => {
     }
     waktuMintaKeluar = sekarang;
     showToast('Tekan Kembali sekali lagi untuk keluar', JEDA_KELUAR);
-    // Pasang ulang umpannya supaya pengguna tetap berada di Beranda.
-    try { history.pushState({ kk: 'halaman', page: halamanSekarang }, ''); } catch (_) {}
+    pulihkanPosisiRiwayat();   // maju kembali ke Beranda, tanpa entri baru
     return;
   }
 

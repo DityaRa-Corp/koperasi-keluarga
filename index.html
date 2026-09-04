@@ -2709,7 +2709,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.80.0';
+const APP_VERSION = 'v4.80.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -6261,15 +6261,8 @@ async function renderKartuLaporan() {
   el.innerHTML = '<div class="loading"><div class="spinner"></div> Menghitung…</div>';
   const admin = isAdmin();
 
-  let d, peminjam = [];
-  try {
-    [d, peminjam] = await Promise.all([
-      kumpulkanLaporanPeriode(),
-      // Nama peminjam hanya untuk admin — anggota memang tidak boleh membaca
-      // pinjaman orang lain sejak T2, dan kuerinya akan kembali kosong.
-      admin ? dbQuery('loans', 'status=eq.active&select=profiles!loans_member_id_fkey(full_name)') : Promise.resolve([])
-    ]);
-  } catch (e) { d = null; }
+  let d;
+  try { d = await kumpulkanLaporanPeriode(); } catch (e) { d = null; }
   if (!d) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Laporan gagal dimuat</div><div class="empty-state-sub">Periksa koneksi lalu coba lagi.</div></div>'; return; }
   _lapData = d;
 
@@ -6298,16 +6291,15 @@ async function renderKartuLaporan() {
   let kartu2 = '';
   if (d.posisi) {
     const P = d.posisi;
-    const nama = (peminjam || []).map(x => x.profiles?.full_name).filter(Boolean);
-    const siapa = nama.length === 0 ? 'anggota'
-      : nama.length <= 2 ? nama.map(n => `<b>${escapeHtml(n.split(' ')[0])}</b>`).join(' dan ')
-      : `<b>${escapeHtml(nama[0].split(' ')[0])}</b> dan ${nama.length - 1} anggota lain`;
+    // Cukup "Sedang dipinjam" — tanpa nama. Aditya memutuskan begitu setelah
+    // melihatnya: "Dewi dan 2 anggota lain" menambah kata tanpa menambah
+    // makna, dan siapa yang meminjam sudah ada di halaman Pinjaman.
     kartu2 = `
     <div class="lap-kartu">
       <div class="lap-judul">Uang koperasi sekarang</div>
       <div class="lap-dompet">
         <div class="b"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">👛</div><div class="tx">Ada di tangan, <b>bisa dipakai</b></div><div class="vl">${fmt(P.kas).replace(/^Rp\s?/, '')}</div></div>
-        <div class="b"><div class="ic" style="background:var(--amber-bg);color:var(--amber-text)">🤝</div><div class="tx">${P.piutang > 0 ? 'Sedang dipinjam ' + siapa : 'Tidak ada yang sedang dipinjam'}</div><div class="vl">${fmt(P.piutang).replace(/^Rp\s?/, '')}</div></div>
+        <div class="b"><div class="ic" style="background:var(--amber-bg);color:var(--amber-text)">🤝</div><div class="tx">${P.piutang > 0 ? 'Sedang dipinjam' : 'Tidak ada yang sedang dipinjam'}</div><div class="vl">${fmt(P.piutang).replace(/^Rp\s?/, '')}</div></div>
         <div class="b total"><div class="ic" style="background:var(--green-bg);color:var(--green-text)">Σ</div><div class="tx">Seluruhnya milik koperasi</div><div class="vl">${fmt(P.aset).replace(/^Rp\s?/, '')}</div></div>
       </div>
     </div>`;

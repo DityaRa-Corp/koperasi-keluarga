@@ -2590,7 +2590,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.75.0';
+const APP_VERSION = 'v4.76.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -10236,9 +10236,31 @@ async function doBackup() {
     const now = new Date();
     const dateStr = now.toLocaleDateString('id-ID').replace(/\//g,'-');
 
+    // Setiap tabel diambil lewat penjaga ini.
+    //
+    // dbQuery mengembalikan null saat permintaannya gagal — bukan melempar.
+    // Sebelumnya hasilnya langsung dipakai sebagai `(x || [])`, sehingga
+    // tabel yang gagal diambil berubah menjadi lembar KOSONG dan berkasnya
+    // tetap tersimpan sebagai "Backup berhasil". Itu cadangan yang bohong:
+    // 9 lembar lengkap, satu di antaranya diam-diam kehilangan seluruh isinya.
+    //
+    // Bahayanya bukan teoretis — langkah pertama SOP cleansing adalah
+    // "unduh cadangan", dan cleansing tidak bisa dibatalkan. Cadangan yang
+    // tampak baik tetapi bolong berarti data hilang selamanya.
+    //
+    // Karena itu kegagalan sekecil apa pun MEMBATALKAN seluruh cadangan.
+    const ambil = async (tabel, params, label) => {
+      const r = await dbQuery(tabel, params);
+      if (r === null) throw new Error(
+        `Data "${label}" gagal diambil, jadi backup DIBATALKAN. `
+        + 'Berkas tidak dibuat — lebih baik tidak punya cadangan daripada '
+        + 'punya cadangan yang bolong tanpa disadari. Periksa koneksi lalu ulangi.');
+      return r;
+    };
+
     // Sheet 1: Anggota
     status.textContent = '📊 Mengambil data anggota...';
-    const profiles = await dbQuery('profiles', 'select=*&order=full_name.asc');
+    const profiles = await ambil('profiles', 'select=*&order=full_name.asc', 'Anggota');
     const profRows = [['ID','Nama','Username','No. WhatsApp','Role','Status','Total Poin','Bergabung']];
     (profiles||[]).forEach(p => profRows.push([p.id, p.full_name, p.username||'', p.phone||'', p.role, p.status, p.total_points||0, p.created_at]));
     const wsProf = XLSX.utils.aoa_to_sheet(profRows);
@@ -10247,7 +10269,7 @@ async function doBackup() {
 
     // Sheet 2: Simpanan
     status.textContent = '💰 Mengambil data simpanan...';
-    const savings = await dbQuery('savings', 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.asc');
+    const savings = await ambil('savings', 'select=*,profiles!savings_member_id_fkey(full_name)&order=created_at.asc', 'Simpanan');
     // Member ID ikut disimpan supaya pencocokan saat restore tidak bergantung
     // pada nama (dua anggota bisa sama namanya). Penanda koreksi WAJIB ikut:
     // tanpa is_reversed, setoran yang pernah dikoreksi akan terhitung DUA KALI
@@ -10260,7 +10282,7 @@ async function doBackup() {
 
     // Sheet 3: Pinjaman
     status.textContent = '🏦 Mengambil data pinjaman...';
-    const loans = await dbQuery('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.asc');
+    const loans = await ambil('loans', 'select=*,profiles!loans_member_id_fkey(full_name)&order=created_at.asc', 'Pinjaman');
     // 'Total Bunga' dan 'Cicilan Terlunasi' WAJIB ikut. Tanpa total_interest,
     // pinjaman hasil restore mengalokasikan seluruh pembayaran sebagai pokok
     // (bunga nol). Tanpa paid_count, pembayaran pertama sesudah restore
@@ -10276,7 +10298,7 @@ async function doBackup() {
 
     // Sheet 4: Cicilan
     status.textContent = '📅 Mengambil data cicilan...';
-    const payments = await dbQuery('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc');
+    const payments = await ambil('loan_payments', 'select=*,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc', 'Cicilan');
     const payRows = [['ID','Loan ID','Member ID','Anggota','Dibayar','Pokok','Bunga','Sisa','Cicilan Ke','Keterangan','Dikoreksi','Koreksi Dari','Tanggal']];
     (payments||[]).forEach(p => payRows.push([p.id, p.loan_id, p.member_id||'', p.profiles?.full_name||'', p.amount_paid, p.principal_component, p.interest_component, p.remaining_after, p.payment_number, p.note||'', p.is_reversed === true, p.corrects_id||'', p.created_at]));
     const wsPay = XLSX.utils.aoa_to_sheet(payRows);
@@ -10285,7 +10307,7 @@ async function doBackup() {
 
     // Sheet 5: Event
     status.textContent = '🎉 Mengambil data event...';
-    const events = await dbQuery('events', 'select=*&order=created_at.asc');
+    const events = await ambil('events', 'select=*&order=created_at.asc', 'Event');
     const evRows = [['ID','Judul','Tanggal','Deskripsi','Status','Total Biaya','Dibuat']];
     (events||[]).forEach(e => evRows.push([e.id, e.judul, e.tanggal, e.deskripsi||'', e.status, e.total_biaya, e.created_at]));
     const wsEv = XLSX.utils.aoa_to_sheet(evRows);
@@ -10294,7 +10316,7 @@ async function doBackup() {
 
     // Sheet 6: Poin
     status.textContent = '⭐ Mengambil data poin...';
-    const points = await dbQuery('member_points', 'select=*,profiles!member_points_member_id_fkey(full_name)&order=created_at.asc');
+    const points = await ambil('member_points', 'select=*,profiles!member_points_member_id_fkey(full_name)&order=created_at.asc', 'Poin Reward');
     const pointRows = [['ID','Member ID','Anggota','Poin','Tipe','Alasan','Tanggal']];
     (points||[]).forEach(p => pointRows.push([p.id, p.member_id||'', p.profiles?.full_name||'', p.points, p.type, p.reason, p.created_at]));
     const wsPoint = XLSX.utils.aoa_to_sheet(pointRows);
@@ -10303,7 +10325,7 @@ async function doBackup() {
 
     // Sheet 7: Pengeluaran Kas Organisasi
     status.textContent = '🎉 Mengambil data pengeluaran kas...';
-    const orgExpB = await dbQuery('org_expenses', 'select=*&order=created_at.asc');
+    const orgExpB = await ambil('org_expenses', 'select=*&order=created_at.asc', 'Pengeluaran Kas');
     // 'Kategori' membedakan pengeluaran event dari pembagian keuntungan
     // (profit_share) yang dipakai dashboard. Tanpa itu, semuanya kembali
     // sebagai 'event' dan kartu Keuntungan Bunga jadi keliru setelah restore.
@@ -10318,7 +10340,7 @@ async function doBackup() {
     // diterima hilang saat restore, dan kas hasil pemulihan lebih kecil
     // daripada kenyataannya.
     status.textContent = '⚠️ Mengambil data denda...';
-    const lainB = await dbQuery('pendapatan_lain', 'select=*,profiles!pendapatan_lain_member_id_fkey(full_name)&order=created_at.asc');
+    const lainB = await ambil('pendapatan_lain', 'select=*,profiles!pendapatan_lain_member_id_fkey(full_name)&order=created_at.asc', 'Pendapatan Lain');
     const lainRows = [['ID','Loan ID','Payment ID','Member ID','Anggota','Jenis','Jumlah','Keterangan','Tanggal']];
     (lainB||[]).forEach(x => lainRows.push([x.id, x.loan_id||'', x.payment_id||'', x.member_id||'', x.profiles?.full_name||'', x.jenis||'denda', x.amount, x.note||'', x.created_at]));
     const wsLain = XLSX.utils.aoa_to_sheet(lainRows);

@@ -1010,6 +1010,15 @@ tbody tr:hover { background: var(--surface2); }
    avatar_url yang sudah ada di profil; kalau kosong, jatuh ke huruf awal
    nama dengan warna aksen — pola yang sama dengan daftar transaksi, supaya
    orang yang belum berfoto tidak tampak seperti gambar gagal dimuat. */
+/* v4.77.0 — bilah peringatan koneksi. Muncul di atas seluruh halaman saat
+   ada pembacaan data yang gagal, karena kegagalan baca berubah menjadi
+   angka NOL di layar — dan nol yang salah tidak terlihat seperti galat. */
+.bilah-koneksi { display: none; align-items: center; gap: 10px; background: var(--amber-bg);
+  border-bottom: 1px solid #fde68a; color: var(--amber-text); padding: 10px 14px;
+  font-size: 12px; font-weight: 600; position: sticky; top: 0; z-index: 60; }
+.bilah-koneksi button { margin-left: auto; flex-shrink: 0; background: var(--amber-text); color: #fff;
+  border: 0; border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+
 .hp-foto { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
   background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
   font-weight: 800; font-size: 15px; border: 2px solid var(--surface); box-shadow: var(--shadow); }
@@ -1394,6 +1403,12 @@ img.hp-foto { display: block; }
   </aside>
 
   <div class="main">
+    <!-- v4.77.0 -->
+    <div class="bilah-koneksi" id="bilah-koneksi" role="alert">
+      <span>⚠️</span>
+      <span>Sebagian data gagal dimuat — angka di layar mungkin tidak lengkap.</span>
+      <button onclick="location.reload()">Muat ulang</button>
+    </div>
     <div class="mobile-header">
       <!-- v4.68.0: tombol kembali — muncul di semua halaman kecuali Beranda -->
       <button class="hp-kembali" id="btn-kembali" onclick="kembali()" title="Kembali" aria-label="Kembali">
@@ -2590,7 +2605,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.76.0';
+const APP_VERSION = 'v4.77.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2782,11 +2797,41 @@ async function supabaseLogin(email, password) {
   return await res.json();
 }
 
+// Kegagalan membaca data TIDAK boleh berubah menjadi angka nol yang diam.
+//
+// dbQuery mengembalikan null saat gagal, dan setiap halaman memperlakukan
+// null sebagai "tidak ada data" — sehingga koneksi putus tampil sebagai
+// "Kas koperasi Rp 0" dan "0 anggota". Itu bukan sekadar tidak informatif:
+// nol yang salah tidak terlihat seperti galat, ia terlihat seperti fakta.
+// Supabase free tier tidur sesudah ±7 hari menganggur, jadi keadaan ini
+// pasti terjadi, bukan kemungkinan jauh.
+let _waktuBacaGagal = 0;
+function tandaiBacaGagal() {
+  _waktuBacaGagal = Date.now();
+  const b = document.getElementById('bilah-koneksi');
+  if (b) b.style.display = 'flex';
+}
+function tandaiBacaBerhasil() {
+  // Baru dianggap pulih bila tidak ada kegagalan dalam 2 detik terakhir.
+  // Satu permintaan yang kebetulan lolos di tengah gangguan tidak cukup
+  // untuk menyimpulkan koneksinya sudah baik.
+  if (!_waktuBacaGagal || Date.now() - _waktuBacaGagal < 2000) return;
+  _waktuBacaGagal = 0;
+  const b = document.getElementById('bilah-koneksi');
+  if (b) b.style.display = 'none';
+}
+
 // Direct REST query helper - bypasses Supabase JS client auth issues
 async function dbQuery(table, params = '') {
   const url = `${SUPABASE_URL}/rest/v1/${table}${params ? '?' + params : ''}`;
-  const res = await fetchToken(url);
-  if (!res.ok) return null;
+  let res;
+  // fetch MELEMPAR saat jaringan putus — sebelumnya galat itu merambat
+  // keluar dan menghentikan pemuat halaman di tengah jalan, menyisakan
+  // layar setengah terisi tanpa penjelasan.
+  try { res = await fetchToken(url); }
+  catch (e) { tandaiBacaGagal(); return null; }
+  if (!res.ok) { tandaiBacaGagal(); return null; }
+  tandaiBacaBerhasil();
   return await res.json();
 }
 
@@ -2794,11 +2839,18 @@ async function dbQuery(table, params = '') {
 // dikerjakan lewat akses tabel langsung — misalnya proses login, di mana
 // pengguna belum punya token sehingga tabel `profiles` tidak boleh terbuka.
 async function dbRpc(fnName, args = {}, useAnon = false) {
-  const res = await fetchToken(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
-    method: 'POST',
-    body: JSON.stringify(args)
-  }, useAnon);
-  if (!res.ok) { let e; try { e = await res.json(); } catch(_) { e = { message: 'HTTP ' + res.status }; } return { error: e }; }
+  let res;
+  try {
+    res = await fetchToken(`${SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
+      method: 'POST',
+      body: JSON.stringify(args)
+    }, useAnon);
+  } catch (e) {
+    tandaiBacaGagal();
+    return { error: { message: 'Tidak bisa menghubungi server' } };
+  }
+  if (!res.ok) { tandaiBacaGagal(); let e; try { e = await res.json(); } catch(_) { e = { message: 'HTTP ' + res.status }; } return { error: e }; }
+  tandaiBacaBerhasil();
   return { data: await res.json(), error: null };
 }
 
@@ -3263,6 +3315,9 @@ async function doLogout(sengaja = false) {
   // dan memunculkan kerangka halamannya sekejap.
   riwayatSiap = false;
   halamanSekarang = 'dashboard';
+  _waktuBacaGagal = 0;
+  const bk = document.getElementById('bilah-koneksi');
+  if (bk) bk.style.display = 'none';
   const tKembaliKeluar = document.getElementById('btn-kembali');
   if (tKembaliKeluar) tKembaliKeluar.classList.remove('tampil');
   try { history.replaceState(null, ''); } catch (e) {}

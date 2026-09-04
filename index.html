@@ -2605,7 +2605,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.77.0';
+const APP_VERSION = 'v4.78.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3001,11 +3001,22 @@ function showToast(msg, duration = 3000) {
   setTimeout(() => t.classList.remove('show'), duration);
 }
 
+// Keduanya tahan terhadap id yang tidak ada.
+//
+// Sebelumnya `getElementById(id).classList` melempar bila idnya salah ketik
+// atau elemennya belum ada — dan karena closeModal dipanggil di 64 tempat,
+// hampir selalu diikuti tindakan lain di baris berikutnya (memuat ulang
+// daftar, berpindah halaman, menampilkan kwitansi), satu id keliru
+// menghentikan seluruh sisa penangan tanpa jejak apa pun di layar.
 function openModal(id) {
-  document.getElementById(id).classList.add('open');
+  const el = document.getElementById(id);
+  if (!el) { console.warn('openModal: modal tidak ditemukan —', id); return; }
+  el.classList.add('open');
 }
 function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
+  const el = document.getElementById(id);
+  if (!el) { console.warn('closeModal: modal tidak ditemukan —', id); return; }
+  el.classList.remove('open');
 }
 function openSidebar() {
   document.getElementById('sidebar').classList.add('open');

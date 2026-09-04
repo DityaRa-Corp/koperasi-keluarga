@@ -1006,6 +1006,15 @@ tbody tr:hover { background: var(--surface2); }
 /* v4.68.0 — tombol kembali. Menempati slot kiri bilah atas, tempat yang sama
    dengan hamburger di layar lebar. Disembunyikan di Beranda karena Beranda
    adalah akar: tidak ada yang di belakangnya. */
+/* v4.71.0 — foto pengguna di bilah atas, di kiri namanya. Memakai
+   avatar_url yang sudah ada di profil; kalau kosong, jatuh ke huruf awal
+   nama dengan warna aksen — pola yang sama dengan daftar transaksi, supaya
+   orang yang belum berfoto tidak tampak seperti gambar gagal dimuat. */
+.hp-foto { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; object-fit: cover;
+  background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 15px; border: 2px solid var(--surface); box-shadow: var(--shadow); }
+img.hp-foto { display: block; }
+
 .hp-kembali { width: 40px; height: 40px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border);
   display: none; align-items: center; justify-content: center; color: var(--accent); cursor: pointer; padding: 0; flex-shrink: 0; }
 .hp-kembali.tampil { display: flex; }
@@ -1336,6 +1345,8 @@ tbody tr:hover { background: var(--surface2); }
       <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
+      <!-- v4.71.0: foto pengguna, di kiri namanya -->
+      <div id="hp-foto-wadah"></div>
       <div class="hp-sapa">
         <div class="hp-hi" id="hp-sapa">Selamat datang 👋</div>
         <div class="hp-nama"><span id="hp-nama">-</span><span class="pill-peran" id="hp-peran">Anggota</span></div>
@@ -2508,7 +2519,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.70.0';
+const APP_VERSION = 'v4.71.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3139,7 +3150,13 @@ async function initApp(user) {
   resetIdleTimer();
   await muatPengaturan();
   await loadAllMembers();
-  loadDashboard();
+  // showPage, BUKAN loadDashboard: masuk harus selalu mendarat di Beranda.
+  // Dulu hanya isinya yang dimuat, sedangkan halaman yang tampil dibiarkan
+  // apa adanya — jadi keluar dari Simpanan lalu masuk lagi mendarat di
+  // Simpanan, sementara riwayat sudah mengira kita di Beranda. Keduanya
+  // berbeda pendapat, dan tombol Kembali ikut salah arah.
+  // Tidak menambah entri riwayat: halamanSekarang memang sudah 'dashboard'.
+  showPage('dashboard');
   mulaiPantauNotifikasi();
   mulaiJagaToken();
   // SW sudah terdaftar sejak halaman dimuat (Q10); panggilan ini idempoten
@@ -7377,6 +7394,17 @@ function renderSapaan() {
   if (s) s.textContent = hi + ' 👋';
   if (n) n.textContent = nama;
   if (p) { p.textContent = isAdmin() ? 'Admin' : 'Anggota'; p.className = 'pill-peran' + (isAdmin() ? ' admin' : ''); }
+
+  // Foto dibangun ulang tiap kali sapaan digambar, jadi mengganti foto di
+  // Profil langsung terlihat di sini tanpa perlu memuat ulang aplikasi.
+  const wadah = document.getElementById('hp-foto-wadah');
+  if (wadah) {
+    const foto = currentProfile?.avatar_url;
+    const inisial = (String(currentProfile?.full_name || nama || '?').trim()[0] || '?').toUpperCase();
+    wadah.innerHTML = foto
+      ? `<img class="hp-foto" src="${escapeHtml(foto)}" alt="Foto ${escapeHtml(nama)}" onerror="this.outerHTML='<div class=\'hp-foto\'>${escapeHtml(inisial)}</div>'">`
+      : `<div class="hp-foto">${escapeHtml(inisial)}</div>`;
+  }
 }
 
 // Isi lonceng ditarik ke halaman depan: admin membuka aplikasi langsung

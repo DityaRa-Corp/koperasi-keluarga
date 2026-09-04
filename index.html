@@ -1933,6 +1933,20 @@ tbody tr:hover { background: var(--surface2); }
 
 <!-- MODALS -->
 <!-- Setor Simpanan -->
+<!-- v4.70.0: konfirmasi sebelum menutup aplikasi. Muncul saat Kembali
+     ditekan di Beranda — akar navigasi, satu-satunya tempat yang memang
+     berujung keluar. -->
+<div class="modal-overlay" id="modal-keluar" onclick="if (event.target === this) closeModal('modal-keluar')">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title">Tutup aplikasi?</div>
+    <div class="modal-sub">Anda sedang di Beranda — tidak ada halaman sebelumnya. Keluar dari Koperasi Keluarga sekarang?</div>
+    <div class="modal-actions" style="margin-top:18px">
+      <button class="btn btn-ghost" onclick="closeModal('modal-keluar')">Batal</button>
+      <button class="btn btn-danger" onclick="konfirmasiKeluar()">Tutup Aplikasi</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-setor">
   <div class="modal">
     <div class="modal-title">Setor Simpanan</div>
@@ -2494,7 +2508,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.69.1';
+const APP_VERSION = 'v4.70.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2805,9 +2819,20 @@ function closeSidebar() {
 let halamanSekarang = 'dashboard';
 let riwayatSiap = false;
 let dariRiwayat = false;   // true saat popstate memutar ulang, supaya tidak menumpuk entri
-let waktuMintaKeluar = 0;  // kapan penahan keluar terakhir kali diperlihatkan
-const JEDA_KELUAR = 2500;  // ms — dua tekanan dalam rentang ini dianggap sengaja
 let abaikanPopstate = false;   // popstate yang kita picu sendiri lewat forward()
+let sedangKeluar = false;      // true selama langkah keluar sedang berjalan
+
+// Dipanggil tombol "Tutup Aplikasi" di dialog. Mundur DUA entri sekaligus:
+// satu untuk Beranda, satu lagi menembus entri umpan — itulah yang membawa
+// keluar. Bendera sedangKeluar menahan penangan popstate supaya tidak
+// menafsirkan langkah ini sebagai navigasi biasa dan memunculkan dialognya
+// lagi.
+function konfirmasiKeluar() {
+  closeModal('modal-keluar');
+  if (!riwayatSiap) { showToast('Tutup aplikasi lewat tombol perangkat Anda'); return; }
+  sedangKeluar = true;
+  try { history.go(-2); } catch (e) { sedangKeluar = false; }
+}
 
 // Mengembalikan posisi ke entri tempat kita berada sebelum Kembali ditekan.
 //
@@ -2830,7 +2855,6 @@ function pulihkanPosisiRiwayat() {
 
 function mulaiRiwayat(halamanAwal) {
   halamanSekarang = halamanAwal;
-  waktuMintaKeluar = 0;
   try {
     // DUA entri, bukan satu. Yang bawah ('akar') adalah umpan: ia tidak
     // pernah ditampilkan, tugasnya hanya menangkap tekanan Kembali di
@@ -2869,6 +2893,8 @@ function tutupLapisanTeratas() {
 }
 
 window.addEventListener('popstate', (e) => {
+  // Langkah keluar yang sedang berjalan — biarkan menembus.
+  if (sedangKeluar) return;
   // Langkah yang kita picu sendiri lewat forward() — bukan tekanan pengguna.
   if (abaikanPopstate) { abaikanPopstate = false; return; }
 
@@ -2884,21 +2910,15 @@ window.addEventListener('popstate', (e) => {
   // tekan belum cukup: aplikasi keuangan yang tertutup tanpa sengaja di
   // tengah pencatatan lebih mahal daripada satu tekanan tambahan.
   if (st && st.kk === 'akar') {
-    const sekarang = Date.now();
-    if (sekarang - waktuMintaKeluar < JEDA_KELUAR) {
-      // Tekanan kedua — memang mau keluar. Umpannya tidak dipasang ulang,
-      // jadi langkah mundur ini menembus keluar dari aplikasi.
-      history.back();
-      return;
-    }
-    waktuMintaKeluar = sekarang;
-    showToast('Tekan Kembali sekali lagi untuk keluar', JEDA_KELUAR);
-    pulihkanPosisiRiwayat();   // maju kembali ke Beranda, tanpa entri baru
+    // Posisi dipulihkan LEBIH DULU, baru dialognya dibuka. Urutannya penting:
+    // dengan begitu dialog berdiri di atas entri Beranda, sehingga menekan
+    // Kembali sekali lagi menutup dialog (= batal) alih-alih menembus keluar.
+    pulihkanPosisiRiwayat();
+    openModal('modal-keluar');
     return;
   }
 
   if (st && st.kk === 'halaman') {
-    waktuMintaKeluar = 0;   // berpindah halaman membatalkan niat keluar
     dariRiwayat = true;
     try { showPage(st.page); } finally { dariRiwayat = false; }
   }

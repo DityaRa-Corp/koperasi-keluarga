@@ -1003,6 +1003,14 @@ tbody tr:hover { background: var(--surface2); }
 .hp-lonceng { width: 40px; height: 40px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); display: flex;
   align-items: center; justify-content: center; position: relative; color: var(--accent); cursor: pointer; padding: 0; flex-shrink: 0; }
 
+/* v4.68.0 — tombol kembali. Menempati slot kiri bilah atas, tempat yang sama
+   dengan hamburger di layar lebar. Disembunyikan di Beranda karena Beranda
+   adalah akar: tidak ada yang di belakangnya. */
+.hp-kembali { width: 40px; height: 40px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border);
+  display: none; align-items: center; justify-content: center; color: var(--accent); cursor: pointer; padding: 0; flex-shrink: 0; }
+.hp-kembali.tampil { display: flex; }
+.hp-kembali:active { background: var(--bg); }
+
 /* bilah bawah */
 .nav-bawah { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; background: rgba(255,255,255,.94);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--border);
@@ -1320,6 +1328,10 @@ tbody tr:hover { background: var(--surface2); }
 
   <div class="main">
     <div class="mobile-header">
+      <!-- v4.68.0: tombol kembali — muncul di semua halaman kecuali Beranda -->
+      <button class="hp-kembali" id="btn-kembali" onclick="kembali()" title="Kembali" aria-label="Kembali">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <!-- v4.63.0: di HP, bilah bawah menggantikan menu samping — hamburger disembunyikan lewat CSS -->
       <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -2482,7 +2494,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.67.0';
+const APP_VERSION = 'v4.68.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2775,7 +2787,79 @@ function closeSidebar() {
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
+// ── RIWAYAT NAVIGASI (v4.68.0) ───────────────────────────────────────────
+// Aplikasi ini satu halaman: berpindah menu tidak pernah menambah entri ke
+// riwayat browser, sehingga tumpukannya hanya berisi satu entri — dan tombol
+// Kembali (gestur geser di HP, tombol Back di Chrome) langsung menutup
+// aplikasi. Dipasang sebagai pintasan layar penuh, itu terasa seperti
+// aplikasi yang mati mendadak.
+//
+// Sekarang setiap perpindahan menu menitipkan satu entri, jadi Kembali
+// menempuhnya mundur. Beranda adalah AKAR: di sana Kembali memang keluar,
+// sama seperti aplikasi Android pada umumnya.
+//
+// Lapisan yang menutupi layar (lembar aksi, modal, menu samping) ditutup
+// LEBIH DULU oleh Kembali, sebelum halamannya berpindah — juga kebiasaan
+// yang sama. Lapisan itu sengaja tidak menitipkan entri sendiri: menutupnya
+// memakai entri halaman yang sedang berjalan, lalu entri itu dikembalikan.
+let halamanSekarang = 'dashboard';
+let riwayatSiap = false;
+let dariRiwayat = false;   // true saat popstate memutar ulang, supaya tidak menumpuk entri
+
+function mulaiRiwayat(halamanAwal) {
+  halamanSekarang = halamanAwal;
+  try {
+    history.replaceState({ kk: 'halaman', page: halamanAwal }, '');
+    riwayatSiap = true;
+  } catch (e) {
+    riwayatSiap = false;   // browser tanpa History API: aplikasi tetap jalan, hanya tanpa Kembali
+  }
+}
+
+function titipRiwayat(state) {
+  if (!riwayatSiap || dariRiwayat) return;
+  try { history.pushState(state, ''); } catch (e) {}
+}
+
+// Dipakai tombol Kembali di layar. Sengaja memakai history.back() dan BUKAN
+// showPage() langsung, supaya tombol di layar dan tombol bawaan HP menempuh
+// jalur yang sama persis — kalau tidak, keduanya bisa berbeda pendapat soal
+// halaman mana yang ada di belakang.
+function kembali() {
+  if (riwayatSiap) history.back();
+  else showPage('dashboard');
+}
+
+// Menutup lapisan teratas yang sedang menutupi layar. Mengembalikan true
+// kalau memang ada yang ditutup.
+function tutupLapisanTeratas() {
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar && sidebar.classList.contains('open')) { closeSidebar(); return true; }
+  const terbuka = [...document.querySelectorAll('.modal-overlay.open')];
+  if (terbuka.length) { terbuka.forEach(m => m.classList.remove('open')); return true; }
+  return false;
+}
+
+window.addEventListener('popstate', (e) => {
+  // Lapisan dulu. Entri yang barusan terpakai dikembalikan supaya menutup
+  // modal tidak ikut memundurkan halaman di belakangnya.
+  if (tutupLapisanTeratas()) {
+    try { history.pushState({ kk: 'halaman', page: halamanSekarang }, ''); } catch (_) {}
+    return;
+  }
+  const st = e.state;
+  if (st && st.kk === 'halaman') {
+    dariRiwayat = true;
+    try { showPage(st.page); } finally { dariRiwayat = false; }
+  }
+  // Tanpa state = sudah di luar entri milik kita (layar login). Dibiarkan.
+});
+
 function showPage(name) {
+  if (name !== halamanSekarang) titipRiwayat({ kk: 'halaman', page: name });
+  halamanSekarang = name;
+  const tKembali = document.getElementById('btn-kembali');
+  if (tKembali) tKembali.classList.toggle('tampil', name !== 'dashboard');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -2939,6 +3023,14 @@ async function doLogout(sengaja = false) {
   document.getElementById('auth-screen').style.display = 'flex';
   const warn = document.getElementById('idle-warning');
   if (warn) warn.style.display = 'none';
+  // v4.68.0 — riwayat sesi lama dipadamkan. Tanpa ini, Kembali di layar
+  // login masih menempuh entri halaman milik pengguna yang baru saja keluar
+  // dan memunculkan kerangka halamannya sekejap.
+  riwayatSiap = false;
+  halamanSekarang = 'dashboard';
+  const tKembaliKeluar = document.getElementById('btn-kembali');
+  if (tKembaliKeluar) tKembaliKeluar.classList.remove('tampil');
+  try { history.replaceState(null, ''); } catch (e) {}
 }
 
 async function initApp(user) {
@@ -2966,6 +3058,12 @@ async function initApp(user) {
   document.getElementById('app-screen').style.display = 'flex';
   setRoleUI();
   renderSapaan();
+  // v4.68.0 — Beranda menjadi AKAR riwayat. replaceState (bukan pushState)
+  // supaya entri layar login tertimpa: Kembali dari Beranda keluar dari
+  // aplikasi, bukan memundurkan pengguna ke formulir login yang sudah lewat.
+  mulaiRiwayat('dashboard');
+  const tKembali = document.getElementById('btn-kembali');
+  if (tKembali) tKembali.classList.remove('tampil');
   // Menandai awal sesi supaya batas 1 jam dihitung sejak sekarang
   try { localStorage.setItem(KUNCI_KEGIATAN, String(Date.now())); } catch(e) {}
   resetIdleTimer();

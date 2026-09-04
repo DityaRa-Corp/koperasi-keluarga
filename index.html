@@ -1403,8 +1403,11 @@ img.hp-foto { display: block; }
       <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <!-- v4.71.0: foto pengguna, di kiri namanya -->
-      <div id="hp-foto-wadah"></div>
+      <!-- v4.71.0: foto pengguna, di kiri namanya. v4.74.0: mengetuknya
+           membuka Profil — tempat yang memang dicari orang saat menyentuh
+           fotonya sendiri. -->
+      <div id="hp-foto-wadah" onclick="showPage('profil')" role="button" tabindex="0"
+           title="Buka profil" style="cursor:pointer"></div>
       <div class="hp-sapa">
         <div class="hp-hi" id="hp-sapa">Selamat datang 👋</div>
         <div class="hp-nama"><span id="hp-nama">-</span><span class="pill-peran" id="hp-peran">Anggota</span></div>
@@ -2587,7 +2590,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.73.0';
+const APP_VERSION = 'v4.74.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2857,6 +2860,87 @@ function renderOverdueBadge(nextDueDate, status) {
   return `<span class="badge" style="background:${lvl.bg};color:${lvl.color};margin-left:4px" title="${lvl.desc}">⚠ ${lvl.label}</span>`;
 }const fmtDateTime = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 const isAdmin = () => currentProfile?.role === 'admin';
+
+// ── CONFETTI (v4.74.0) ───────────────────────────────────────────────────
+//
+// Digambar di Canvas, tanpa pustaka dari luar — sama seperti kwitansi.
+// Menarik satu berkas dari CDN untuk hiasan tidak sepadan: ia menambah
+// titik gagal pada aplikasi yang justru dipakai di jaringan HP yang tidak
+// selalu baik.
+//
+// Kanvasnya dibuat saat dipakai lalu dibuang sendiri. Tidak ada elemen
+// menganggur di DOM, dan tidak ada animasi yang terus berjalan diam-diam.
+const KONFETI_WARNA = ['#2A3568', '#16a34a', '#d97706', '#7c3aed', '#dc2626', '#f5b74a'];
+
+function rayakan(jumlah = 90) {
+  // Menghormati pengguna yang mematikan animasi di setelan perangkatnya.
+  // Bagi sebagian orang gerakan begini memicu pusing, bukan senang.
+  try {
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  } catch (e) {}
+  if (document.hidden) return;              // layar tidak dilihat, buang saja
+
+  const kanvas = document.createElement('canvas');
+  kanvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:400';
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const L = window.innerWidth, T = window.innerHeight;
+  kanvas.width = L * dpr; kanvas.height = T * dpr;
+  document.body.appendChild(kanvas);
+  const ctx = kanvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // Dua semburan dari sudut bawah, bukan hujan dari atas: arahnya menuju
+  // tengah layar, tempat mata sedang berada sesudah menekan tombol.
+  const p = [];
+  for (let i = 0; i < jumlah; i++) {
+    const kiri = i % 2 === 0;
+    const sudut = (kiri ? -60 : -120) * Math.PI / 180 + (Math.random() - .5) * 0.9;
+    const laju = 9 + Math.random() * 9;
+    p.push({
+      x: kiri ? L * 0.08 : L * 0.92,
+      y: T * 0.92,
+      vx: Math.cos(sudut) * laju,
+      vy: Math.sin(sudut) * laju,
+      w: 5 + Math.random() * 6,
+      h: 8 + Math.random() * 7,
+      putar: Math.random() * Math.PI,
+      dPutar: (Math.random() - .5) * 0.34,
+      warna: KONFETI_WARNA[(Math.random() * KONFETI_WARNA.length) | 0],
+      hidup: 1
+    });
+  }
+
+  const mulai = performance.now();
+  const DURASI = 2600;
+  let rafId = 0;
+
+  function bingkai(t) {
+    const umur = t - mulai;
+    ctx.clearRect(0, 0, L, T);
+    let terlihat = 0;
+    for (const k of p) {
+      k.vy += 0.42;                 // gravitasi
+      k.vx *= 0.99;                 // hambatan udara
+      k.x += k.vx; k.y += k.vy;
+      k.putar += k.dPutar;
+      k.hidup = Math.max(0, 1 - umur / DURASI);
+      if (k.y > T + 40 || k.hidup <= 0) continue;
+      terlihat++;
+      ctx.save();
+      ctx.globalAlpha = k.hidup;
+      ctx.translate(k.x, k.y);
+      ctx.rotate(k.putar);
+      ctx.fillStyle = k.warna;
+      ctx.fillRect(-k.w / 2, -k.h / 2, k.w, k.h);
+      ctx.restore();
+    }
+    // Berhenti begitu tidak ada lagi yang terlihat — bukan menunggu waktu
+    // habis. Kepingan yang sudah jatuh keluar layar tidak perlu digambar.
+    if (terlihat && umur < DURASI) rafId = requestAnimationFrame(bingkai);
+    else { cancelAnimationFrame(rafId); kanvas.remove(); }
+  }
+  rafId = requestAnimationFrame(bingkai);
+}
 
 function showToast(msg, duration = 3000) {
   const t = document.getElementById('toast');
@@ -4246,6 +4330,7 @@ async function doSetor() {
   await autoPoinSetor(memberId, amount);
 
   showToast('Setoran berhasil dicatat ✓');
+  rayakan();
   closeModal('modal-setor');
   document.getElementById('setor-amount').value = '';
   document.getElementById('setor-note').value = '';
@@ -4946,6 +5031,7 @@ async function doApprovePinjaman() {
   }
 
   showToast('Pinjaman disetujui dan dicairkan ✓');
+  rayakan();
   closeModal('modal-approve-pinjaman');
   loadPinjaman(); loadDashboard();
   muatNotifikasi();
@@ -9064,6 +9150,7 @@ async function doCairanSimpanan() {
   await logActivity('CAIRKAN_SIMPANAN',
     `Pencairan ${fmt(nominal)}, sisa ${fmt(sisa)}` + (catatan ? ` (${catatan})` : ''), memberId);
   showToast(`Pencairan ${fmt(nominal)} berhasil diproses` + (sisa > 0 ? ` · sisa ${fmt(sisa)}` : ''));
+  rayakan();
   closeModal('modal-tarik');
   loadSimpanan(); loadDashboard();
 

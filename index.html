@@ -1136,6 +1136,75 @@ img.hp-foto { display: block; }
 
 .la-kw { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2);
   border: 1px solid var(--border); font-size: 13px; flex-shrink: 0; margin-left: 6px; cursor: pointer; }
+/* v4.80.0 — Laporan yang bercerita */
+.lap-periode { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: 12px; padding: 11px 14px; margin-bottom: 12px;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; text-align: left; }
+.lap-periode .ic { font-size: 16px; }
+.lap-periode .cv { margin-left: auto; color: var(--text3); font-size: 13px; font-weight: 600; }
+
+.lap-kartu { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.lap-judul { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 8px; }
+.lap-cerita { font-size: 14px; line-height: 1.55; color: var(--text2); }
+.lap-cerita b { color: var(--text); font-weight: 800; }
+.lap-cerita .besar { display: block; font-family: var(--mono); font-size: 24px; font-weight: 700;
+  color: var(--accent); margin: 8px 0 2px; letter-spacing: -.3px; }
+.lap-cerita .besar.turun { color: var(--red-text); }
+.lap-cerita .kecil { display: block; font-size: 11px; color: var(--text3); }
+.lap-dua { display: flex; gap: 8px; margin-top: 12px; }
+.lap-dua > div { flex: 1; background: var(--surface2); border-radius: 10px; padding: 9px 11px; }
+.lap-dua .l { font-size: 9.5px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.lap-dua .v { font-family: var(--mono); font-size: 13px; font-weight: 600; margin-top: 3px; }
+
+.lap-dompet .b { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
+.lap-dompet .b:last-child { border-bottom: 0; padding-top: 11px; }
+.lap-dompet .ic { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center;
+  justify-content: center; font-size: 14px; flex-shrink: 0; }
+.lap-dompet .tx { flex: 1; font-size: 13px; color: var(--text2); min-width: 0; }
+.lap-dompet .tx b { color: var(--text); }
+.lap-dompet .vl { font-family: var(--mono); font-size: 13.5px; font-weight: 600; flex-shrink: 0; }
+.lap-dompet .b.total .tx { font-weight: 800; color: var(--text); }
+.lap-dompet .b.total .vl { font-weight: 700; color: var(--accent); font-size: 15px; }
+
+.lap-untung .utama { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--green-text); letter-spacing: -.3px; }
+.lap-untung .lbl { font-size: 13px; font-weight: 700; margin-top: 2px; }
+.lap-untung .ket { font-size: 11.5px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+.lap-untung .jelas { margin-top: 10px; padding: 9px 11px; background: var(--amber-bg); border: 1px solid #fde68a;
+  border-radius: 9px; font-size: 11.5px; color: #7c5307; line-height: 1.5; }
+
+.lap-wa { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  background: #25D366; color: #fff; font: inherit; font-weight: 800; font-size: 15px; padding: 15px;
+  border: 0; border-radius: 14px; margin: 4px 0 14px; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37,211,102,.28); }
+.lap-wa:active { transform: translateY(1px); }
+
+.lap-lipat { display: flex; align-items: center; gap: 10px; width: 100%; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; margin-bottom: 10px;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--text); cursor: pointer; text-align: left; }
+.lap-lipat .tx { flex: 1; min-width: 0; }
+.lap-lipat .sub { display: block; font-size: 11px; color: var(--text3); font-weight: 500; margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lap-lipat .cv { color: var(--text3); }
+.lap-lipat.buka { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+#lap-rincian { background: var(--surface); border: 1px solid var(--border); border-top: 0;
+  border-radius: 0 0 12px 12px; padding: 8px 14px 12px; margin-bottom: 10px; }
+.lap-muat { width: 100%; text-align: center; font: inherit; font-size: 12px; color: var(--accent);
+  font-weight: 700; padding: 10px 0 4px; background: none; border: 0; cursor: pointer; }
+
+.lap-opsi { display: flex; align-items: center; gap: 12px; padding: 12px 6px; border-bottom: 1px solid var(--border);
+  font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 8px; }
+.lap-opsi:last-child { border-bottom: 0; }
+.lap-opsi:active { background: var(--surface2); }
+.lap-opsi .ic { width: 34px; height: 34px; border-radius: 10px; background: var(--surface2); display: flex;
+  align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.lap-opsi .tx { flex: 1; min-width: 0; }
+.lap-opsi .sub { display: block; font-size: 11px; color: var(--text3); font-weight: 500; margin-top: 1px; }
+.lap-opsi .ck { color: var(--accent); font-weight: 800; display: none; }
+.lap-opsi.dipilih { background: var(--accent-bg); }
+.lap-opsi.dipilih .ck { display: inline; }
+
 /* v4.79.0 — chip MEMBUNGKUS ke baris berikutnya, bukan digulir ke samping.
    Dulu barisnya diberi overflow-x:auto: di layar 375 px deretan chip
    Laporan selebar 386–398 px, jadi ia bisa digeser kiri-kanan — dan pada HP
@@ -1662,59 +1731,89 @@ img.hp-foto { display: block; }
 
     <!-- LAPORAN -->
     <div class="page" id="page-laporan">
-      <div class="page-header" style="margin-bottom:14px">
+      <!-- v4.80.0 — Laporan yang BERCERITA. Halaman lama menyodorkan alat
+           (5 chip periode, 5 chip jenis, 3 tombol ekspor, 2 kolom tanggal);
+           yang ini menyodorkan jawaban: tiga kartu berkalimat, satu tombol
+           kirim, dan alat yang jarang dipakai dilipat ke "Lainnya". -->
+      <div class="page-header" style="margin-bottom:12px">
         <div class="page-title">Laporan</div>
-        <div class="page-sub" id="laporan-sub">Semua periode</div>
+        <div class="page-sub">Angka koperasi, siap dikirim ke grup</div>
       </div>
-      <!-- v4.65.0: periode sebagai chip, ringkasan uang masuk/keluar, tombol utama -->
-      <div class="tabs tabs-chip" id="laporan-chip-rentang">
-        <button class="tab-btn" data-range="thisMonth" onclick="setLaporanRange('thisMonth')">Bulan ini</button>
-        <button class="tab-btn" data-range="lastMonth" onclick="setLaporanRange('lastMonth')">Bulan lalu</button>
-        <button class="tab-btn" data-range="thisYear" onclick="setLaporanRange('thisYear')">Tahun ini</button>
-        <button class="tab-btn active" data-range="all" onclick="setLaporanRange('all')">Semua</button>
-        <button class="tab-btn" data-range="custom" onclick="toggleRentangLaporan()">📅 Pilih tanggal</button>
-      </div>
-      <div class="stat2 admin-only" id="laporan-ringkasan" style="display:none"></div>
-      <div class="btn-baris">
-        <button class="btn btn-wa admin-only" style="display:none;flex:2" onclick="bagikanLaporanPeriode()">💬 Laporan ke WhatsApp</button>
-        <button class="btn btn-ghost" onclick="exportLaporan()">Excel</button>
-        <button class="btn btn-ghost" onclick="cetakLaporan()">Cetak</button>
-      </div>
-      <div class="tabs tabs-chip">
-        <button class="tab-btn active" onclick="switchLaporanTab('simpanan', this)">Simpanan</button>
-        <button class="tab-btn" onclick="switchLaporanTab('pinjaman', this)">Pinjaman</button>
-        <button class="tab-btn" onclick="switchLaporanTab('cicilan', this)">Cicilan</button>
-        <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('jurnal', this)">📒 Jurnal Kas</button>
-        <button class="tab-btn admin-only" style="display:none" onclick="switchLaporanTab('adjustment', this)">Adjustment</button>
-      </div>
-      <div style="display:none" id="laporan-tombol-lama">
-        <button class="btn btn-ghost btn-sm" onclick="exportLaporan()" style="gap:6px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export Excel
-        </button>
-        <button class="btn btn-success btn-sm admin-only" id="btn-laporan-wa" style="display:none;gap:6px" onclick="bagikanLaporanPeriode()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H5.17L4 17.17V4z"/><path d="M8 9h8M8 12h5"/></svg>
-          Laporan ke WhatsApp
-        </button>
-        <button class="btn btn-ghost btn-sm" onclick="cetakLaporan()" style="gap:6px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-          Cetak
-        </button>
-        <button class="btn btn-ghost btn-sm" style="display:none;gap:6px" onclick="showPage('backup')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Backup
-        </button>
-      </div>
-      <!-- Rentang tanggal bebas — muncul saat chip "Pilih tanggal" ditekan -->
-      <div class="card" id="laporan-rentang" style="display:none;margin-bottom:14px;padding:12px 14px">
+
+      <button class="lap-periode" onclick="openModal('sheet-periode-laporan')" aria-label="Ganti periode laporan">
+        <span class="ic">📅</span>
+        <span id="lap-periode-label">Bulan ini</span>
+        <span class="cv">ganti ▾</span>
+      </button>
+
+      <!-- Rentang tanggal bebas — hanya tampil bila memilih "Pilih tanggal sendiri".
+           Kolomnya tetap ada walau tersembunyi: getLaporanDateFilter membacanya. -->
+      <div class="card" id="laporan-rentang" style="display:none;margin-bottom:12px;padding:12px 14px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <input type="date" class="filter-input" id="laporan-date-from" style="flex:1;min-width:130px" onchange="rentangManualLaporan()">
           <span style="color:var(--text3);font-size:13px">s/d</span>
           <input type="date" class="filter-input" id="laporan-date-to" style="flex:1;min-width:130px" onchange="rentangManualLaporan()">
         </div>
       </div>
-      <div class="card kartu-polos-hp">
-        <div id="laporan-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+
+      <div id="lap-kartu"><div class="loading"><div class="spinner"></div> Menghitung…</div></div>
+
+      <button class="lap-wa admin-only" id="btn-laporan-wa" style="display:none" onclick="bagikanLaporanPeriode()">💬 Kirim laporan ke grup WhatsApp</button>
+
+      <button class="lap-lipat" id="lap-lipat-rincian" onclick="toggleRincianLaporan()">
+        <span class="ic">📋</span>
+        <span class="tx">Rincian transaksi<span class="sub" id="lap-rincian-sub">memuat…</span></span>
+        <span class="cv" id="lap-rincian-cv">▾</span>
+      </button>
+      <div id="lap-rincian" style="display:none">
+        <div class="tabs tabs-chip" id="lap-saring" style="margin:0 0 6px">
+          <button class="tab-btn active" onclick="saringRincianLaporan('semua', this)">Semua</button>
+          <button class="tab-btn" onclick="saringRincianLaporan('masuk', this)">Masuk</button>
+          <button class="tab-btn" onclick="saringRincianLaporan('keluar', this)">Keluar</button>
+        </div>
+        <div id="lap-rincian-isi"></div>
+      </div>
+
+      <button class="lap-lipat" onclick="openModal('sheet-lainnya-laporan')">
+        <span class="ic">⚙️</span>
+        <span class="tx">Lainnya<span class="sub">Excel · Cetak · Buku kas · Riwayat koreksi · Tabel</span></span>
+        <span class="cv">›</span>
+      </button>
+
+      <!-- Laporan lama (tabel per jenis, buku kas, riwayat koreksi) — dibuka
+           dari lembar Lainnya, ditampilkan di sini dengan tombol Tutup. -->
+      <div class="card kartu-polos-hp" id="lap-lama-wadah" style="display:none;margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b id="lap-lama-judul" style="font-size:14px"></b>
+          <button class="btn btn-ghost btn-sm" onclick="tutupLaporanLama()">Tutup</button>
+        </div>
+        <div id="laporan-content"></div>
+      </div>
+    </div>
+
+    <!-- Lembar periode laporan (v4.80.0) -->
+    <div class="modal-overlay" id="sheet-periode-laporan" onclick="if (event.target === this) closeModal('sheet-periode-laporan')">
+      <div class="modal" style="max-width:420px">
+        <div class="modal-title">Laporan untuk periode</div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('thisMonth')"><span class="ic">📅</span><span class="tx">Bulan ini<span class="sub" id="lap-opsi-bulan-ini"></span></span><span class="ck" data-range="thisMonth">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('lastMonth')"><span class="ic">◀</span><span class="tx">Bulan lalu<span class="sub" id="lap-opsi-bulan-lalu"></span></span><span class="ck" data-range="lastMonth">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('thisYear')"><span class="ic">🗓</span><span class="tx">Tahun ini<span class="sub" id="lap-opsi-tahun-ini"></span></span><span class="ck" data-range="thisYear">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('all')"><span class="ic">∞</span><span class="tx">Sejak koperasi berdiri</span><span class="ck" data-range="all">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('custom')"><span class="ic">✏️</span><span class="tx">Pilih tanggal sendiri</span><span class="ck" data-range="custom">✓</span></div>
+      </div>
+    </div>
+
+    <!-- Lembar "Lainnya" laporan (v4.80.0) -->
+    <div class="modal-overlay" id="sheet-lainnya-laporan" onclick="if (event.target === this) closeModal('sheet-lainnya-laporan')">
+      <div class="modal" style="max-width:420px">
+        <div class="modal-title">Lainnya</div>
+        <div class="lap-opsi" onclick="closeModal('sheet-lainnya-laporan'); exportLaporan()"><span class="ic">📗</span><span class="tx">Simpan sebagai Excel<span class="sub">untuk arsip tahunan</span></span></div>
+        <div class="lap-opsi" onclick="closeModal('sheet-lainnya-laporan'); cetakLaporan()"><span class="ic">🖨</span><span class="tx">Cetak<span class="sub">atau simpan sebagai PDF</span></span></div>
+        <div class="lap-opsi admin-only" style="display:none" onclick="bukaLaporanLama('jurnal', 'Buku kas')"><span class="ic">📒</span><span class="tx">Buku kas<span class="sub">setiap uang masuk dan keluar, berurutan</span></span></div>
+        <div class="lap-opsi admin-only" style="display:none" onclick="bukaLaporanLama('adjustment', 'Riwayat koreksi')"><span class="ic">✏️</span><span class="tx">Riwayat koreksi<span class="sub">transaksi yang pernah diperbaiki admin</span></span></div>
+        <div class="lap-opsi" onclick="bukaLaporanLama('simpanan', 'Tabel simpanan')"><span class="ic">💰</span><span class="tx">Tabel simpanan<span class="sub">saldo awal, setor, tarik, saldo akhir per anggota</span></span></div>
+        <div class="lap-opsi" onclick="bukaLaporanLama('pinjaman', 'Tabel pinjaman')"><span class="ic">🏦</span><span class="tx">Tabel pinjaman</span></div>
+        <div class="lap-opsi" onclick="bukaLaporanLama('cicilan', 'Tabel cicilan')"><span class="ic">📅</span><span class="tx">Tabel cicilan</span></div>
       </div>
     </div>
 
@@ -2610,7 +2709,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.79.0';
+const APP_VERSION = 'v4.80.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3332,6 +3431,7 @@ async function doLogout(sengaja = false) {
   riwayatSiap = false;
   halamanSekarang = 'dashboard';
   _waktuBacaGagal = 0;
+  _lapRange = null; _lapData = null;   // laporan kembali ke "Bulan ini" untuk siapa pun yang masuk berikutnya
   const bk = document.getElementById('bilah-koneksi');
   if (bk) bk.style.display = 'none';
   const tKembaliKeluar = document.getElementById('btn-kembali');
@@ -6097,10 +6197,200 @@ function setLaporanRange(range) {
     from.value = '';
     to.value   = '';
   }
-  tandaiChipRentang(range === 'thisMonth' || range === 'lastMonth' || range === 'thisYear' ? range : 'all');
+  _lapRange = range;
   const rentang = document.getElementById('laporan-rentang');
   if (rentang) rentang.style.display = 'none';
   loadLaporan();
+}
+
+// ── LAPORAN YANG BERCERITA (v4.80.0) ─────────────────────────────────────
+let _lapRange = null;          // null = belum pernah dipilih → Bulan ini
+let _lapData = null;           // hasil kumpulkanLaporanPeriode terakhir
+let _lapSaring = 'semua';
+let _lapTampil = 12;           // baris rincian yang ditampilkan
+
+const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+function labelPeriodeLaporan() {
+  const now = new Date();
+  if (_lapRange === 'thisMonth') return NAMA_BULAN[now.getMonth()] + ' ' + now.getFullYear();
+  if (_lapRange === 'lastMonth') { const d = new Date(now.getFullYear(), now.getMonth() - 1, 1); return NAMA_BULAN[d.getMonth()] + ' ' + d.getFullYear(); }
+  if (_lapRange === 'thisYear')  return 'Tahun ' + now.getFullYear();
+  if (_lapRange === 'all')       return 'Sejak koperasi berdiri';
+  return periodeAktif();   // custom
+}
+
+// "Rp 9,2 juta", "Rp 667 ribu", "Rp 500" — hanya untuk KALIMAT; angka
+// persisnya selalu ditampilkan di tempat lain pada kartu yang sama.
+function rupiahRingkas(n) {
+  n = Math.abs(Number(n) || 0);
+  if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(1).replace('.', ',').replace(/,0$/, '') + ' miliar';
+  if (n >= 1e6) return 'Rp ' + (n / 1e6).toFixed(1).replace('.', ',').replace(/,0$/, '') + ' juta';
+  if (n >= 1e3) return 'Rp ' + Math.round(n / 1e3) + ' ribu';
+  return fmt(n);
+}
+
+function pilihPeriodeLaporan(range) {
+  closeModal('sheet-periode-laporan');
+  if (range === 'custom') {
+    _lapRange = 'custom';
+    const el = document.getElementById('laporan-rentang');
+    if (el) el.style.display = 'block';
+    document.getElementById('lap-periode-label').textContent = 'Pilih tanggal di bawah';
+    return;
+  }
+  setLaporanRange(range);
+}
+
+function tandaiOpsiPeriode() {
+  document.querySelectorAll('#sheet-periode-laporan .lap-opsi').forEach(o => {
+    const ck = o.querySelector('.ck');
+    o.classList.toggle('dipilih', !!ck && ck.dataset.range === (_lapRange || 'thisMonth'));
+  });
+  const now = new Date();
+  const lalu = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  set('lap-opsi-bulan-ini', NAMA_BULAN[now.getMonth()] + ' ' + now.getFullYear());
+  set('lap-opsi-bulan-lalu', NAMA_BULAN[lalu.getMonth()] + ' ' + lalu.getFullYear());
+  set('lap-opsi-tahun-ini', 'Januari – ' + NAMA_BULAN[now.getMonth()] + ' ' + now.getFullYear());
+}
+
+async function renderKartuLaporan() {
+  const el = document.getElementById('lap-kartu');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Menghitung…</div>';
+  const admin = isAdmin();
+
+  let d, peminjam = [];
+  try {
+    [d, peminjam] = await Promise.all([
+      kumpulkanLaporanPeriode(),
+      // Nama peminjam hanya untuk admin — anggota memang tidak boleh membaca
+      // pinjaman orang lain sejak T2, dan kuerinya akan kembali kosong.
+      admin ? dbQuery('loans', 'status=eq.active&select=profiles!loans_member_id_fkey(full_name)') : Promise.resolve([])
+    ]);
+  } catch (e) { d = null; }
+  if (!d) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Laporan gagal dimuat</div><div class="empty-state-sub">Periksa koneksi lalu coba lagi.</div></div>'; return; }
+  _lapData = d;
+
+  const selisih = d.totalMasuk - d.totalKeluar;
+  const label = labelPeriodeLaporan();
+  const judulKartu1 = admin ? label : 'Transaksi Anda · ' + label;
+  const adaTx = d.masuk.length || d.keluar.length;
+
+  // Kartu 1 — kalimat dulu, angka persis di bawahnya
+  const kartu1 = `
+    <div class="lap-kartu">
+      <div class="lap-judul">${escapeHtml(judulKartu1)}</div>
+      ${adaTx ? `
+      <div class="lap-cerita">
+        Uang yang masuk <b>${rupiahRingkas(d.totalMasuk)}</b>, yang keluar <b>${rupiahRingkas(d.totalKeluar)}</b>.
+        <span class="besar${selisih < 0 ? ' turun' : ''}">${selisih < 0 ? '−' : '+'}${fmt(Math.abs(selisih))}</span>
+        <span class="kecil">${selisih >= 0 ? 'koperasi bertambah sebesar ini' : 'koperasi berkurang sebesar ini'} pada periode ini</span>
+      </div>
+      <div class="lap-dua">
+        <div><div class="l">Masuk</div><div class="v" style="color:var(--green-text)">+${fmt(d.totalMasuk).replace(/^Rp\s?/, '')}</div></div>
+        <div><div class="l">Keluar</div><div class="v" style="color:var(--red-text)">−${fmt(d.totalKeluar).replace(/^Rp\s?/, '')}</div></div>
+      </div>` : `<div class="lap-cerita">Belum ada transaksi pada periode ini.</div>`}
+    </div>`;
+
+  // Kartu 2 — uang koperasi sekarang, seperti isi dompet
+  let kartu2 = '';
+  if (d.posisi) {
+    const P = d.posisi;
+    const nama = (peminjam || []).map(x => x.profiles?.full_name).filter(Boolean);
+    const siapa = nama.length === 0 ? 'anggota'
+      : nama.length <= 2 ? nama.map(n => `<b>${escapeHtml(n.split(' ')[0])}</b>`).join(' dan ')
+      : `<b>${escapeHtml(nama[0].split(' ')[0])}</b> dan ${nama.length - 1} anggota lain`;
+    kartu2 = `
+    <div class="lap-kartu">
+      <div class="lap-judul">Uang koperasi sekarang</div>
+      <div class="lap-dompet">
+        <div class="b"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">👛</div><div class="tx">Ada di tangan, <b>bisa dipakai</b></div><div class="vl">${fmt(P.kas).replace(/^Rp\s?/, '')}</div></div>
+        <div class="b"><div class="ic" style="background:var(--amber-bg);color:var(--amber-text)">🤝</div><div class="tx">${P.piutang > 0 ? 'Sedang dipinjam ' + siapa : 'Tidak ada yang sedang dipinjam'}</div><div class="vl">${fmt(P.piutang).replace(/^Rp\s?/, '')}</div></div>
+        <div class="b total"><div class="ic" style="background:var(--green-bg);color:var(--green-text)">Σ</div><div class="tx">Seluruhnya milik koperasi</div><div class="vl">${fmt(P.aset).replace(/^Rp\s?/, '')}</div></div>
+      </div>
+    </div>`;
+  }
+
+  // Kartu 3 — keuntungan: satu angka utama, dua keterangan, satu penjelasan tetap
+  let kartu3 = '';
+  if (d.posisi) {
+    const P = d.posisi;
+    const dibagi = Math.max(0, P.bungaTotal - P.bungaTersedia);
+    kartu3 = `
+    <div class="lap-kartu lap-untung">
+      <div class="lap-judul">Keuntungan dari bunga</div>
+      <div class="utama">${fmt(P.bungaTersedia)}</div>
+      <div class="lbl">belum dibagikan ke anggota</div>
+      <div class="ket">Periode ini masuk ${fmt(d.bungaPeriode)} · sejak koperasi berdiri ${fmt(P.bungaTotal)} · sudah dibagikan ${fmt(dibagi)}</div>
+      <div class="jelas">💡 Setiap cicilan yang dibayar, sebagian kecilnya adalah bunga. Itulah keuntungan koperasi — dan yang belum dibagikan inilah yang bisa dibagi saat kumpulan akhir tahun.</div>
+    </div>`;
+  }
+
+  el.innerHTML = kartu1 + kartu2 + kartu3;
+
+  // Ringkasan rincian
+  const n = d.masuk.length + d.keluar.length;
+  const sub = document.getElementById('lap-rincian-sub');
+  if (sub) sub.textContent = n ? `${n} transaksi · ${label}` : 'tidak ada transaksi';
+  if (document.getElementById('lap-rincian')?.style.display !== 'none') renderRincianLaporan();
+}
+
+function toggleRincianLaporan() {
+  const isi = document.getElementById('lap-rincian');
+  const tombol = document.getElementById('lap-lipat-rincian');
+  const buka = isi.style.display === 'none';
+  isi.style.display = buka ? 'block' : 'none';
+  tombol.classList.toggle('buka', buka);
+  document.getElementById('lap-rincian-cv').textContent = buka ? '▴' : '▾';
+  if (buka) { _lapTampil = 12; renderRincianLaporan(); }
+}
+
+function saringRincianLaporan(jenis, btn) {
+  _lapSaring = jenis; _lapTampil = 12;
+  // Dibatasi ke #lap-saring — pelajaran v4.65.1 tentang selektor bersama.
+  document.querySelectorAll('#lap-saring .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderRincianLaporan();
+}
+
+function renderRincianLaporan() {
+  const box = document.getElementById('lap-rincian-isi');
+  if (!box || !_lapData) return;
+  let rows = [];
+  if (_lapSaring !== 'keluar') rows = rows.concat(_lapData.masuk.map(x => ({ ...x, arah: 'masuk' })));
+  if (_lapSaring !== 'masuk')  rows = rows.concat(_lapData.keluar.map(x => ({ ...x, arah: 'keluar' })));
+  rows.sort((a, b) => new Date(b.waktu) - new Date(a.waktu));   // terbaru di atas
+  if (!rows.length) { box.innerHTML = '<div class="ad-kosong">Tidak ada transaksi pada saringan ini.</div>'; return; }
+
+  let tglTerakhir = '';
+  const html = rows.slice(0, _lapTampil).map(x => {
+    const tgl = new Date(x.waktu).toLocaleDateString('id-ID', { day: '2-digit', month: 'long' });
+    const kepala = tgl === tglTerakhir ? '' : `<div class="la-tgl">${tgl}</div>`;
+    tglTerakhir = tgl;
+    const masuk = x.arah === 'masuk';
+    const ket = x.jenis + (x.bunga > 0 ? ` · bunga ${fmt(x.bunga).replace(/^Rp\s?/, '')}` : '');
+    return `${kepala}<div class="la-mut">
+      <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? '↓' : '↑'}</div>
+      <div class="la-tx"><div class="la-t1">${escapeHtml(x.nama)}</div><div class="la-t2">${escapeHtml(ket)}</div></div>
+      <div class="la-n1 ${masuk ? 'g' : 'r'}">${masuk ? '+' : '−'}${fmt(x.jumlah).replace(/^Rp\s?/, '')}</div>
+    </div>`;
+  }).join('');
+  const sisa = rows.length - _lapTampil;
+  box.innerHTML = html + (sisa > 0 ? `<button class="lap-muat" onclick="_lapTampil += 20; renderRincianLaporan()">Tampilkan ${Math.min(sisa, 20)} lagi</button>` : '');
+}
+
+function bukaLaporanLama(tab, judul) {
+  closeModal('sheet-lainnya-laporan');
+  const w = document.getElementById('lap-lama-wadah');
+  document.getElementById('lap-lama-judul').textContent = judul;
+  w.style.display = 'block';
+  switchLaporanTab(tab, null);
+  setTimeout(() => w.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+function tutupLaporanLama() {
+  document.getElementById('lap-lama-wadah').style.display = 'none';
 }
 
 // Zona waktu koperasi. `created_at` di database bertipe timestamptz dan
@@ -6159,26 +6449,26 @@ function getLaporanDateFilter() {
 }
 
 async function loadLaporan() {
-  const sub = document.getElementById('laporan-sub');
-  if (sub) sub.textContent = 'Periode: ' + periodeAktif();
-  renderRingkasanLaporan();
-  // tab aktif dicari di baris tab laporan (bukan chip rentang, yang juga memakai .tab-btn)
-  const btnAktif = Array.from(document.querySelectorAll('#page-laporan .tab-btn.active'))
-    .find(b => !b.closest('#laporan-chip-rentang'));
-  switchLaporanTab(currentLaporanTab, btnAktif);
+  // Bawaannya BULAN INI, bukan "semua periode": sembilan dari sepuluh kali
+  // itulah yang dibutuhkan admin saat membuka halaman ini.
+  if (_lapRange === null) { setLaporanRange('thisMonth'); return; }   // setLaporanRange memanggil ulang
+  const lbl = document.getElementById('lap-periode-label');
+  if (lbl) lbl.textContent = labelPeriodeLaporan();
+  tandaiOpsiPeriode();
+  await renderKartuLaporan();
+  // Tabel lama hanya dimuat ulang bila sedang terbuka
+  const w = document.getElementById('lap-lama-wadah');
+  if (w && w.style.display !== 'none') switchLaporanTab(currentLaporanTab, null);
 }
 
 // Chip rentang: menandai yang aktif; "Pilih tanggal" membuka dua kolom tanggal
-function tandaiChipRentang(range) {
-  document.querySelectorAll('#laporan-chip-rentang .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+function rentangManualLaporan() {
+  _lapRange = 'custom';
+  const from = document.getElementById('laporan-date-from')?.value;
+  const to   = document.getElementById('laporan-date-to')?.value;
+  if (from && to && from > to) { showToast('Tanggal awal tidak boleh sesudah tanggal akhir'); return; }
+  loadLaporan();
 }
-function toggleRentangLaporan() {
-  const el = document.getElementById('laporan-rentang');
-  const buka = el.style.display === 'none';
-  el.style.display = buka ? 'block' : 'none';
-  if (buka) tandaiChipRentang('custom');
-}
-function rentangManualLaporan() { tandaiChipRentang('custom'); loadLaporan(); }
 
 // Ringkasan periode untuk admin: uang masuk, uang keluar, saldo awal & akhir —
 // angkanya dari fungsi yang sama dengan laporan WhatsApp dan jurnal kas.
@@ -6210,10 +6500,8 @@ async function switchLaporanTab(tab, btn) {
   // setLaporanRange memanggil loadLaporan (yang memanggil fungsi ini),
   // tandanya hilang tepat setelah dipasang. Kesalahan sekeluarga dengan
   // BUG-05 dulu: querySelector tak berbatas pada kelas yang dipakai bersama.
-  document.querySelectorAll('#page-laporan .tab-btn').forEach(b => {
-    if (!b.closest('#laporan-chip-rentang')) b.classList.remove('active');
-  });
-  if (btn) btn.classList.add('active');
+  // v4.80.0: tab jenis laporan sudah tidak ada; fungsi ini dipanggil dari
+  // lembar Lainnya dan merender ke wadah laporan lama.
   const el = document.getElementById('laporan-content');
   el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat...</div>';
   if (tab === 'simpanan') await renderLaporanSimpanan();
@@ -10086,7 +10374,8 @@ async function kumpulkanLaporanPeriode() {
 
   (cicilan || []).filter(x => !x.is_reversed).forEach(x => masuk.push({
     nama: x.profiles?.full_name || '-', jumlah: Number(x.amount_paid),
-    jenis: 'Cicilan ke-' + x.payment_number, waktu: x.created_at
+    jenis: 'Cicilan ke-' + x.payment_number, waktu: x.created_at,
+    bunga: Number(x.interest_component || 0)   // ditulis di rincian, supaya asal keuntungan terlihat
   }));
 
   (pinjaman || []).filter(x => x.disbursed_at).forEach(x => keluar.push({

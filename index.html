@@ -2590,7 +2590,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.74.0';
+const APP_VERSION = 'v4.75.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -6730,12 +6730,27 @@ async function doTambahAnggota() {
   const newUserId = signupData.id || signupData.user?.id;
   if (newUserId) {
     // Update profile: username, role, email_ref
-    await dbUpdate('profiles', `id=eq.${newUserId}`, {
+    //
+    // Hasilnya WAJIB diperiksa. Trigger handle_new_user hanya mengisi nama,
+    // telepon, dan peran — `username` dan `email_ref` HANYA datang dari
+    // baris ini. Kalau ia gagal diam-diam, akun login-nya sudah terlanjur
+    // ada di Supabase Auth tetapi login_lookup tidak akan pernah menemukan
+    // usernamenya: anggota itu tidak bisa masuk selamanya, sementara admin
+    // membaca "Anggota berhasil ditambahkan ✓" dan tidak tahu apa-apa.
+    const { error: eProfil } = await dbUpdate('profiles', `id=eq.${newUserId}`, {
       role: role === 'admin' ? 'admin' : 'member',
       username,
       email_ref: dummyEmail,
       phone
     });
+    if (eProfil) {
+      alertEl.textContent = 'Akun login sudah dibuat, TETAPI data profilnya gagal disimpan, '
+        + 'sehingga anggota ini belum bisa masuk. Hapus anggota ini lalu buat ulang. Rincian: '
+        + (eProfil.message || JSON.stringify(eProfil));
+      alertEl.style.display = 'block';
+      await loadAllMembers(); loadAnggota();
+      return;
+    }
     // Konfirmasi email lewat Edge Function agar anggota bisa langsung login.
     // Kegagalan di sini tidak membatalkan pembuatan akun — akunnya sudah ada,
     // hanya belum bisa dipakai login sampai emailnya dikonfirmasi.
@@ -6924,8 +6939,8 @@ async function doEditAnggota() {
   const { error } = await dbUpdate('profiles', `id=eq.${id}`, updateData);
   if (error) { alertEl.textContent = 'Gagal: ' + JSON.stringify(error); alertEl.style.display = 'block'; return; }
 
-  // Log the edit in adjustments table (type: 'member_edit')
-  await dbInsert('adjustments', {
+  // Jejak audit — lihat catatan yang sama pada ubahUsername.
+  const { error: eJejakEdit } = await dbInsert('adjustments', {
     member_id: id,
     type: 'savings', // reuse type field
     value_before: 0,
@@ -6935,7 +6950,8 @@ async function doEditAnggota() {
     admin_id: currentUser.id
   });
 
-  showToast('Data anggota berhasil diperbarui ✓');
+  if (eJejakEdit) showToast('⚠️ Data tersimpan, tetapi jejak perubahannya gagal dicatat.', 6000);
+  else showToast('Data anggota berhasil diperbarui ✓');
   closeModal('modal-edit-anggota');
   await loadAllMembers();
   loadAnggota();
@@ -7420,12 +7436,15 @@ async function changeMyUsername() {
   const { error } = await dbUpdate('profiles', `id=eq.${currentUser.id}`, { username: newUsername });
   if (error) { showToast('Gagal: ' + JSON.stringify(error)); return; }
 
-  // Log
-  await dbInsert('adjustments', {
+  // Jejak audit. Kegagalannya tidak membatalkan perubahan yang sudah
+  // tersimpan, tetapi harus terdengar: buku perubahan yang bolong lebih
+  // berbahaya daripada buku yang kosong, karena ia tampak lengkap.
+  const { error: eJejakUsername } = await dbInsert('adjustments', {
     member_id: currentUser.id, type: 'savings', value_before: 0, value_after: 0, difference: 0,
     reason: `[EDIT ANGGOTA] Username: "${oldUsername}" → "${newUsername}" | Alasan: ${reason}`,
     admin_id: currentUser.id
   });
+  if (eJejakUsername) showToast('⚠️ Username berubah, tetapi jejak perubahannya gagal dicatat.', 6000);
 
   showToast('Username berhasil diubah ✓');
   localStorage.setItem('kk_auth_username', newUsername);
@@ -7709,11 +7728,16 @@ async function sinkronkanPushDiamDiam() {
       applicationServerKey: b64ToUint8(VAPID_PUBLIC_KEY)
     });
     const j2 = baru.toJSON();
-    await dbInsert('push_subscriptions', {
+    // Sengaja tidak mengganggu pengguna kalau gagal — ini sinkronisasi
+    // latar. Tetapi dbInsert TIDAK melempar exception, jadi tanpa baris
+    // pemeriksaan ini kegagalannya bahkan tidak sampai ke console, dan
+    // pemberitahuan yang tidak pernah datang jadi mustahil ditelusuri.
+    const { error: ePush } = await dbInsert('push_subscriptions', {
       member_id: currentUser.id, endpoint: j2.endpoint,
       p256dh: j2.keys.p256dh, auth: j2.keys.auth,
       user_agent: (navigator.userAgent || '').slice(0, 200)
     });
+    if (ePush) console.warn('Pendaftaran push gagal disimpan:', ePush);
   } catch (e) { console.warn('sinkronkanPushDiamDiam:', e); }
 }
 

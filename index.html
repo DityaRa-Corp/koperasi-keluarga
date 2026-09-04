@@ -1136,8 +1136,13 @@ img.hp-foto { display: block; }
 
 .la-kw { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2);
   border: 1px solid var(--border); font-size: 13px; flex-shrink: 0; margin-left: 6px; cursor: pointer; }
-.tabs-chip { overflow-x: auto; scrollbar-width: none; }
-.tabs-chip::-webkit-scrollbar { display: none; }
+/* v4.79.0 — chip MEMBUNGKUS ke baris berikutnya, bukan digulir ke samping.
+   Dulu barisnya diberi overflow-x:auto: di layar 375 px deretan chip
+   Laporan selebar 386–398 px, jadi ia bisa digeser kiri-kanan — dan pada HP
+   gesekan itu terasa seperti halaman yang tidak pas, bukan seperti fitur.
+   Membungkus membuat semuanya terlihat sekaligus; tidak ada chip yang
+   tersembunyi di balik tepi layar. */
+.tabs-chip { flex-wrap: wrap; overflow: visible; width: 100%; row-gap: 4px; }
 .tabs-chip .tab-btn { white-space: nowrap; border-radius: 99px; }
 .tab-btn .hit { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--surface2); color: var(--text2); font-size: 10.5px; line-height: 18px; text-align: center; }
 .tab-btn .hit:empty { display: none; }
@@ -2605,7 +2610,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.78.0';
+const APP_VERSION = 'v4.79.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -8924,7 +8929,7 @@ let _kwitansiData = null;   // { dataURL, teks, namaFile }
 async function tampilkanKwitansi(opsi, teks, namaFile) {
   try {
     const dataURL = await gambarKwitansi(opsi);
-    _kwitansiData = { dataURL, teks, namaFile };
+    _kwitansiData = { pdfBlob: null, dataURL, teks, namaFile };
     // Sejak anggota bisa menyetujui sendiri, bukti tidak lagi selalu dilihat
     // admin. Menyuruh anggota "kirim ke anggota" jelas salah alamat.
     const subEl = document.getElementById('kwitansi-sub');
@@ -8965,9 +8970,13 @@ function dataURLKeBlob(dataURL) {
 // dikirim ke WhatsApp. Di komputer yang tidak mendukungnya, gambarnya diunduh.
 async function bagikanKwitansi() {
   if (!_kwitansiData) return;
-  const { dataURL, teks, namaFile } = _kwitansiData;
-  const blob = dataURLKeBlob(dataURL);
-  const file = new File([blob], namaFile + '.png', { type: 'image/png' });
+  const { dataURL, pdfBlob, teks, namaFile } = _kwitansiData;
+  // Laporan membawa PDF; kwitansi biasa tetap PNG. WhatsApp mengompres foto
+  // tetapi meneruskan dokumen apa adanya — itulah bedanya laporan yang pecah
+  // dengan yang tajam.
+  const file = pdfBlob
+    ? new File([pdfBlob], namaFile + '.pdf', { type: 'application/pdf' })
+    : new File([dataURLKeBlob(dataURL)], namaFile + '.png', { type: 'image/png' });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
@@ -8983,12 +8992,14 @@ async function bagikanKwitansi() {
 function unduhKwitansi() {
   if (!_kwitansiData) return;
   const a = document.createElement('a');
-  a.href = _kwitansiData.dataURL;
-  a.download = _kwitansiData.namaFile + '.png';
+  const pdf = _kwitansiData.pdfBlob;
+  a.href = pdf ? URL.createObjectURL(pdf) : _kwitansiData.dataURL;
+  a.download = _kwitansiData.namaFile + (pdf ? '.pdf' : '.png');
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  showToast('Gambar bukti diunduh');
+  if (pdf) setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  showToast(pdf ? 'Laporan PDF diunduh' : 'Gambar bukti diunduh');
 }
 
 async function salinTeksKwitansi() {
@@ -10052,12 +10063,17 @@ async function kumpulkanLaporanPeriode() {
   const filter  = getLaporanDateFilter();
   const filterD = filter.replace(/created_at/g, 'disbursed_at');
 
-  const [simpanan, cicilan, pinjaman, lain, pengeluaran] = await Promise.all([
+  const [simpanan, cicilan, pinjaman, lain, pengeluaran, ringkasan] = await Promise.all([
     dbQuery('savings', `select=type,amount,created_at,note,is_reversed,corrects_id,is_pembatalan,profiles!savings_member_id_fkey(full_name)&order=created_at.asc${filter}`),
-    dbQuery('loan_payments', `select=amount_paid,payment_number,created_at,is_reversed,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${filter}`),
+    dbQuery('loan_payments', `select=amount_paid,interest_component,payment_number,created_at,is_reversed,profiles!loan_payments_member_id_fkey(full_name)&order=created_at.asc${filter}`),
     dbQuery('loans', `select=principal,disbursed_at,status,profiles!loans_member_id_fkey(full_name)&status=in.(active,completed)&order=disbursed_at.asc${filterD}`),
     dbQuery('pendapatan_lain', `select=amount,jenis,created_at,note&order=created_at.asc${filter}`),
-    dbQuery('org_expenses', `select=amount,description,category,created_at&order=created_at.asc${filter}`)
+    dbQuery('org_expenses', `select=amount,description,category,created_at&order=created_at.asc${filter}`),
+    // Posisi kas SAAT INI (bukan per periode) — dari RPC yang sama dengan
+    // Beranda, supaya angka di laporan WA mustahil berbeda dengan angka di
+    // layar. Diminta keluarga: berapa yang di tangan, berapa yang sedang
+    // dipinjam, dan berapa keuntungannya.
+    ringkasanKoperasi()
   ]);
 
   const masuk = [], keluar = [];
@@ -10092,7 +10108,20 @@ async function kumpulkanLaporanPeriode() {
   masuk.sort(urut); keluar.sort(urut);
   const total = a => a.reduce((n, x) => n + x.jumlah, 0);
 
-  return { masuk, keluar, totalMasuk: total(masuk), totalKeluar: total(keluar), periode: periodeAktif() };
+  // Bunga yang masuk pada periode ini = komponen bunga dari cicilan periode ini.
+  const bungaPeriode = (cicilan || []).filter(x => !x.is_reversed)
+    .reduce((n, x) => n + Number(x.interest_component || 0), 0);
+
+  const posisi = ringkasan ? {
+    kas:           Number(ringkasan.kas_tersedia),
+    piutang:       Number(ringkasan.piutang_pokok),
+    aset:          Number(ringkasan.total_aset),
+    bungaTotal:    Number(ringkasan.bunga_masuk),
+    bungaTersedia: Number(ringkasan.bunga_tersedia)
+  } : null;   // null = ringkasan gagal dimuat; bagian itu dilewati, bukan ditulis nol
+
+  return { masuk, keluar, totalMasuk: total(masuk), totalKeluar: total(keluar),
+           periode: periodeAktif(), bungaPeriode, posisi };
 }
 
 async function gambarLaporanPeriode(d) {
@@ -10100,9 +10129,15 @@ async function gambarLaporanPeriode(d) {
   const F = "'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif";
   const pad = 48, kop = 132, tinggiBaris = 50, kepalaBagian = 52;
   const bagian = n => n ? kepalaBagian + n * tinggiBaris : kepalaBagian + 40;
-  const tinggi = kop + 86 + 112 + bagian(d.masuk.length) + 18 + bagian(d.keluar.length) + 96;
+  // +228 untuk dua blok baru: POSISI KAS (kepala 30 + kotak 84 + jarak 20)
+  // dan KEUNTUNGAN (kepala 30 + kotak 64). Dilewati bila ringkasannya gagal.
+  const tinggiPosisi = d.posisi ? 228 : 0;
+  const tinggi = kop + 86 + 112 + tinggiPosisi + bagian(d.masuk.length) + 18 + bagian(d.keluar.length) + 96;
 
-  const skala = 2;
+  // Skala 3, bukan 2: 2160 px lebar. Laporan ini dikirim sebagai PDF, jadi
+  // WhatsApp tidak mengompresnya — ketajaman yang digambar di sini adalah
+  // ketajaman yang sampai di HP keluarga.
+  const skala = 3;
   const cv = document.createElement('canvas');
   cv.width = KW_LEBAR * skala; cv.height = tinggi * skala;
   const ctx = cv.getContext('2d');
@@ -10134,6 +10169,43 @@ async function gambarLaporanPeriode(d) {
     ctx.fillText((nilai < 0 ? '−' : '') + fmt(Math.abs(nilai)), x + 14, y + 58);
   });
   y += 112;
+
+  // ── POSISI KAS & KEUNTUNGAN (v4.79.0) ──
+  if (d.posisi) {
+    const P = d.posisi;
+    const kepalaKecil = (judul) => {
+      ctx.fillStyle = KW_WARNA.teks3; ctx.font = `700 11px ${F}`;
+      ctx.fillText(judul, pad, y + 12);
+      y += 30;
+    };
+    const tigaKotak = (isi, tinggiKotak) => {
+      isi.forEach(([label, nilai, warna], i) => {
+        const x = pad + i * (lebarKotak + 10);
+        ctx.fillStyle = KW_WARNA.latar; kwKotakBulat(ctx, x, y, lebarKotak, tinggiKotak, 10); ctx.fill();
+        ctx.fillStyle = KW_WARNA.teks3; ctx.font = `600 11px ${F}`;
+        ctx.fillText(label, x + 14, y + 28);
+        ctx.fillStyle = warna; ctx.font = `700 ${tinggiKotak > 70 ? 19 : 16}px ${F}`;
+        ctx.fillText(fmt(nilai), x + 14, y + (tinggiKotak > 70 ? 58 : 50));
+      });
+      y += tinggiKotak;
+    };
+
+    kepalaKecil('POSISI KAS KOPERASI SAAT INI');
+    tigaKotak([
+      ['KAS DI TANGAN',     P.kas,     KW_WARNA.navy],
+      ['SEDANG DIPINJAM',   P.piutang, KW_WARNA.merah],
+      ['TOTAL ASET',        P.aset,    KW_WARNA.hijau]
+    ], 84);
+    y += 20;
+
+    kepalaKecil('KEUNTUNGAN KOPERASI (BUNGA)');
+    tigaKotak([
+      ['PERIODE INI',       d.bungaPeriode,  KW_WARNA.hijau],
+      ['TERKUMPUL SEJAK AWAL', P.bungaTotal, KW_WARNA.navy],
+      ['BELUM DIBAGI',      P.bungaTersedia, KW_WARNA.navy]
+    ], 64);
+    y += 20;
+  }
 
   const gambarBagian = (judul, daftar, warna, tanda) => {
     ctx.fillStyle = warna; kwKotakBulat(ctx, pad, y, 5, 22, 2.5); ctx.fill();
@@ -10179,7 +10251,49 @@ async function gambarLaporanPeriode(d) {
   ctx.fillText('Dicetak ' + new Date().toLocaleString('id-ID'), KW_LEBAR - pad, y);
   ctx.textAlign = 'left';
 
-  return cv.toDataURL('image/png');
+  // PNG untuk pratinjau di layar; PDF untuk dikirim. WhatsApp mengompres
+  // FOTO habis-habisan (itulah sebabnya laporan tampak pecah), tetapi
+  // DOKUMEN dikirim utuh byte demi byte.
+  return { dataURL: cv.toDataURL('image/png'), pdfBlob: buatPDFDariKanvas(cv) };
+}
+
+// Menyusun berkas PDF SATU HALAMAN yang memuat gambar kanvas, tanpa pustaka
+// dari luar. PDF hanyalah teks terstruktur ditambah aliran byte gambar;
+// untuk satu gambar JPEG cukup lima objek. Yang rawan hanya tabel xref:
+// ia harus memuat OFFSET BYTE tiap objek, jadi seluruh berkas dirangkai
+// sebagai byte, bukan string — JPEG-nya biner.
+function buatPDFDariKanvas(cv) {
+  const b64 = cv.toDataURL('image/jpeg', 0.92).split(',')[1];
+  const bin = atob(b64);
+  const jpg = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) jpg[i] = bin.charCodeAt(i);
+
+  // Lebar halaman A4 (595 pt); tinggi mengikuti proporsi gambar. Satu
+  // halaman tinggi lebih enak dibaca di HP daripada dipenggal per A4.
+  const W = 595, H = Math.round(595 * cv.height / cv.width);
+  const enc = t => new TextEncoder().encode(t);
+  const bagian = []; let offset = 0; const posisi = [];
+  const tulis = u8 => { bagian.push(u8); offset += u8.length; };
+  const objek = (n, isi) => { posisi[n] = offset; tulis(enc(`${n} 0 obj\n${isi}\nendobj\n`)); };
+
+  tulis(enc('%PDF-1.4\n'));
+  objek(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  objek(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+  objek(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>`);
+  const isiHalaman = `q ${W} 0 0 ${H} 0 0 cm /Im1 Do Q`;
+  objek(4, `<< /Length ${isiHalaman.length} >>\nstream\n${isiHalaman}\nendstream`);
+  posisi[5] = offset;
+  tulis(enc(`5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${cv.width} /Height ${cv.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`));
+  tulis(jpg);
+  tulis(enc('\nendstream\nendobj\n'));
+
+  // Tiap baris xref tepat 20 byte: 10 digit offset, spasi, 5 digit, spasi, n, spasi, LF.
+  const xref = offset;
+  let tabel = 'xref\n0 6\n0000000000 65535 f \n';
+  for (let i = 1; i <= 5; i++) tabel += String(posisi[i]).padStart(10, '0') + ' 00000 n \n';
+  tabel += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  tulis(enc(tabel));
+  return new Blob(bagian, { type: 'application/pdf' });
 }
 
 // Memotong teks agar tidak menabrak kolom nominal di sebelah kanan
@@ -10201,6 +10315,16 @@ function susunTeksLaporanPeriode(d) {
     + `💚 *UANG MASUK — ${fmt(d.totalMasuk)}*\n${baris(d.masuk)}\n\n`
     + `❤️ *UANG KELUAR — ${fmt(d.totalKeluar)}*\n${baris(d.keluar)}\n\n`
     + `📊 *Selisih periode ini: ${selisih < 0 ? '−' : '+'}${fmt(Math.abs(selisih))}*\n\n`
+    + (d.posisi
+        ? `🏦 *POSISI KAS SAAT INI*\n`
+          + `• Kas di tangan: ${fmt(d.posisi.kas)}\n`
+          + `• Sedang dipinjam anggota: ${fmt(d.posisi.piutang)}\n`
+          + `• Total aset koperasi: ${fmt(d.posisi.aset)}\n\n`
+          + `📈 *KEUNTUNGAN (BUNGA)*\n`
+          + `• Periode ini: ${fmt(d.bungaPeriode)}\n`
+          + `• Terkumpul sejak awal: ${fmt(d.posisi.bungaTotal)}\n`
+          + `• Belum dibagi: ${fmt(d.posisi.bungaTersedia)}\n\n`
+        : '')
     + `Laporan ini memuat transaksi saja, bukan saldo simpanan masing-masing.\n`
     + `Kalau ada yang perlu ditanyakan, silakan hubungi admin ya.\n\n`
     + `Terima kasih atas kepercayaannya 🌾`;
@@ -10216,12 +10340,12 @@ async function bagikanLaporanPeriode() {
       showToast('Tidak ada transaksi pada periode ini. Pilih rentang tanggal lain.', 6000);
       return;
     }
-    const dataURL = await gambarLaporanPeriode(d);
+    const { dataURL, pdfBlob } = await gambarLaporanPeriode(d);
     const teks = susunTeksLaporanPeriode(d);
-    _kwitansiData = { dataURL, teks, namaFile: 'Laporan-Koperasi-' + getTodayStr() };
+    _kwitansiData = { dataURL, pdfBlob, teks, namaFile: 'Laporan-Koperasi-' + getTodayStr() };
     document.getElementById('kwitansi-judul').textContent = 'Laporan Transaksi Periode';
     const sub = document.getElementById('kwitansi-sub');
-    if (sub) sub.textContent = 'Bagikan gambar dan teksnya ke grup WhatsApp keluarga.';
+    if (sub) sub.textContent = 'Dikirim sebagai PDF supaya tetap tajam di WhatsApp. Teksnya ikut disalin.';
     document.getElementById('kwitansi-gambar').src = dataURL;
     document.getElementById('kwitansi-teks').value = teks;
     openModal('modal-kwitansi');

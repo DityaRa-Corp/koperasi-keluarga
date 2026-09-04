@@ -2494,7 +2494,7 @@ tbody tr:hover { background: var(--surface2); }
 </div>
 
 <script>
-const APP_VERSION = 'v4.68.0';
+const APP_VERSION = 'v4.69.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -2805,11 +2805,19 @@ function closeSidebar() {
 let halamanSekarang = 'dashboard';
 let riwayatSiap = false;
 let dariRiwayat = false;   // true saat popstate memutar ulang, supaya tidak menumpuk entri
+let waktuMintaKeluar = 0;  // kapan penahan keluar terakhir kali diperlihatkan
+const JEDA_KELUAR = 2500;  // ms — dua tekanan dalam rentang ini dianggap sengaja
 
 function mulaiRiwayat(halamanAwal) {
   halamanSekarang = halamanAwal;
+  waktuMintaKeluar = 0;
   try {
-    history.replaceState({ kk: 'halaman', page: halamanAwal }, '');
+    // DUA entri, bukan satu. Yang bawah ('akar') adalah umpan: ia tidak
+    // pernah ditampilkan, tugasnya hanya menangkap tekanan Kembali di
+    // Beranda. Tanpa umpan itu, Kembali di Beranda langsung menutup
+    // aplikasi tanpa popstate — tidak ada yang bisa dicegat.
+    history.replaceState({ kk: 'akar' }, '');
+    history.pushState({ kk: 'halaman', page: halamanAwal }, '');
     riwayatSiap = true;
   } catch (e) {
     riwayatSiap = false;   // browser tanpa History API: aplikasi tetap jalan, hanya tanpa Kembali
@@ -2848,7 +2856,27 @@ window.addEventListener('popstate', (e) => {
     return;
   }
   const st = e.state;
+
+  // Sampai di entri umpan = pengguna menekan Kembali di Beranda. Sekali
+  // tekan belum cukup: aplikasi keuangan yang tertutup tanpa sengaja di
+  // tengah pencatatan lebih mahal daripada satu tekanan tambahan.
+  if (st && st.kk === 'akar') {
+    const sekarang = Date.now();
+    if (sekarang - waktuMintaKeluar < JEDA_KELUAR) {
+      // Tekanan kedua — memang mau keluar. Umpannya tidak dipasang ulang,
+      // jadi langkah mundur ini menembus keluar dari aplikasi.
+      history.back();
+      return;
+    }
+    waktuMintaKeluar = sekarang;
+    showToast('Tekan Kembali sekali lagi untuk keluar', JEDA_KELUAR);
+    // Pasang ulang umpannya supaya pengguna tetap berada di Beranda.
+    try { history.pushState({ kk: 'halaman', page: halamanSekarang }, ''); } catch (_) {}
+    return;
+  }
+
   if (st && st.kk === 'halaman') {
+    waktuMintaKeluar = 0;   // berpindah halaman membatalkan niat keluar
     dariRiwayat = true;
     try { showPage(st.page); } finally { dariRiwayat = false; }
   }

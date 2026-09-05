@@ -1147,6 +1147,43 @@ img.hp-foto { display: block; }
 .nb .ik { margin: 0 auto 2px; }
 .tile-ic .ik { width: 26px; height: 26px; }
 
+/* v4.86.0 — mode kumpulan */
+.kmp-strip { position: sticky; top: 0; z-index: 4; background: var(--accent); color: #fff; padding: 12px 14px; border-radius: 14px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-md); }
+.kmp-strip .b { flex: 0 0 auto; } .kmp-strip .b:first-child { flex: 1; }
+.kmp-strip .l { font-size: 9.5px; opacity: .75; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.kmp-strip .v { font-family: var(--mono); font-size: 17px; font-weight: 700; white-space: nowrap; }
+.kmp-strip .b.kecil .v { font-size: 14px; }
+.kmp-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border2); border-radius: 20px; padding: 7px 12px; font: inherit; font-size: 12px; font-weight: 700; color: var(--text); cursor: pointer; }
+.kmp-chip b { font-family: var(--mono); }
+.kmp-sek { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin: 14px 0 6px; display: flex; justify-content: space-between; }
+.kmp-sek span { font-weight: 600; text-transform: none; letter-spacing: 0; }
+.kmp-ang { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 10px 10px 12px; margin-bottom: 8px; box-shadow: var(--shadow); }
+.kmp-ang.selesai { background: var(--green-bg); border-color: #bbf7d0; }
+.kmp-av { width: 38px; height: 38px; border-radius: 50%; color: #fff; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; flex-shrink: 0; overflow: hidden; }
+.kmp-av.kecil { width: 32px; height: 32px; font-size: 13px; }
+.kmp-av img { width: 100%; height: 100%; object-fit: cover; }
+.kmp-ang .nm { flex: 1; min-width: 0; } .kmp-ang .n { font-size: 13.5px; font-weight: 700; }
+.kmp-ang .k { font-size: 11px; color: var(--text3); margin-top: 1px; line-height: 1.35; }
+.kmp-ang .k.amber { color: var(--amber-text); font-weight: 600; } .kmp-ang .k.merah { color: var(--red-text); font-weight: 600; }
+.kmp-ang .ak { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; flex-shrink: 0; }
+.kmp-tap { display: inline-flex; align-items: center; gap: 5px; padding: 9px 12px; border-radius: 10px; border: 0; font: inherit; font-size: 12.5px; font-weight: 800; background: var(--accent); color: #fff; min-width: 92px; justify-content: center; cursor: pointer; }
+.kmp-tap.amber { background: var(--amber-bg); color: var(--amber-text); border: 1px solid #fde68a; }
+.kmp-tap.merah { background: var(--red-bg); color: var(--red-text); border: 1px solid #fecaca; }
+.kmp-sudah { display: inline-flex; align-items: center; gap: 5px; color: var(--green-text); font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.kmp-ubah { font-size: 10.5px; color: var(--text3); text-decoration: underline; background: none; border: 0; font-family: inherit; cursor: pointer; padding: 0; }
+.kmp-cepat { display: flex; gap: 6px; margin-top: 8px; }
+.kmp-cepat button { flex: 1; text-align: center; padding: 9px 4px; border: 1px solid var(--border2); border-radius: 9px; font-family: var(--mono); font-size: 12px; font-weight: 700; background: var(--surface); color: var(--text); cursor: pointer; }
+.kmp-cepat button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.kmp-kartu-beranda { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 16px; padding: 12px 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.kmp-kartu-beranda .t { font-size: 13.5px; font-weight: 700; } .kmp-kartu-beranda .s { font-size: 11.5px; color: var(--text2); margin-top: 2px; line-height: 1.45; }
+.kmr-besar { font-family: var(--mono); font-size: 28px; font-weight: 800; color: var(--green-text); text-align: center; margin: 4px 0; }
+.kmr-dua { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.kmr-dua > div { background: var(--surface2); border-radius: 10px; padding: 10px; }
+.kmr-dua .l { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; } .kmr-dua .v { font-family: var(--mono); font-size: 15px; font-weight: 700; margin-top: 2px; }
+.kmr-baris { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); } .kmr-baris:last-child { border-bottom: 0; }
+.kmr-baris .tx { flex: 1; min-width: 0; } .kmr-baris .t1 { font-size: 12.5px; font-weight: 700; } .kmr-baris .t2 { font-size: 10.5px; color: var(--text3); }
+.kmr-wa { font-size: 11px; font-weight: 700; color: #128C7E; border: 1px solid #bbf7d0; background: var(--green-bg); border-radius: 8px; padding: 5px 9px; font-family: inherit; cursor: pointer; }
+
 /* v4.83.0 — bagi hasil */
 .bh-pil { display: flex; flex-direction: column; gap: 7px; }
 .bh-pil label { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px;
@@ -1573,6 +1610,7 @@ img.hp-foto { display: block; }
         <div class="modal-title">Lainnya</div>
         <div class="modal-sub">Menu yang jarang dibuka</div>
         <div class="tindakan tiga" style="margin-bottom:4px">
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('kumpulan')"><div class="tile-ic b" style="background:var(--accent);color:#fff;border-color:var(--accent)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Mode Kumpulan</span></button>
           <button class="tile admin-only" style="display:none" onclick="pilihLainnya('anggota')"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Anggota</span></button>
           <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="12" width="4" height="8" rx="1"/><rect class="isi" x="10" y="6" width="4" height="14" rx="1"/><rect class="isi" x="17" y="9" width="4" height="11" rx="1"/><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg></div><span class="tile-teks">Laporan</span></button>
           <button class="tile" onclick="pilihLainnya('pengumuman')"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M19 9a4 4 0 0 1 0 6M8 15v4"/></svg></div><span class="tile-teks">Pengumuman</span></button>
@@ -1601,6 +1639,8 @@ img.hp-foto { display: block; }
       <!-- v4.63.0 — KARTU UTAMA ADMIN: kas koperasi -->
       <!-- v4.82.0: kartu pengumuman — paling atas, warna ungu yang belum dipakai kartu lain -->
       <div id="kartu-pengumuman"></div>
+      <!-- v4.86.0: ajakan Mode Kumpulan — hanya admin, hanya saat relevan; diisi renderKartuKumpulan() -->
+      <div id="kartu-kumpulan"></div>
       <div class="hero admin-only" style="display:none" id="hero-admin">
         <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/><path d="M0 120 C70 70 130 170 200 120 S300 70 300 120 V160 H0Z" fill="#fff" opacity=".6"/></svg>
         <div class="hero-label">Kas koperasi</div>
@@ -2007,6 +2047,28 @@ img.hp-foto { display: block; }
     </div>
 
     <!-- PENGUMUMAN (v4.82.0) -->
+    <!-- MODE KUMPULAN (v4.86.0) — satu layar untuk hari kumpulan, admin saja -->
+    <div class="page" id="page-kumpulan">
+      <div class="page-header" style="margin-bottom:10px">
+        <div class="page-title" id="kmp-judul">Kumpulan</div>
+        <div class="page-sub" id="kmp-sub">Memuat…</div>
+      </div>
+      <div class="kmp-strip" id="kmp-strip">
+        <div class="b"><div class="l">Terkumpul hari ini</div><div class="v" id="kmp-terkumpul">—</div></div>
+        <div class="b kecil"><div class="l">Setoran</div><div class="v" id="kmp-hit-setor">—</div></div>
+        <div class="b kecil"><div class="l">Cicilan</div><div class="v" id="kmp-hit-cicilan">—</div></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 2px">
+        <button class="kmp-chip" onclick="bukaNominalKumpulan()">Setoran bawaan <b id="kmp-nominal-label">—</b> ▾</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Nominal bawaan dipakai saat mengetuk "Setor". Anggota yang biasa menyetor jumlah lain ditandai di bawah namanya.</div>
+      <div id="kmp-daftar"><div class="loading"><div class="spinner"></div> Memuat…</div></div>
+      <div style="margin-top:14px">
+        <button class="btn btn-primary btn-full" onclick="bukaRingkasanKumpulan()">Selesai kumpulan ›</button>
+        <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">Setiap ketukan sudah tersimpan. Tombol ini hanya membuka ringkasan.</div>
+      </div>
+    </div>
+
     <div class="page" id="page-pengumuman">
       <div class="page-header" style="margin-bottom:12px">
         <div class="page-title">Pengumuman</div>
@@ -2028,6 +2090,57 @@ img.hp-foto { display: block; }
       </div>
       <div class="dash-sec"><h3 id="pu-judul-daftar">Pengumuman aktif</h3></div>
       <div id="pu-daftar"><div class="loading"><div class="spinner"></div> Memuat…</div></div>
+    </div>
+
+    <!-- Mode Kumpulan (v4.86.0): lembar setor cepat -->
+    <div class="modal-overlay" id="sheet-kumpulan-setor" onclick="if (event.target === this) closeModal('sheet-kumpulan-setor')">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-title" id="kms-judul">Setoran</div>
+        <div class="modal-sub" id="kms-sub">—</div>
+        <div class="form-group"><label class="form-label">Jumlah (Rp)</label>
+          <input class="form-input" type="number" id="kms-jumlah" min="1000" step="1000" inputmode="numeric" oninput="pratinjauSetorKumpulan()" style="font-family:var(--mono);font-size:18px;font-weight:700">
+          <div class="kmp-cepat" id="kms-cepat">
+            <button type="button" onclick="isiCepatKumpulan(50000)">50rb</button>
+            <button type="button" onclick="isiCepatKumpulan(100000)">100rb</button>
+            <button type="button" onclick="isiCepatKumpulan(150000)">150rb</button>
+            <button type="button" onclick="isiCepatKumpulan(200000)">200rb</button>
+            <button type="button" onclick="isiCepatKumpulan(500000)">500rb</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px" id="kms-hint"></div></div>
+        <div class="form-group"><label class="form-label">Catatan</label>
+          <input class="form-input" type="text" id="kms-catatan" maxlength="80"></div>
+        <div class="info-lembut" id="kms-pratinjau" style="margin-bottom:12px">—</div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('sheet-kumpulan-setor')">Batal</button>
+          <button class="btn btn-primary" id="btn-kms-catat" onclick="doSetorKumpulan()">Catat</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode Kumpulan: nominal bawaan -->
+    <div class="modal-overlay" id="modal-kumpulan-nominal" onclick="if (event.target === this) closeModal('modal-kumpulan-nominal')">
+      <div class="modal" style="max-width:380px">
+        <div class="modal-title">Setoran bawaan</div>
+        <div class="modal-sub">Terisi otomatis saat mengetuk "Setor". Diingat untuk kumpulan berikutnya.</div>
+        <div class="form-group"><label class="form-label">Nominal (Rp)</label>
+          <input class="form-input" type="number" id="kmp-nominal-input" min="1000" step="1000" inputmode="numeric"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('modal-kumpulan-nominal')">Batal</button>
+          <button class="btn btn-primary" onclick="simpanNominalKumpulan()">Simpan</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mode Kumpulan: ringkasan akhir -->
+    <div class="modal-overlay" id="sheet-kumpulan-ringkasan" onclick="if (event.target === this) closeModal('sheet-kumpulan-ringkasan')">
+      <div class="modal" style="max-width:460px">
+        <div class="modal-title">Ringkasan kumpulan</div>
+        <div class="modal-sub" id="kmr-sub">—</div>
+        <div id="kmr-isi"></div>
+        <button class="btn btn-full lap-wa" style="margin-top:12px" onclick="kirimRingkasanKumpulanWA()"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Kirim ringkasan ke grup WhatsApp</button>
+        <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px">Teks singkat: terkumpul berapa, siapa sudah, siapa belum. Tanpa nominal per orang.</div>
+        <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('sheet-kumpulan-ringkasan')">Tutup</button>
+      </div>
     </div>
 
     <!-- Bagi hasil (v4.83.0) — dua langkah dalam satu modal -->
@@ -2871,7 +2984,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.85.0';
+const APP_VERSION = 'v4.86.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3498,6 +3611,7 @@ function showPage(name) {
   if (name === 'event') loadEvent();
   if (name === 'backup') loadBackupPage();
   if (name === 'pengumuman') loadPengumuman();
+  if (name === 'kumpulan') loadKumpulan();
   // anggota-detail sengaja tidak punya pemuat di sini: ia butuh id, dan
   // pengisiannya dikerjakan bukaDetailAnggota() sebelum halamannya dibuka.
 }
@@ -3783,6 +3897,7 @@ async function loadDashboard() {
   const jumlahPeminjam = Number(R?.peminjam_aktif  ?? 0);
   const jumlahTunggak  = Number(R?.tunggakan       ?? 0);
   const activeLoans = (loans || []).filter(l => l.status === 'active');
+  renderKartuKumpulan(savings, loans, (profiles || []).length || jumlahAnggota);   // v4.86.0
 
   // Rincian "Di dalam koperasi" vs "Sedang dipinjam" memakai POKOK yang
   // masih tertanam, bukan remaining_amount. remaining_amount berisi pokok
@@ -4228,6 +4343,332 @@ function renderMutasiAnggota(jenis) {
       <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" data-ik onclick="cetakUlangBuktiSimpanan('${t.id}')"><svg class="ik" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>
     </div>`;
   }).join('');
+}
+
+// ── MODE KUMPULAN (v4.86.0) ──────────────────────────────────────────────
+// Satu layar untuk hari kumpulan. Tidak ada tabel, RPC, atau rumus baru:
+// setoran memakai catatSetoran(), cicilan memakai modal cicilan yang ada,
+// salah ketuk memakai koreksi setoran. Halaman ini hanya PINTU MASUK yang
+// lebih cepat. Tanda "sudah" tidak disimpan di HP — ia dibaca dari data
+// (punya setoran efektif bulan ini), jadi tahan aplikasi tertutup.
+let _kmp = null;              // data kumpulan terakhir dimuat
+let _kmpMuat = 0;             // penanda pemuatan, agar hasil basi tidak menimpa
+
+function segarkanKumpulan() { if (halamanSekarang === 'kumpulan') loadKumpulan(); }
+
+function nominalBawaanKumpulan() {
+  return Number(appSettings.kumpulan?.nominal_bawaan) || 100000;
+}
+function namaBulanPanjang(kunci) {   // 'YYYY-MM' → 'September 2026'
+  const [y, m] = kunci.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+}
+function awalHariIniISO() {
+  const t = new Date(); t.setHours(0, 0, 0, 0); return t.toISOString();
+}
+function avatarKumpulan(p, kecil = false) {
+  const k = 'kmp-av' + (kecil ? ' kecil' : '');
+  return p.avatar_url
+    ? `<div class="${k}"><img src="${escapeHtml(p.avatar_url)}" alt=""></div>`
+    : `<div class="${k}">${escapeHtml((p.full_name || '?')[0].toUpperCase())}</div>`;
+}
+function jamPendek(iso) { return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); }
+
+async function loadKumpulan() {
+  if (!isAdmin()) { showPage('dashboard'); return; }
+  const tanda = ++_kmpMuat;
+  const bulan = bulanLokal(new Date().toISOString());
+  const batas = batasBulan(bulan);
+  document.getElementById('kmp-judul').textContent = 'Kumpulan ' + namaBulanPanjang(bulan);
+  document.getElementById('kmp-nominal-label').textContent = fmt(nominalBawaanKumpulan());
+
+  const [anggota, setoranBulan, riwayatSetor, pinjaman, bayarHariIni, ringkasan] = await Promise.all([
+    dbQuery('profiles', 'status=eq.active&select=id,full_name,avatar_url,phone&order=full_name.asc'),
+    dbQuery('savings', `type=eq.deposit&created_at=gte.${batas.dari}&created_at=lt.${batas.sampai}&select=id,member_id,amount,created_at,note,is_reversed,corrects_id,is_pembatalan`),
+    dbQuery('savings', 'type=eq.deposit&is_reversed=eq.false&is_pembatalan=eq.false&order=created_at.desc&limit=300&select=member_id,amount,note'),
+    dbQuery('loans', 'status=eq.active&select=id,member_id,installment_amount,installment_count,paid_count,next_due_date,remaining_amount'),
+    dbQuery('loan_payments', `is_reversed=eq.false&created_at=gte.${awalHariIniISO()}&select=id,loan_id,member_id,amount_paid,interest_component,created_at`),
+    dbRpc('ringkasan_koperasi').then(r => r.data).catch(() => null)
+  ]);
+  if (tanda !== _kmpMuat) return;
+  const daftar = document.getElementById('kmp-daftar');
+  if (!anggota || !setoranBulan || !pinjaman || !bayarHariIni) {
+    daftar.innerHTML = '<div class="empty-state"><div class="empty-state-title">Gagal memuat</div><div class="empty-state-sub">Periksa koneksi lalu buka lagi.</div></div>';
+    return;
+  }
+
+  // Setoran efektif bulan ini per anggota — bagi hasil bukan setoran anggota
+  const setorPer = {};
+  setoranBulan.filter(isBarisSimpananEfektif).filter(x => !isBagiHasil(x)).forEach(x => {
+    (setorPer[x.member_id] = setorPer[x.member_id] || []).push(x);
+  });
+  // "Biasanya": tiga setoran terakhir sama nominalnya dan ≠ bawaan
+  const biasa = {};
+  const perOrang = {};
+  (riwayatSetor || []).filter(x => !isBagiHasil(x)).forEach(x => {
+    (perOrang[x.member_id] = perOrang[x.member_id] || []).push(Number(x.amount));
+  });
+  const bawaan = nominalBawaanKumpulan();
+  Object.entries(perOrang).forEach(([id, arr]) => {
+    const tiga = arr.slice(0, 3);
+    if (tiga.length >= 2 && tiga.every(a => a === tiga[0]) && tiga[0] !== bawaan) biasa[id] = tiga[0];
+  });
+
+  const hariIni = getTodayStr();
+  const akhirBulan = bulan + '-31';
+  const pinjPer = {};
+  pinjaman.forEach(l => { (pinjPer[l.member_id] = pinjPer[l.member_id] || []).push(l); });
+  const bayarPerLoan = {};
+  bayarHariIni.forEach(b => { (bayarPerLoan[b.loan_id] = bayarPerLoan[b.loan_id] || []).push(b); });
+
+  _kmp = { bulan, anggota, setorPer, biasa, pinjaman, bayarHariIni, bayarPerLoan, ringkasan, hariIni };
+
+  // Strip: terkumpul HARI INI (setoran + cicilan yang dicatat hari ini)
+  const setorHariIni = setoranBulan.filter(isBarisSimpananEfektif).filter(x => !isBagiHasil(x) && x.created_at >= awalHariIniISO());
+  const totalSetorHariIni = setorHariIni.reduce((a, x) => a + Number(x.amount), 0);
+  const totalBayarHariIni = bayarHariIni.reduce((a, x) => a + Number(x.amount_paid), 0);
+  const nSudah = anggota.filter(p => setorPer[p.id]).length;
+  // Cicilan yang "menunggu" bulan ini: jatuh tempo ≤ akhir bulan (termasuk
+  // yang sudah lewat), ditambah yang sudah dibayar hari ini.
+  const cicilanTarget = pinjaman.filter(l => l.next_due_date && l.next_due_date.slice(0, 10) <= akhirBulan);
+  const nCicilanBayar = Object.keys(bayarPerLoan).length;
+  const nCicilanTarget = new Set([...cicilanTarget.map(l => l.id), ...Object.keys(bayarPerLoan)]).size;
+  document.getElementById('kmp-terkumpul').textContent = fmt(totalSetorHariIni + totalBayarHariIni);
+  document.getElementById('kmp-hit-setor').textContent = `${nSudah} / ${anggota.length}`;
+  document.getElementById('kmp-hit-cicilan').textContent = `${nCicilanBayar} / ${nCicilanTarget}`;
+  document.getElementById('kmp-sub').textContent =
+    new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' }) + ` · ${anggota.length} anggota aktif`;
+
+  // Baris anggota
+  const belum = [], sudah = [];
+  anggota.forEach(p => {
+    const setoran = setorPer[p.id];
+    const pinj = (pinjPer[p.id] || []).filter(l => !bayarPerLoan[l.id]);
+    const ketPinj = pinj.map(l => {
+      const due = (l.next_due_date || '').slice(0, 10);
+      const ke = Math.min(Number(l.paid_count || 0) + 1, l.installment_count);
+      let kapan, kelas = '';
+      if (!due) kapan = '';
+      else if (due < hariIni) { kapan = 'lewat jatuh tempo'; kelas = 'merah'; }
+      else if (due === hariIni) { kapan = 'jatuh tempo hari ini'; kelas = 'amber'; }
+      else {
+        const hari = Math.round((new Date(due) - new Date(hariIni)) / 86400000);
+        kapan = hari <= 7 ? `${hari} hari lagi` : 'jatuh tempo ' + fmtDate(due);
+        kelas = hari <= 7 ? 'amber' : '';
+      }
+      return { l, teks: `Cicilan ke-${ke} ${fmt(l.installment_amount)} · ${kapan}`, kelas };
+    });
+    const bayarSaya = Object.values(bayarPerLoan).flat().filter(b => b.member_id === p.id);
+    if (setoran) {
+      const jumlah = setoran.reduce((a, x) => a + Number(x.amount), 0);
+      const terakhir = setoran.slice().sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+      const hariTerakhir = terakhir.created_at >= awalHariIniISO() ? jamPendek(terakhir.created_at) : fmtDate(terakhir.created_at);
+      const ket = [hariTerakhir + (terakhir.note ? ' · ' + terakhir.note : '')]
+        .concat(bayarSaya.length ? ['+ cicilan hari ini ' + fmt(bayarSaya.reduce((a, b) => a + Number(b.amount_paid), 0))] : [])
+        .concat(ketPinj.map(k => `<span class="${k.kelas}">${escapeHtml(k.teks)}</span>`));
+      sudah.push(`<div class="kmp-ang selesai">${avatarKumpulan(p)}
+        <div class="nm"><div class="n">${escapeHtml(p.full_name)}</div><div class="k">${ket.join('<br>')}</div></div>
+        <div class="ak"><div class="kmp-sudah">${ikon('cek', 15)}<span>${fmt(jumlah).replace(/^Rp\s?/, '')}</span></div>
+          ${setoran.length === 1 ? `<button class="kmp-ubah" onclick="ubahSetoranKumpulan('${terakhir.id}')">ubah</button>` : `<span class="kmp-ubah" style="text-decoration:none">${setoran.length} setoran</span>`}
+          ${ketPinj.map(k => `<button class="kmp-tap ${k.kelas === 'merah' ? 'merah' : 'amber'}" onclick="bukaCicilanKumpulan('${k.l.id}')">${ikon('cicilan', 15)} Cicilan</button>`).join('')}
+        </div></div>`);
+    } else {
+      const ketDasar = biasa[p.id] ? `biasanya ${fmt(biasa[p.id])}` : (bayarSaya.length ? 'cicilan hari ini sudah dibayar, setoran belum' : 'belum menyetor bulan ini');
+      const ket = [ketDasar].concat(ketPinj.map(k => `<span class="${k.kelas}">${escapeHtml(k.teks)}</span>`));
+      belum.push(`<div class="kmp-ang">${avatarKumpulan(p)}
+        <div class="nm"><div class="n">${escapeHtml(p.full_name)}</div><div class="k">${ket.join('<br>')}</div></div>
+        <div class="ak"><button class="kmp-tap" onclick="bukaSetorKumpulan('${p.id}')">${ikon('setor', 15)} Setor</button>
+          ${ketPinj.map(k => `<button class="kmp-tap ${k.kelas === 'merah' ? 'merah' : 'amber'}" onclick="bukaCicilanKumpulan('${k.l.id}')">${ikon('cicilan', 15)} Cicilan</button>`).join('')}
+        </div></div>`);
+    }
+  });
+  daftar.innerHTML =
+    (belum.length ? `<div class="kmp-sek">Belum <span>${belum.length} anggota</span></div>${belum.join('')}` : `<div class="info-lembut" style="margin-top:10px">Semua anggota sudah menyetor bulan ini 🎉</div>`)
+    + (sudah.length ? `<div class="kmp-sek">Sudah <span>${sudah.length} anggota</span></div>${sudah.join('')}` : '');
+}
+
+// ── Setor cepat ──
+let _kmsAnggota = null;
+function bukaSetorKumpulan(memberId) {
+  const p = _kmp?.anggota.find(a => a.id === memberId);
+  if (!p) return;
+  _kmsAnggota = p;
+  const nominal = _kmp.biasa[memberId] || nominalBawaanKumpulan();
+  document.getElementById('kms-judul').textContent = 'Setoran ' + p.full_name;
+  document.getElementById('kms-sub').textContent = 'Memuat saldo…';
+  document.getElementById('kms-jumlah').value = nominal;
+  document.getElementById('kms-catatan').value = 'Kumpulan ' + namaBulanPanjang(_kmp.bulan);
+  document.getElementById('kms-hint').textContent = _kmp.biasa[memberId]
+    ? `Terisi ${fmt(nominal)} karena itu yang biasa ${p.full_name.split(' ')[0]} setor — bukan nominal bawaan.`
+    : 'Terisi nominal bawaan. Ubah kalau berbeda.';
+  pratinjauSetorKumpulan();
+  openModal('sheet-kumpulan-setor');
+  getMemberBalance(memberId).then(bal => {
+    if (_kmsAnggota?.id !== memberId) return;
+    _kmsAnggota.saldo = bal;
+    document.getElementById('kms-sub').textContent = 'Saldo sekarang ' + fmt(bal);
+    pratinjauSetorKumpulan();
+  });
+}
+function isiCepatKumpulan(n) { document.getElementById('kms-jumlah').value = n; pratinjauSetorKumpulan(); }
+function pratinjauSetorKumpulan() {
+  const n = parseInt(document.getElementById('kms-jumlah').value) || 0;
+  document.querySelectorAll('#kms-cepat button').forEach(b => b.classList.toggle('on', parseInt(b.getAttribute('onclick').match(/\d+/)[0]) === n));
+  const el = document.getElementById('kms-pratinjau');
+  const btn = document.getElementById('btn-kms-catat');
+  if (n < 1000) { el.textContent = 'Jumlah minimal Rp 1.000.'; btn.textContent = 'Catat'; return; }
+  const poin = hitungPoinSetor(n);
+  const saldo = _kmsAnggota?.saldo;
+  el.innerHTML = `Poin: <b>+${poin}</b>` + (saldo != null ? ` · Saldo jadi <b>${fmt(saldo + n)}</b>` : '');
+  btn.textContent = 'Catat ' + fmt(n);
+}
+let _kmsSedang = false;
+async function doSetorKumpulan() {
+  if (_kmsSedang || !_kmsAnggota) return;
+  const amount = parseInt(document.getElementById('kms-jumlah').value) || 0;
+  const note = document.getElementById('kms-catatan').value.trim();
+  if (amount < 1000) { showToast('Jumlah minimal Rp 1.000'); return; }
+  _kmsSedang = true;
+  const btn = document.getElementById('btn-kms-catat');
+  btn.disabled = true; btn.style.opacity = '.6';
+  try {
+    const hasil = await catatSetoran(_kmsAnggota.id, amount, note);
+    if (hasil.error) { showToast('Gagal menyimpan: ' + (hasil.error.message || JSON.stringify(hasil.error))); return; }
+    closeModal('sheet-kumpulan-setor');
+    showToast(`✓ ${_kmsAnggota.full_name.split(' ')[0]} ${fmt(amount)}`);
+    _kmsAnggota = null;
+    loadKumpulan();
+  } finally {
+    _kmsSedang = false;
+    btn.disabled = false; btn.style.opacity = '';
+  }
+}
+
+// ── Cicilan & koreksi: memakai modal yang sudah ada ──
+function bukaCicilanKumpulan(loanId) { openCatatCicilan(loanId); }
+function ubahSetoranKumpulan(savingsId) {
+  let baris = null, nama = '';
+  for (const p of _kmp?.anggota || []) {
+    const b = (_kmp.setorPer[p.id] || []).find(x => x.id === savingsId);
+    if (b) { baris = b; nama = p.full_name; break; }
+  }
+  if (!baris) return;
+  openKoreksiSimpanan(savingsId, nama, baris.amount, baris.created_at, 'deposit');
+}
+
+// ── Nominal bawaan ──
+function bukaNominalKumpulan() {
+  document.getElementById('kmp-nominal-input').value = nominalBawaanKumpulan();
+  openModal('modal-kumpulan-nominal');
+}
+async function simpanNominalKumpulan() {
+  const n = parseInt(document.getElementById('kmp-nominal-input').value) || 0;
+  if (n < 1000) { showToast('Nominal minimal Rp 1.000'); return; }
+  const { error } = await simpanPengaturan('kumpulan', { nominal_bawaan: n });
+  if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error))); return; }
+  closeModal('modal-kumpulan-nominal');
+  showToast('Setoran bawaan ' + fmt(n));
+  loadKumpulan();
+}
+
+// ── Ringkasan akhir ──
+function susunRingkasanKumpulan() {
+  const K = _kmp; if (!K) return null;
+  const awal = awalHariIniISO();
+  const setorHariIni = [], sudahNama = [], belum = [];
+  K.anggota.forEach(p => {
+    const s = K.setorPer[p.id];
+    if (s) { sudahNama.push(p); s.filter(x => x.created_at >= awal).forEach(x => setorHariIni.push(x)); }
+    else belum.push(p);
+  });
+  const totalSetor = setorHariIni.reduce((a, x) => a + Number(x.amount), 0);
+  const nSetorOrang = new Set(setorHariIni.map(x => x.member_id)).size;
+  const totalBayar = K.bayarHariIni.reduce((a, x) => a + Number(x.amount_paid), 0);
+  const bungaBayar = K.bayarHariIni.reduce((a, x) => a + Number(x.interest_component || 0), 0);
+  const nBayarOrang = new Set(K.bayarHariIni.map(x => x.member_id)).size;
+  const belumBayar = K.pinjaman.filter(l => !K.bayarPerLoan[l.id] && l.next_due_date && l.next_due_date.slice(0, 10) <= K.bulan + '-31');
+  return { totalSetor, nSetorOrang, totalBayar, bungaBayar, nBayarOrang, sudahNama, belum, belumBayar,
+           total: totalSetor + totalBayar, kas: Number(K.ringkasan?.kas_tersedia ?? NaN) };
+}
+function bukaRingkasanKumpulan() {
+  const R = susunRingkasanKumpulan();
+  if (!R) { showToast('Data kumpulan belum termuat'); return; }
+  const K = _kmp;
+  const namaPeminjam = id => K.anggota.find(a => a.id === id)?.full_name || 'Anggota';
+  document.getElementById('kmr-sub').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('kmr-isi').innerHTML = `
+    <div class="card" style="padding:14px;text-align:center;margin-bottom:10px">
+      <div class="lap-judul" style="margin-bottom:0">Terkumpul hari ini</div>
+      <div class="kmr-besar">${fmt(R.total)}</div>
+      <div style="font-size:11px;color:var(--text3)">masuk ke kas koperasi${isNaN(R.kas) ? '' : ` · kas sekarang <b>${fmt(R.kas)}</b>`}</div>
+      <div class="kmr-dua">
+        <div><div class="l">Setoran</div><div class="v">${fmt(R.totalSetor)}</div><div style="font-size:11px;color:var(--text3)">${R.nSetorOrang} anggota</div></div>
+        <div><div class="l">Cicilan</div><div class="v">${fmt(R.totalBayar)}</div><div style="font-size:11px;color:var(--text3)">${R.nBayarOrang} anggota${R.bungaBayar ? ' · bunga ' + fmt(R.bungaBayar) : ''}</div></div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px 14px;margin-bottom:10px">
+      <div class="lap-judul">Belum menyetor bulan ini · ${R.belum.length}</div>
+      ${R.belum.length ? R.belum.map(p => `<div class="kmr-baris">${avatarKumpulan(p, true)}
+          <div class="tx"><div class="t1">${escapeHtml(p.full_name)}</div><div class="t2">${K.bayarHariIni.some(b => b.member_id === p.id) ? 'hadir, cicilan dibayar, setoran belum' : 'belum menyetor'}</div></div>
+          ${normalkanNomorWA(p.phone) ? `<button class="kmr-wa" onclick="ingatkanSetorWA('${p.id}')">Ingatkan</button>` : '<span style="font-size:10.5px;color:var(--text3)">tanpa nomor WA</span>'}
+        </div>`).join('') : '<div style="font-size:12px;color:var(--text2)">Semua anggota sudah menyetor bulan ini 🎉</div>'}
+      ${R.belum.length ? '<div style="font-size:11px;color:var(--text3);margin-top:8px">"Ingatkan" membuka WhatsApp dengan pesan yang sudah tersusun. Pengingat otomatis juga akan mengejar mereka.</div>' : ''}
+    </div>
+    ${R.belumBayar.length ? `<div class="card" style="padding:12px 14px;margin-bottom:0">
+      <div class="lap-judul">Cicilan bulan ini yang belum dibayar · ${R.belumBayar.length}</div>
+      ${R.belumBayar.map(l => { const due = l.next_due_date.slice(0, 10); const lewat = due < K.hariIni;
+        return `<div class="kmr-baris"><div class="tx"><div class="t1">${escapeHtml(namaPeminjam(l.member_id))}</div><div class="t2">cicilan ke-${Math.min(Number(l.paid_count || 0) + 1, l.installment_count)} · ${fmt(l.installment_amount)} · jatuh tempo ${fmtDate(due)}</div></div>
+          <span style="font-size:10.5px;font-weight:700;color:${lewat ? 'var(--red-text)' : 'var(--text3)'}">${lewat ? 'sudah lewat' : 'belum jatuh tempo'}</span></div>`; }).join('')}
+    </div>` : ''}`;
+  openModal('sheet-kumpulan-ringkasan');
+}
+function ingatkanSetorWA(memberId) {
+  const p = _kmp?.anggota.find(a => a.id === memberId); if (!p) return;
+  const pesan = `Assalamualaikum ${p.full_name} 🙏\n\nDari Koperasi Keluarga: setoran simpanan bulan ${namaBulanPanjang(_kmp.bulan)} belum tercatat. Kalau sudah dititipkan, abaikan pesan ini ya. Terima kasih.`;
+  bukaWA(p.phone, pesan, p.full_name);
+}
+function kirimRingkasanKumpulanWA() {
+  const R = susunRingkasanKumpulan(); if (!R) return;
+  const depan = n => n.split(' ')[0];
+  const teks = `*KUMPULAN ${namaBulanPanjang(_kmp.bulan).toUpperCase()}*\n`
+    + `Koperasi Keluarga · ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}\n\n`
+    + `Terkumpul hari ini: *${fmt(R.total)}*\n`
+    + `• Setoran ${R.nSetorOrang} anggota: ${fmt(R.totalSetor)}\n`
+    + `• Cicilan ${R.nBayarOrang} anggota: ${fmt(R.totalBayar)}\n\n`
+    + `Sudah menyetor bulan ini (${R.sudahNama.length}):\n${R.sudahNama.map(p => depan(p.full_name)).join(', ') || '-'}\n\n`
+    + (R.belum.length ? `Belum menyetor (${R.belum.length}):\n${R.belum.map(p => depan(p.full_name)).join(', ')}\n\n` : 'Semua anggota sudah menyetor bulan ini 🎉\n\n')
+    + (isNaN(R.kas) ? '' : `Kas koperasi sekarang: *${fmt(R.kas)}*\n\n`)
+    + `Terima kasih yang sudah hadir 🙏`;
+  bukaWATeks(teks);
+}
+
+// ── Kartu Beranda: ajakan membuka Mode Kumpulan ──
+// Muncul hanya untuk admin, dan hanya bila relevan: minggu terakhir bulan,
+// atau masih ada anggota yang belum menyetor bulan ini. Hilang sendiri.
+function renderKartuKumpulan(savings, loans, jumlahAnggotaAktif) {
+  const el = document.getElementById('kartu-kumpulan');
+  if (!el) return;
+  if (!isAdmin() || !jumlahAnggotaAktif) { el.innerHTML = ''; return; }
+  const bulan = bulanLokal(new Date().toISOString());
+  const sudah = new Set((savings || []).filter(isBarisSimpananEfektif)
+    .filter(x => x.type === 'deposit' && !isBagiHasil(x) && bulanLokal(x.created_at) === bulan).map(x => x.member_id));
+  const belum = Math.max(0, jumlahAnggotaAktif - sudah.size);
+  const hariIni = getTodayStr();
+  const batas7 = new Date(); batas7.setDate(batas7.getDate() + 7);
+  const batas7Str = bulanLokal(batas7.toISOString()) + '-' + String(batas7.getDate()).padStart(2, '0');
+  const jatuh = (loans || []).filter(l => l.status === 'active' && l.next_due_date && l.next_due_date.slice(0, 10) <= batas7Str).length;
+  const tgl = new Date().getDate();
+  const akhir = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const mingguTerakhir = akhir - tgl < 7;
+  if (!belum && !mingguTerakhir) { el.innerHTML = ''; return; }
+  const bagian = [];
+  if (belum) bagian.push(`${belum} dari ${jumlahAnggotaAktif} anggota belum menyetor bulan ini`);
+  if (jatuh) bagian.push(`${jatuh} cicilan jatuh tempo minggu ini`);
+  el.innerHTML = `<div class="kmp-kartu-beranda">
+    <div class="t">Hari ini kumpulan ${namaBulanPanjang(bulan).split(' ')[0]}?</div>
+    <div class="s">${bagian.join(' · ') || 'Semua sudah menyetor — tinggal catat cicilan kalau ada.'}</div>
+    <button class="btn btn-primary" style="width:100%;margin-top:10px;padding:10px" onclick="showPage('kumpulan')">${ikon('anggota', 16)} Buka Mode Kumpulan</button>
+  </div>`;
 }
 
 // ── BAGI HASIL (v4.83.0) ─────────────────────────────────────────────────
@@ -4903,7 +5344,7 @@ async function doKoreksiSetoran() {
     showToast(`✅ ${setoran ? 'Setoran' : 'Pencairan'} dikoreksi menjadi ${fmt(baru)}` + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
     closeModal('modal-koreksi-setoran');
     _koreksiCtx = null;
-    loadSimpanan(); loadDashboard();
+    loadSimpanan(); loadDashboard(); segarkanKumpulan();
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
@@ -4994,6 +5435,20 @@ async function getMemberBalance(memberId) {
   return bal;
 }
 
+// Inti pencatatan setoran — dipakai doSetor (menu Setor) dan Mode Kumpulan,
+// supaya saldo, poin, dan bentuk barisnya tidak mungkin berbeda.
+async function catatSetoran(memberId, amount, note) {
+  const bal = await getMemberBalance(memberId);
+  const saldoBaru = bal + amount;
+  // dbInsert memakai Prefer: return=representation, jadi baris yang baru
+  // dibuat ikut kembali — id-nya dipakai sebagai nomor bukti.
+  const { data: barisBaru, error } = await dbInsert('savings',
+    { member_id: memberId, type: 'deposit', amount, balance_after: saldoBaru, recorded_by: currentUser.id, note });
+  if (error) return { error };
+  await autoPoinSetor(memberId, amount);   // poin sesuai nominal
+  return { barisBaru, saldoBaru, error: null };
+}
+
 async function doSetor() {
   const btnS = document.getElementById('btn-do-setor');
   if (btnS && btnS.disabled) return;
@@ -5003,17 +5458,9 @@ async function doSetor() {
   const amount = parseInt(document.getElementById('setor-amount').value);
   const note = document.getElementById('setor-note').value;
   if (!memberId || !amount || amount < 1000) { showToast('Isi semua field dengan benar'); return; }
-  const bal = await getMemberBalance(memberId);
-  const saldoBaru = bal + amount;
-  // Diminta kembali agar id barisnya bisa dipakai sebagai nomor bukti
-  // dbInsert sudah memakai Prefer: return=representation, jadi baris yang baru
-  // dibuat ikut dikembalikan — id-nya dipakai sebagai nomor bukti.
-  const { data: barisBaru, error } = await dbInsert('savings',
-    { member_id: memberId, type: 'deposit', amount, balance_after: saldoBaru, recorded_by: currentUser.id, note });
-  if (error) { showToast('Gagal menyimpan: ' + JSON.stringify(error)); return; }
-
-  // Auto-poin sesuai nominal setor
-  await autoPoinSetor(memberId, amount);
+  const hasil = await catatSetoran(memberId, amount, note);
+  if (hasil.error) { showToast('Gagal menyimpan: ' + JSON.stringify(hasil.error)); return; }
+  const { barisBaru, saldoBaru } = hasil;
 
   showToast('Setoran berhasil dicatat ✓');
   rayakan();
@@ -6348,7 +6795,7 @@ async function doCatatCicilan() {
       + (dendaTercatat > 0 ? ` · denda ${fmt(dendaTercatat)} diterima` : ''));
     closeModal('modal-cicilan');
     document.getElementById('cicilan-note').value = '';
-    loadCicilan(); loadDashboard();
+    loadCicilan(); loadDashboard(); segarkanKumpulan();
     muatNotifikasi();   // item "jatuh tempo" yang barusan dibayar harus langsung hilang
 
     // Bukti dibuat paling akhir, setelah semuanya tersimpan. Kalau pembuatannya
@@ -6361,7 +6808,9 @@ async function doCatatCicilan() {
       sisa: remainingAfter, urutan: paymentSeq,
       lunas: isLastPayment, denda: dendaTercatat, catatan: note
     });
-    await tampilkanKwitansi(opsiKw, teksKw, fileKw);
+    // Di Mode Kumpulan kwitansi tidak dibuka satu per satu — memperlambat
+    // antrean. Buktinya tetap bisa dicetak dari riwayat kapan saja.
+    if (halamanSekarang !== 'kumpulan') await tampilkanKwitansi(opsiKw, teksKw, fileKw);
   } catch (e) {
     // Tanpa penangkap ini, galat tak terduga membuat layar seolah membeku:
     // modal tetap terbuka, tidak ada pesan apa pun, padahal transaksinya
@@ -6370,7 +6819,7 @@ async function doCatatCicilan() {
     showToast('⚠️ Terjadi galat setelah pembayaran diproses: ' + (e.message || e)
       + '. Periksa menu Cicilan untuk memastikan tercatat atau belum.', 9000);
     closeModal('modal-cicilan');
-    loadCicilan(); loadDashboard();
+    loadCicilan(); loadDashboard(); segarkanKumpulan();
   } finally {
     if (btnC) { btnC.disabled = false; btnC.style.opacity = ''; }
   }

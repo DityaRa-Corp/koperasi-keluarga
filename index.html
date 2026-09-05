@@ -2720,7 +2720,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.81.0';
+const APP_VERSION = 'v4.81.1';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -6522,28 +6522,6 @@ function rentangManualLaporan() {
   const to   = document.getElementById('laporan-date-to')?.value;
   if (from && to && from > to) { showToast('Tanggal awal tidak boleh sesudah tanggal akhir'); return; }
   loadLaporan();
-}
-
-// Ringkasan periode untuk admin: uang masuk, uang keluar, saldo awal & akhir —
-// angkanya dari fungsi yang sama dengan laporan WhatsApp dan jurnal kas.
-async function renderRingkasanLaporan() {
-  const el = document.getElementById('laporan-ringkasan');
-  if (!el || !isAdmin()) return;
-  el.style.display = 'grid';
-  el.innerHTML = '<div class="card"><div class="l">Menghitung…</div></div>';
-  try {
-    const d = await kumpulkanLaporanPeriode();
-    const dari = document.getElementById('laporan-date-from')?.value;
-    const awal = dari ? (await hitungSaldoAwalKas(waktuLokalKeUTC(dari, '00:00:00'))) : 0;
-    const akhir = (awal || 0) + d.totalMasuk - d.totalKeluar;
-    el.innerHTML = `
-      <div class="card"><div class="l">Uang masuk</div><div class="n hijau">+${fmt(d.totalMasuk).replace(/^Rp\s?/, '')}</div></div>
-      <div class="card"><div class="l">Uang keluar</div><div class="n merah">−${fmt(d.totalKeluar).replace(/^Rp\s?/, '')}</div></div>
-      <div class="card"><div class="l">${dari ? 'Saldo awal' : 'Saldo awal (sejak berdiri)'}</div><div class="n">${fmt(awal || 0)}</div></div>
-      <div class="card"><div class="l">Saldo akhir</div><div class="n biru">${fmt(akhir)}</div></div>`;
-  } catch (e) {
-    el.innerHTML = '<div class="card"><div class="l">Ringkasan gagal dimuat</div></div>';
-  }
 }
 
 async function switchLaporanTab(tab, btn) {

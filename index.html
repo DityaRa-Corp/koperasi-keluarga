@@ -1136,6 +1136,17 @@ img.hp-foto { display: block; }
 
 .la-kw { width: 30px; height: 30px; border-radius: 8px; background: var(--surface2);
   border: 1px solid var(--border); font-size: 13px; flex-shrink: 0; margin-left: 6px; cursor: pointer; }
+/* v4.81.0 — ikon SVG duotone, menggantikan emoji.
+   Emoji digambar oleh sistem operasi, bukan aplikasi: tampil beda di iPhone,
+   Android, dan Samsung, dan tidak pernah mengikuti warna aplikasi. SVG inline
+   tajam di layar apa pun, mewarisi warna lewat currentColor, dan tampil sama
+   persis di semua HP — tanpa pustaka, tanpa unduhan. */
+.ik { display: block; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.ik .isi { fill: currentColor; fill-opacity: .18; stroke: none; }
+.btn .ik { display: inline-block; vertical-align: -4px; margin-right: 2px; }
+.nb .ik { margin: 0 auto 2px; }
+.tile-ic .ik { width: 26px; height: 26px; }
+
 /* v4.80.0 — Laporan yang bercerita */
 .lap-periode { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--surface);
   border: 1px solid var(--border2); border-radius: 12px; padding: 11px 14px; margin-bottom: 12px;
@@ -1509,26 +1520,26 @@ img.hp-foto { display: block; }
 
     <!-- v4.63.0: BILAH NAVIGASI BAWAH (hanya HP) -->
     <nav class="nav-bawah" id="nav-bawah" aria-label="Navigasi utama">
-      <button class="nb on" data-page="dashboard" onclick="showPage('dashboard')"><span class="nb-ic">🏠</span>Beranda</button>
-      <button class="nb" data-page="simpanan" onclick="showPage('simpanan')"><span class="nb-ic">💰</span>Simpanan</button>
-      <button class="nb" data-page="pinjaman" onclick="showPage('pinjaman')"><span class="nb-ic">🏦</span>Pinjaman</button>
-      <button class="nb" data-page="cicilan" onclick="showPage('cicilan')"><span class="nb-ic">📅</span>Cicilan</button>
-      <button class="nb" id="nb-lainnya" onclick="bukaLainnya()"><span class="nb-ic">☰</span>Lainnya</button>
+      <button class="nb on" data-page="dashboard" onclick="showPage('dashboard')"><span class="nb-ic"><svg class="ik" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>Beranda</button>
+      <button class="nb" data-page="simpanan" onclick="showPage('simpanan')"><span class="nb-ic"><svg class="ik" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="7" width="18" height="13" rx="2.5"/><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M3 11h18"/><circle cx="16.5" cy="15.5" r="1.3"/></svg></span>Simpanan</button>
+      <button class="nb" data-page="pinjaman" onclick="showPage('pinjaman')"><span class="nb-ic"><svg class="ik" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M3 9 12 4l9 5v10H3z"/><path d="M3 9 12 4l9 5"/><path d="M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18"/></svg></span>Pinjaman</button>
+      <button class="nb" data-page="cicilan" onclick="showPage('cicilan')"><span class="nb-ic"><svg class="ik" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg></span>Cicilan</button>
+      <button class="nb" id="nb-lainnya" onclick="bukaLainnya()"><span class="nb-ic"><svg class="ik" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>Lainnya</button>
     </nav>
     <div class="modal-overlay" id="sheet-lainnya" onclick="if (event.target === this) closeModal('sheet-lainnya')">
       <div class="modal" style="max-width:420px">
         <div class="modal-title">Lainnya</div>
         <div class="modal-sub">Menu yang jarang dibuka</div>
         <div class="tindakan tiga" style="margin-bottom:4px">
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('anggota')"><div class="tile-ic b">👥</div><span class="tile-teks">Anggota</span></button>
-          <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic">📊</div><span class="tile-teks">Laporan</span></button>
-          <button class="tile" onclick="pilihLainnya('event')"><div class="tile-ic p">🎉</div><span class="tile-teks">Event</span></button>
-          <button class="tile" onclick="closeModal('sheet-lainnya'); bukaPapanPoin()"><div class="tile-ic a">🏆</div><span class="tile-teks">Papan Poin</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('adjustment')"><div class="tile-ic">📒</div><span class="tile-teks">Log Perubahan</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('backup')"><div class="tile-ic">💾</div><span class="tile-teks">Backup</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('pengaturan')"><div class="tile-ic">⚙️</div><span class="tile-teks">Pengaturan</span></button>
-          <button class="tile" onclick="pilihLainnya('profil')"><div class="tile-ic">👤</div><span class="tile-teks">Profil</span></button>
-          <button class="tile" onclick="closeModal('sheet-lainnya'); doLogout(true)"><div class="tile-ic r">🚪</div><span class="tile-teks">Keluar</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('anggota')"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Anggota</span></button>
+          <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="12" width="4" height="8" rx="1"/><rect class="isi" x="10" y="6" width="4" height="14" rx="1"/><rect class="isi" x="17" y="9" width="4" height="11" rx="1"/><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg></div><span class="tile-teks">Laporan</span></button>
+          <button class="tile" onclick="pilihLainnya('event')"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M12 3 3 8l9 5 9-5z"/><path d="M12 3 3 8l9 5 9-5z"/><path d="M5 10v6l7 4 7-4v-6"/></svg></div><span class="tile-teks">Event</span></button>
+          <button class="tile" onclick="closeModal('sheet-lainnya'); bukaPapanPoin()"><div class="tile-ic a"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3"/><path d="M12 13v4M9 21h6M10 17h4"/></svg></div><span class="tile-teks">Papan Poin</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('adjustment')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg></div><span class="tile-teks">Log Perubahan</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('backup')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12l4 4v12H4z"/><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h7V4"/><rect x="8" y="14" width="8" height="6" rx="1"/></svg></div><span class="tile-teks">Backup</span></button>
+          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('pengaturan')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"/><circle class="isi" cx="16" cy="7" r="2"/><circle cx="16" cy="7" r="2"/><circle class="isi" cx="8" cy="12" r="2"/><circle cx="8" cy="12" r="2"/><circle class="isi" cx="18" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg></div><span class="tile-teks">Pengaturan</span></button>
+          <button class="tile" onclick="pilihLainnya('profil')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="12" cy="8" r="4"/><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div><span class="tile-teks">Profil</span></button>
+          <button class="tile" onclick="closeModal('sheet-lainnya'); doLogout(true)"><div class="tile-ic r"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="m15 8 5 4-5 4M20 12H9"/></svg></div><span class="tile-teks">Keluar</span></button>
         </div>
       </div>
     </div>
@@ -1577,16 +1588,16 @@ img.hp-foto { display: block; }
       <!-- TINDAKAN: kata kerja, bukan halaman (halaman ada di bilah bawah) -->
       <div class="dash-sec"><h3>Tindakan</h3></div>
       <div class="tindakan admin-only" style="display:none">
-        <button class="tile" onclick="bukaModalSetor()"><div class="tile-ic g">💰</div><span class="tile-teks">Setor</span></button>
-        <button class="tile" onclick="bukaModalCairkan()"><div class="tile-ic r">💸</div><span class="tile-teks">Cairkan</span></button>
-        <button class="tile" onclick="showPage('cicilan')"><div class="tile-ic b">📅</div><span class="tile-teks">Catat Cicilan</span></button>
-        <button class="tile" onclick="bukaPengajuanMenunggu()"><div class="tile-ic a">📝<span class="tile-badge" id="badge-pengajuan"></span></div><span class="tile-teks">Proses Pengajuan</span></button>
+        <button class="tile" onclick="bukaModalSetor()"><div class="tile-ic g"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 2v5m0 0-2.5-2.5M12 7l2.5-2.5"/></svg></div><span class="tile-teks">Setor</span></button>
+        <button class="tile" onclick="bukaModalCairkan()"><div class="tile-ic r"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 7V2m0 0L9.5 4.5M12 2l2.5 2.5"/></svg></div><span class="tile-teks">Cairkan</span></button>
+        <button class="tile" onclick="showPage('cicilan')"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg></div><span class="tile-teks">Catat Cicilan</span></button>
+        <button class="tile" onclick="bukaPengajuanMenunggu()"><div class="tile-ic a"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M6 3h9l5 5v13H6z"/><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/><path d="M9 13h6M9 17h6"/></svg><span class="tile-badge" id="badge-pengajuan"></span></div><span class="tile-teks">Proses Pengajuan</span></button>
       </div>
       <div class="tindakan member-only" style="display:none">
-        <button class="tile" onclick="bukaModalAjukan()"><div class="tile-ic a">🏦</div><span class="tile-teks">Ajukan Pinjaman</span></button>
-        <button class="tile" onclick="bukaBuktiSaya()"><div class="tile-ic b">🧾</div><span class="tile-teks">Bukti Saya</span></button>
-        <button class="tile" onclick="bukaPapanPoin()"><div class="tile-ic p">🏆</div><span class="tile-teks">Papan Poin</span></button>
-        <button class="tile" onclick="hubungiAdminWA()"><div class="tile-ic g">💬</div><span class="tile-teks">Hubungi Admin</span></button>
+        <button class="tile" onclick="bukaModalAjukan()"><div class="tile-ic a"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M3 9 12 4l9 5v10H3z"/><path d="M3 9 12 4l9 5"/><path d="M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18"/></svg></div><span class="tile-teks">Ajukan Pinjaman</span></button>
+        <button class="tile" onclick="bukaBuktiSaya()"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></div><span class="tile-teks">Bukti Saya</span></button>
+        <button class="tile" onclick="bukaPapanPoin()"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3"/><path d="M12 13v4M9 21h6M10 17h4"/></svg></div><span class="tile-teks">Papan Poin</span></button>
+        <button class="tile" onclick="hubungiAdminWA()"><div class="tile-ic g"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg></div><span class="tile-teks">Hubungi Admin</span></button>
       </div>
 
       <!-- TRANSAKSI TERBARU -->
@@ -1668,8 +1679,8 @@ img.hp-foto { display: block; }
         <div class="hero-leg"><span>Setor bulan ini <b id="simpanan-setor-bulan">-</b></span><span>Tarik bulan ini <b id="simpanan-tarik-bulan">-</b></span></div>
       </div>
       <div class="btn-baris admin-only" style="display:none">
-        <button class="btn btn-success" onclick="bukaModalSetor()">💰 Setor</button>
-        <button class="btn btn-danger" onclick="bukaModalCairkan()">💸 Cairkan</button>
+        <button class="btn btn-success" onclick="bukaModalSetor()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 2v5m0 0-2.5-2.5M12 7l2.5-2.5"/></svg> Setor</button>
+        <button class="btn btn-danger" onclick="bukaModalCairkan()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 7V2m0 0L9.5 4.5M12 2l2.5 2.5"/></svg> Cairkan</button>
       </div>
       <div class="cari admin-only" style="display:none"><span>🔍</span><input type="text" id="cari-simpanan" placeholder="Cari anggota…" oninput="renderSaldoSimpanan()"></div>
       <div class="dash-sec"><h3 id="simpanan-saldo-judul">Saldo per anggota</h3></div>
@@ -1693,7 +1704,7 @@ img.hp-foto { display: block; }
         <div class="page-sub" id="pinjaman-sub">Kelola pengajuan dan pencairan pinjaman</div>
       </div>
       <div class="btn-baris">
-        <button class="btn btn-accent member-only" style="display:none" onclick="bukaModalAjukan()">🏦 Ajukan Pinjaman</button>
+        <button class="btn btn-accent member-only" style="display:none" onclick="bukaModalAjukan()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M3 9 12 4l9 5v10H3z"/><path d="M3 9 12 4l9 5"/><path d="M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18"/></svg> Ajukan Pinjaman</button>
         <button class="btn btn-accent admin-only" style="display:none" onclick="bukaModalAjukan()">➕ Buat Pinjaman</button>
       </div>
       <div class="tabs tabs-chip">
@@ -1741,7 +1752,7 @@ img.hp-foto { display: block; }
       </div>
 
       <button class="lap-periode" onclick="openModal('sheet-periode-laporan')" aria-label="Ganti periode laporan">
-        <span class="ic">📅</span>
+        <span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
         <span id="lap-periode-label">Bulan ini</span>
         <span class="cv">ganti ▾</span>
       </button>
@@ -1758,10 +1769,10 @@ img.hp-foto { display: block; }
 
       <div id="lap-kartu"><div class="loading"><div class="spinner"></div> Menghitung…</div></div>
 
-      <button class="lap-wa admin-only" id="btn-laporan-wa" style="display:none" onclick="bagikanLaporanPeriode()">💬 Kirim laporan ke grup WhatsApp</button>
+      <button class="lap-wa admin-only" id="btn-laporan-wa" style="display:none" onclick="bagikanLaporanPeriode()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Kirim laporan ke grup WhatsApp</button>
 
       <button class="lap-lipat" id="lap-lipat-rincian" onclick="toggleRincianLaporan()">
-        <span class="ic">📋</span>
+        <span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg></span>
         <span class="tx">Rincian transaksi<span class="sub" id="lap-rincian-sub">memuat…</span></span>
         <span class="cv" id="lap-rincian-cv">▾</span>
       </button>
@@ -1775,7 +1786,7 @@ img.hp-foto { display: block; }
       </div>
 
       <button class="lap-lipat" onclick="openModal('sheet-lainnya-laporan')">
-        <span class="ic">⚙️</span>
+        <span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"/><circle class="isi" cx="16" cy="7" r="2"/><circle cx="16" cy="7" r="2"/><circle class="isi" cx="8" cy="12" r="2"/><circle cx="8" cy="12" r="2"/><circle class="isi" cx="18" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg></span>
         <span class="tx">Lainnya<span class="sub">Excel · Cetak · Buku kas · Riwayat koreksi · Tabel</span></span>
         <span class="cv">›</span>
       </button>
@@ -1795,11 +1806,11 @@ img.hp-foto { display: block; }
     <div class="modal-overlay" id="sheet-periode-laporan" onclick="if (event.target === this) closeModal('sheet-periode-laporan')">
       <div class="modal" style="max-width:420px">
         <div class="modal-title">Laporan untuk periode</div>
-        <div class="lap-opsi" onclick="pilihPeriodeLaporan('thisMonth')"><span class="ic">📅</span><span class="tx">Bulan ini<span class="sub" id="lap-opsi-bulan-ini"></span></span><span class="ck" data-range="thisMonth">✓</span></div>
-        <div class="lap-opsi" onclick="pilihPeriodeLaporan('lastMonth')"><span class="ic">◀</span><span class="tx">Bulan lalu<span class="sub" id="lap-opsi-bulan-lalu"></span></span><span class="ck" data-range="lastMonth">✓</span></div>
-        <div class="lap-opsi" onclick="pilihPeriodeLaporan('thisYear')"><span class="ic">🗓</span><span class="tx">Tahun ini<span class="sub" id="lap-opsi-tahun-ini"></span></span><span class="ck" data-range="thisYear">✓</span></div>
-        <div class="lap-opsi" onclick="pilihPeriodeLaporan('all')"><span class="ic">∞</span><span class="tx">Sejak koperasi berdiri</span><span class="ck" data-range="all">✓</span></div>
-        <div class="lap-opsi" onclick="pilihPeriodeLaporan('custom')"><span class="ic">✏️</span><span class="tx">Pilih tanggal sendiri</span><span class="ck" data-range="custom">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('thisMonth')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><span class="tx">Bulan ini<span class="sub" id="lap-opsi-bulan-ini"></span></span><span class="ck" data-range="thisMonth">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('lastMonth')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span><span class="tx">Bulan lalu<span class="sub" id="lap-opsi-bulan-lalu"></span></span><span class="ck" data-range="lastMonth">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('thisYear')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M7 14h3M12 14h5M7 17h6"/></svg></span><span class="tx">Tahun ini<span class="sub" id="lap-opsi-tahun-ini"></span></span><span class="ck" data-range="thisYear">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('all')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8a4 4 0 1 0 0 8c3 0 5-8 8-8a4 4 0 1 1 0 8c-3 0-5-8-8-8z"/></svg></span><span class="tx">Sejak koperasi berdiri</span><span class="ck" data-range="all">✓</span></div>
+        <div class="lap-opsi" onclick="pilihPeriodeLaporan('custom')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="m4 16 11-11 4 4L8 20H4z"/><path d="m4 16 11-11 4 4L8 20H4z"/><path d="m13 7 4 4"/></svg></span><span class="tx">Pilih tanggal sendiri</span><span class="ck" data-range="custom">✓</span></div>
       </div>
     </div>
 
@@ -1807,13 +1818,13 @@ img.hp-foto { display: block; }
     <div class="modal-overlay" id="sheet-lainnya-laporan" onclick="if (event.target === this) closeModal('sheet-lainnya-laporan')">
       <div class="modal" style="max-width:420px">
         <div class="modal-title">Lainnya</div>
-        <div class="lap-opsi" onclick="closeModal('sheet-lainnya-laporan'); exportLaporan()"><span class="ic">📗</span><span class="tx">Simpan sebagai Excel<span class="sub">untuk arsip tahunan</span></span></div>
-        <div class="lap-opsi" onclick="closeModal('sheet-lainnya-laporan'); cetakLaporan()"><span class="ic">🖨</span><span class="tx">Cetak<span class="sub">atau simpan sebagai PDF</span></span></div>
-        <div class="lap-opsi admin-only" style="display:none" onclick="bukaLaporanLama('jurnal', 'Buku kas')"><span class="ic">📒</span><span class="tx">Buku kas<span class="sub">setiap uang masuk dan keluar, berurutan</span></span></div>
-        <div class="lap-opsi admin-only" style="display:none" onclick="bukaLaporanLama('adjustment', 'Riwayat koreksi')"><span class="ic">✏️</span><span class="tx">Riwayat koreksi<span class="sub">transaksi yang pernah diperbaiki admin</span></span></div>
-        <div class="lap-opsi" onclick="bukaLaporanLama('simpanan', 'Tabel simpanan')"><span class="ic">💰</span><span class="tx">Tabel simpanan<span class="sub">saldo awal, setor, tarik, saldo akhir per anggota</span></span></div>
-        <div class="lap-opsi" onclick="bukaLaporanLama('pinjaman', 'Tabel pinjaman')"><span class="ic">🏦</span><span class="tx">Tabel pinjaman</span></div>
-        <div class="lap-opsi" onclick="bukaLaporanLama('cicilan', 'Tabel cicilan')"><span class="ic">📅</span><span class="tx">Tabel cicilan</span></div>
+        <div class="lap-opsi" onclick="closeModal('sheet-lainnya-laporan'); exportLaporan()"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="4" width="18" height="16" rx="2"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></svg></span><span class="tx">Simpan sebagai Excel<span class="sub">untuk arsip tahunan</span></span></div>
+        <div class="lap-opsi" onclick="closeModal('sheet-lainnya-laporan'); cetakLaporan()"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5"/><rect class="isi" x="3" y="8" width="18" height="9" rx="2"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/></svg></span><span class="tx">Cetak<span class="sub">atau simpan sebagai PDF</span></span></div>
+        <div class="lap-opsi admin-only" style="display:none" onclick="bukaLaporanLama('jurnal', 'Buku kas')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg></span><span class="tx">Buku kas<span class="sub">setiap uang masuk dan keluar, berurutan</span></span></div>
+        <div class="lap-opsi admin-only" style="display:none" onclick="bukaLaporanLama('adjustment', 'Riwayat koreksi')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="m4 16 11-11 4 4L8 20H4z"/><path d="m4 16 11-11 4 4L8 20H4z"/><path d="m13 7 4 4"/></svg></span><span class="tx">Riwayat koreksi<span class="sub">transaksi yang pernah diperbaiki admin</span></span></div>
+        <div class="lap-opsi" onclick="bukaLaporanLama('simpanan', 'Tabel simpanan')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="7" width="18" height="13" rx="2.5"/><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M3 11h18"/><circle cx="16.5" cy="15.5" r="1.3"/></svg></span><span class="tx">Tabel simpanan<span class="sub">saldo awal, setor, tarik, saldo akhir per anggota</span></span></div>
+        <div class="lap-opsi" onclick="bukaLaporanLama('pinjaman', 'Tabel pinjaman')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M3 9 12 4l9 5v10H3z"/><path d="M3 9 12 4l9 5"/><path d="M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18"/></svg></span><span class="tx">Tabel pinjaman</span></div>
+        <div class="lap-opsi" onclick="bukaLaporanLama('cicilan', 'Tabel cicilan')"><span class="ic"><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg></span><span class="tx">Tabel cicilan</span></div>
       </div>
     </div>
 
@@ -1842,9 +1853,9 @@ img.hp-foto { display: block; }
 
       <!-- Tabs: Log Aktivitas & Poin -->
       <div class="tabs tabs-chip" style="margin-top:4px">
-        <button class="tab-btn active admin-only" style="display:none" onclick="switchAnggotaTab('log',this)">📋 Log Aktivitas</button>
-        <button class="tab-btn" onclick="switchAnggotaTab('poin',this)">🏆 Papan Poin</button>
-        <button class="tab-btn admin-only" style="display:none" onclick="switchAnggotaTab('edit',this)">✏️ Log Perubahan</button>
+        <button class="tab-btn active admin-only" style="display:none" onclick="switchAnggotaTab('log',this)"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg> Log Aktivitas</button>
+        <button class="tab-btn" onclick="switchAnggotaTab('poin',this)"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3"/><path d="M12 13v4M9 21h6M10 17h4"/></svg> Papan Poin</button>
+        <button class="tab-btn admin-only" style="display:none" onclick="switchAnggotaTab('edit',this)"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="m4 16 11-11 4 4L8 20H4z"/><path d="m4 16 11-11 4 4L8 20H4z"/><path d="m13 7 4 4"/></svg> Log Perubahan</button>
       </div>
 
       <div id="anggota-tab-log" class="card">
@@ -1852,7 +1863,7 @@ img.hp-foto { display: block; }
         <div id="activity-log-content"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
       </div>
       <div id="anggota-tab-poin" class="card kartu-polos-hp" style="display:none">
-        <div class="section-title">🏆 Papan Poin</div>
+        <div class="section-title"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3"/><path d="M12 13v4M9 21h6M10 17h4"/></svg> Papan Poin</div>
         <div class="card" style="padding:8px"><div id="poin-leaderboard"><div class="loading"><div class="spinner"></div> Memuat...</div></div></div>
         <div class="btn-baris admin-only" style="display:none">
           <button class="btn btn-primary" onclick="poinAktifBulanan()">📅 +2 Aktif Bulanan</button>
@@ -2673,11 +2684,11 @@ img.hp-foto { display: block; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-detail-pinjaman')">Tutup</button>
       <button class="btn btn-success admin-only" style="display:none" id="btn-approve-pinjaman" onclick="openApproveForm()">Setujui & Cairkan</button>
-      <button class="btn btn-success admin-only" style="display:none" id="btn-catat-dari-detail" onclick="closeModal('modal-detail-pinjaman'); openCatatCicilan(currentLoanId)">📅 Catat Cicilan</button>
+      <button class="btn btn-success admin-only" style="display:none" id="btn-catat-dari-detail" onclick="closeModal('modal-detail-pinjaman'); openCatatCicilan(currentLoanId)"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg> Catat Cicilan</button>
       <button class="btn btn-danger admin-only" style="display:none" id="btn-reject-pinjaman" onclick="openTolakForm()">Tolak</button>
-      <button class="btn btn-ghost admin-only" style="display:none" id="btn-tanda-terima" onclick="cetakTandaTerimaPinjaman()" title="Cetak tanda terima saat uang diserahkan">🧾 Tanda Terima</button>
-      <button class="btn btn-ghost" style="display:none" id="btn-wa-konfirmasi" onclick="ingatkanKonfirmasi()" title="Kirim pengingat lewat WhatsApp">💬 Ingatkan lewat WA</button>
-      <button class="btn btn-ghost" style="display:none" id="btn-wa-admin" onclick="beriTahuAdmin()" title="Beri tahu admin lewat WhatsApp">💬 Beri Tahu Admin</button>
+      <button class="btn btn-ghost admin-only" style="display:none" id="btn-tanda-terima" onclick="cetakTandaTerimaPinjaman()" title="Cetak tanda terima saat uang diserahkan"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg> Tanda Terima</button>
+      <button class="btn btn-ghost" style="display:none" id="btn-wa-konfirmasi" onclick="ingatkanKonfirmasi()" title="Kirim pengingat lewat WhatsApp"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Ingatkan lewat WA</button>
+      <button class="btn btn-ghost" style="display:none" id="btn-wa-admin" onclick="beriTahuAdmin()" title="Beri tahu admin lewat WhatsApp"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Beri Tahu Admin</button>
       <button class="btn btn-success" style="display:none" id="btn-konfirmasi-setuju" onclick="doKonfirmasiPinjaman(true)">✅ Saya Setuju</button>
       <button class="btn btn-danger" style="display:none" id="btn-konfirmasi-tolak" onclick="doKonfirmasiPinjaman(false)">Tolak Syarat Ini</button>
     </div>
@@ -2709,7 +2720,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.80.1';
+const APP_VERSION = 'v4.81.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3016,6 +3027,57 @@ function renderOverdueBadge(nextDueDate, status) {
   return `<span class="badge" style="background:${lvl.bg};color:${lvl.color};margin-left:4px" title="${lvl.desc}">⚠ ${lvl.label}</span>`;
 }const fmtDateTime = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 const isAdmin = () => currentProfile?.role === 'admin';
+
+// ── IKON (v4.81.0) ───────────────────────────────────────────────────────
+// Satu daftar untuk seluruh aplikasi. Markup statis memakai SVG yang sama
+// (disisipkan saat rilis), HTML yang dibangun kode memanggil ikon(). Dengan
+// begitu ketebalan garis dan bentuknya seragam — tidak ada dua versi.
+const IKON = {
+  "beranda": "<path class=\"isi\" d=\"M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z\"/><path d=\"M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z\"/>",
+  "simpanan": "<rect class=\"isi\" x=\"3\" y=\"7\" width=\"18\" height=\"13\" rx=\"2.5\"/><rect x=\"3\" y=\"7\" width=\"18\" height=\"13\" rx=\"2.5\"/><path d=\"M3 11h18\"/><circle cx=\"16.5\" cy=\"15.5\" r=\"1.3\"/>",
+  "pinjaman": "<path class=\"isi\" d=\"M3 9 12 4l9 5v10H3z\"/><path d=\"M3 9 12 4l9 5\"/><path d=\"M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18\"/>",
+  "cicilan": "<rect class=\"isi\" x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2.5\"/><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2.5\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/><path d=\"m9 15 2 2 4-4\"/>",
+  "lainnya": "<path d=\"M4 7h16M4 12h16M4 17h16\"/>",
+  "setor": "<rect class=\"isi\" x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2.5\"/><rect x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2.5\"/><path d=\"M3 12h18\"/><circle cx=\"16.5\" cy=\"16\" r=\"1.2\"/><path d=\"M12 2v5m0 0-2.5-2.5M12 7l2.5-2.5\"/>",
+  "cairkan": "<rect class=\"isi\" x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2.5\"/><rect x=\"3\" y=\"8\" width=\"18\" height=\"12\" rx=\"2.5\"/><path d=\"M3 12h18\"/><circle cx=\"16.5\" cy=\"16\" r=\"1.2\"/><path d=\"M12 7V2m0 0L9.5 4.5M12 2l2.5 2.5\"/>",
+  "pengajuan": "<path class=\"isi\" d=\"M6 3h9l5 5v13H6z\"/><path d=\"M6 3h9l5 5v13H6z\"/><path d=\"M15 3v5h5\"/><path d=\"M9 13h6M9 17h6\"/>",
+  "bukti": "<path class=\"isi\" d=\"M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z\"/><path d=\"M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z\"/><path d=\"M9 8h6M9 12h6M9 16h4\"/>",
+  "poin": "<path class=\"isi\" d=\"M8 4h8v5a4 4 0 0 1-8 0z\"/><path d=\"M8 4h8v5a4 4 0 0 1-8 0z\"/><path d=\"M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3\"/><path d=\"M12 13v4M9 21h6M10 17h4\"/>",
+  "pesan": "<path class=\"isi\" d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/><path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/><path d=\"M9 11h6M9 14h4\"/>",
+  "event": "<path class=\"isi\" d=\"M12 3 3 8l9 5 9-5z\"/><path d=\"M12 3 3 8l9 5 9-5z\"/><path d=\"M5 10v6l7 4 7-4v-6\"/>",
+  "anggota": "<circle class=\"isi\" cx=\"9\" cy=\"8\" r=\"3.5\"/><circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M3 20a6 6 0 0 1 12 0\"/><path d=\"M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6\"/>",
+  "laporan": "<rect class=\"isi\" x=\"3\" y=\"12\" width=\"4\" height=\"8\" rx=\"1\"/><rect class=\"isi\" x=\"10\" y=\"6\" width=\"4\" height=\"14\" rx=\"1\"/><rect class=\"isi\" x=\"17\" y=\"9\" width=\"4\" height=\"11\" rx=\"1\"/><rect x=\"3\" y=\"12\" width=\"4\" height=\"8\" rx=\"1\"/><rect x=\"10\" y=\"6\" width=\"4\" height=\"14\" rx=\"1\"/><rect x=\"17\" y=\"9\" width=\"4\" height=\"11\" rx=\"1\"/>",
+  "bukukas": "<path class=\"isi\" d=\"M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z\"/><path d=\"M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z\"/><path d=\"M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4\"/>",
+  "backup": "<path class=\"isi\" d=\"M4 4h12l4 4v12H4z\"/><path d=\"M4 4h12l4 4v12H4z\"/><path d=\"M8 4v5h7V4\"/><rect x=\"8\" y=\"14\" width=\"8\" height=\"6\" rx=\"1\"/>",
+  "pengaturan": "<path d=\"M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0\"/><circle class=\"isi\" cx=\"16\" cy=\"7\" r=\"2\"/><circle cx=\"16\" cy=\"7\" r=\"2\"/><circle class=\"isi\" cx=\"8\" cy=\"12\" r=\"2\"/><circle cx=\"8\" cy=\"12\" r=\"2\"/><circle class=\"isi\" cx=\"18\" cy=\"17\" r=\"2\"/><circle cx=\"18\" cy=\"17\" r=\"2\"/>",
+  "profil": "<circle class=\"isi\" cx=\"12\" cy=\"8\" r=\"4\"/><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21a8 8 0 0 1 16 0\"/>",
+  "keluar": "<path d=\"M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5\"/><path d=\"m15 8 5 4-5 4M20 12H9\"/>",
+  "excel": "<rect class=\"isi\" x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><rect x=\"3\" y=\"4\" width=\"18\" height=\"16\" rx=\"2\"/><path d=\"M3 10h18M3 15h18M9 4v16M15 4v16\"/>",
+  "cetak": "<path d=\"M7 8V3h10v5\"/><rect class=\"isi\" x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"2\"/><rect x=\"3\" y=\"8\" width=\"18\" height=\"9\" rx=\"2\"/><path d=\"M7 14h10v7H7z\"/>",
+  "koreksi": "<path class=\"isi\" d=\"m4 16 11-11 4 4L8 20H4z\"/><path d=\"m4 16 11-11 4 4L8 20H4z\"/><path d=\"m13 7 4 4\"/>",
+  "dipinjam": "<path d=\"M4 14c2-1 4-1 6 0l4 2\"/><path d=\"M14 16h4a2 2 0 0 0 0-4h-3l-2.5-2.5a3 3 0 0 0-4 0L6 12\"/><path d=\"M4 19h6\"/>",
+  "total": "<path class=\"isi\" d=\"M5 8l7-5 7 5v13H5z\"/><path d=\"M12 3v18M5 8l7-5 7 5\"/><path d=\"M5 21h14\"/>",
+  "kalender": "<rect class=\"isi\" x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2.5\"/><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2.5\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/>",
+  "mundur": "<path d=\"m15 6-6 6 6 6\"/>",
+  "tahun": "<rect class=\"isi\" x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2.5\"/><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2.5\"/><path d=\"M3 10h18M8 3v4M16 3v4\"/><path d=\"M7 14h3M12 14h5M7 17h6\"/>",
+  "semua": "<path d=\"M8 8a4 4 0 1 0 0 8c3 0 5-8 8-8a4 4 0 1 1 0 8c-3 0-5-8-8-8z\"/>",
+  "cek": "<circle class=\"isi\" cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m8 12 3 3 5-6\"/>",
+  "peringatan": "<path class=\"isi\" d=\"M12 3 2 20h20z\"/><path d=\"M12 3 2 20h20z\"/><path d=\"M12 9v5M12 17h0\"/>",
+  "api": "<path class=\"isi\" d=\"M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 1-3s.5 2 2 2c0-4 2-6 2-9z\"/><path d=\"M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 1-3s.5 2 2 2c0-4 2-6 2-9z\"/>",
+  "jam": "<circle class=\"isi\" cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/>",
+  "naik": "<path d=\"m3 17 6-6 4 4 8-8\"/><path d=\"M15 7h6v6\"/>",
+  "uang": "<circle class=\"isi\" cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M14.5 9.5a2.5 2.5 0 0 0-5 0c0 3 5 2 5 5a2.5 2.5 0 0 1-5 0M12 6v1.5M12 16.5V18\"/>",
+  "masuk": "<path d=\"M12 5v14m0 0-5-5m5 5 5-5\"/>",
+  "keluar-uang": "<path d=\"M12 19V5m0 0-5 5m5-5 5 5\"/>",
+  "telepon": "<path class=\"isi\" d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/><path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/><path d=\"M9 11h6M9 14h4\"/>",
+  "lonceng": "<path class=\"isi\" d=\"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9\"/><path d=\"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9\"/><path d=\"M13.73 21a2 2 0 0 1-3.46 0\"/>",
+  "kembali": "<path d=\"M15 18l-6-6 6-6\"/>"
+};
+function ikon(nama, ukuran = 24, kelas = '') {
+  const isi = IKON[nama];
+  if (!isi) { console.warn('ikon tidak dikenal:', nama); return ''; }
+  return `<svg class="ik${kelas ? ' ' + kelas : ''}" width="${ukuran}" height="${ukuran}" viewBox="0 0 24 24" aria-hidden="true">${isi}</svg>`;
+}
 
 // ── CONFETTI (v4.74.0) ───────────────────────────────────────────────────
 //
@@ -3725,7 +3787,7 @@ async function bukaLembarAnggota(memberId) {
       const tel = rows?.[0]?.phone;
       const w = document.getElementById('la-wa');
       if (tel && w && normalkanNomorWA(tel)) {
-        w.innerHTML = `<button class="hp-lonceng" style="width:38px;height:38px;background:var(--green-bg);color:var(--green-text);border-color:#bbf7d0" title="Hubungi lewat WhatsApp" onclick="hubungiAnggotaWA('${escapeHtml(tel)}','${escapeHtml(r.name)}')">✆</button>`;
+        w.innerHTML = `<button class="hp-lonceng" style="width:38px;height:38px;background:var(--green-bg);color:var(--green-text);border-color:#bbf7d0" title="Hubungi lewat WhatsApp" onclick="hubungiAnggotaWA('${escapeHtml(tel)}','${escapeHtml(r.name)}')">${ikon('telepon', 18)}</button>`;
       }
     }).catch(() => {});
   }
@@ -3755,7 +3817,7 @@ async function bukaLembarAnggota(memberId) {
       // menghapus apa pun, jadi jejaknya harus terbaca — bukan membingungkan.
       const tanda = t.corrects_id ? ' <span class="badge badge-amber">koreksi</span>' : '';
       return `${kepala}<div class="la-mut">
-        <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? '↓' : '↑'}</div>
+        <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? ikon('masuk', 14) : ikon('keluar-uang', 14)}</div>
         <div class="la-tx">
           <div class="la-t1">${masuk ? 'Setoran' : 'Penarikan'}${tanda}</div>
           <div class="la-t2">${escapeHtml(t.note || '-')}</div>
@@ -3764,7 +3826,7 @@ async function bukaLembarAnggota(memberId) {
           <div class="la-n1 ${masuk ? 'g' : 'r'}">${masuk ? '+' : '−'}${fmt(t.amount).replace(/^Rp\s?/, '')}</div>
           <div class="la-n2">${fmt(t.balance_after).replace(/^Rp\s?/, '')}</div>
         </div>
-        <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" onclick="cetakUlangBuktiSimpanan('${t.id}')">🧾</button>
+        <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" data-ik onclick="cetakUlangBuktiSimpanan('${t.id}')"><svg class="ik" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>
       </div>`;
     }).join('');
   }
@@ -3774,7 +3836,7 @@ async function bukaLembarAnggota(memberId) {
   const aksi = document.getElementById('la-aksi');
   if (aksi && isAdmin()) {
     aksi.insertAdjacentHTML('beforeend',
-      `<button class="btn btn-success" onclick="closeModal('sheet-anggota'); bukaModalSetor()">💰 Setor</button>`);
+      `<button class="btn btn-success" onclick="closeModal('sheet-anggota'); bukaModalSetor()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 2v5m0 0-2.5-2.5M12 7l2.5-2.5"/></svg> Setor</button>`);
   }
 }
 
@@ -3883,7 +3945,7 @@ async function bukaDetailAnggota(memberId) {
           <div class="ad-nama">${escapeHtml(p.full_name)}${p.role === 'admin' ? ' <span class="badge badge-purple">Admin</span>' : ''}${p.status !== 'active' ? ' <span class="badge badge-gray">Nonaktif</span>' : ''}</div>
           <div class="ad-sub">${bergabung}<b style="color:var(--purple-text)">★ ${poin} poin</b></div>
         </div>
-        ${bisaWA ? `<button class="hp-lonceng" style="background:var(--green-bg);color:var(--green-text);border-color:#bbf7d0" title="Hubungi lewat WhatsApp" onclick="hubungiAnggotaWA('${escapeHtml(p.phone)}','${escapeHtml(p.full_name)}')">✆</button>` : ''}
+        ${bisaWA ? `<button class="hp-lonceng" style="background:var(--green-bg);color:var(--green-text);border-color:#bbf7d0" title="Hubungi lewat WhatsApp" onclick="hubungiAnggotaWA('${escapeHtml(p.phone)}','${escapeHtml(p.full_name)}')">${ikon('telepon', 18)}</button>` : ''}
       </div>
     </div>
 
@@ -3908,22 +3970,22 @@ async function bukaDetailAnggota(memberId) {
       <div class="dash-sec"><h3>Kebiasaan menabung</h3></div>
       ${efektif.length ? `
       <div class="ad-baris">
-        <div class="ic ${sudahBulanIni ? 'la-ic masuk' : 'la-ic keluar'}" style="background:${sudahBulanIni ? 'var(--green-bg)' : 'var(--amber-bg)'};color:${sudahBulanIni ? 'var(--green-text)' : 'var(--amber-text)'}">${sudahBulanIni ? '✓' : '!'}</div>
+        <div class="ic ${sudahBulanIni ? 'la-ic masuk' : 'la-ic keluar'}" style="background:${sudahBulanIni ? 'var(--green-bg)' : 'var(--amber-bg)'};color:${sudahBulanIni ? 'var(--green-text)' : 'var(--amber-text)'}">${sudahBulanIni ? ikon('cek', 15) : ikon('peringatan', 15)}</div>
         <div class="tx">Bulan ini <b>${sudahBulanIni ? 'sudah menyetor' : 'belum menyetor'}</b></div>
         <div class="vl">${labelBulan(bulanIni)}</div>
       </div>
       <div class="ad-baris">
-        <div class="ic" style="background:var(--accent-bg);color:var(--accent)">🔥</div>
+        <div class="ic" style="background:var(--accent-bg);color:var(--accent)">${ikon('api', 15)}</div>
         <div class="tx">Menyetor <b>${rentetan} bulan berturut-turut</b></div>
         <div class="vl">${rentetan ? '' : '—'}</div>
       </div>
       <div class="ad-baris">
-        <div class="ic" style="background:var(--surface2);color:var(--text2)">◷</div>
+        <div class="ic" style="background:var(--surface2);color:var(--text2)">${ikon('jam', 15)}</div>
         <div class="tx">Terakhir menyetor</div>
         <div class="vl">${hariLalu === null ? '—' : (hariLalu === 0 ? 'hari ini' : hariLalu + ' hari lalu')}</div>
       </div>
       <div class="ad-baris">
-        <div class="ic" style="background:var(--purple-bg);color:var(--purple-text)">↗</div>
+        <div class="ic" style="background:var(--purple-bg);color:var(--purple-text)">${ikon('naik', 15)}</div>
         <div class="tx">Bulan tertinggi</div>
         <div class="vl">${kunciTertinggi ? labelBulan(kunciTertinggi) + ' · ' + fmt(perBulan[kunciTertinggi]).replace(/^Rp\s?/, '') : '—'}</div>
       </div>` : '<div class="ad-kosong">Belum ada setoran, jadi belum ada kebiasaan yang bisa dibaca.</div>'}
@@ -3933,11 +3995,11 @@ async function bukaDetailAnggota(memberId) {
     <div class="card" style="padding:14px;margin-bottom:12px;background:var(--amber-bg);border-color:#fde68a">
       <div class="dash-sec"><h3 style="color:var(--amber-text)">Pinjaman berjalan</h3></div>
       <div class="ad-baris" style="border-bottom-color:#fde68a">
-        <div class="ic" style="background:#fff;color:var(--amber-text)">₽</div>
+        <div class="ic" style="background:#fff;color:var(--amber-text)">${ikon('uang', 15)}</div>
         <div class="tx">Sisa tagihan</div><div class="vl">${fmt(pinjaman.remaining_amount)}</div>
       </div>
       <div class="ad-baris">
-        <div class="ic" style="background:#fff;color:var(--amber-text)">📅</div>
+        <div class="ic" style="background:#fff;color:var(--amber-text)">${ikon('kalender', 15)}</div>
         <div class="tx">Cicilan berikutnya</div>
         <div class="vl">${pinjaman.next_due_date ? fmtDate(pinjaman.next_due_date) : '—'}</div>
       </div>
@@ -3957,8 +4019,8 @@ async function bukaDetailAnggota(memberId) {
     <div class="card" style="padding:14px">
       <div class="dash-sec"><h3>Tindakan</h3></div>
       <div class="btn-baris">
-        <button class="btn btn-success" onclick="bukaModalSetor()">💰 Setor</button>
-        <button class="btn btn-danger" onclick="bukaModalCairkan()">💸 Cairkan</button>
+        <button class="btn btn-success" onclick="bukaModalSetor()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 2v5m0 0-2.5-2.5M12 7l2.5-2.5"/></svg> Setor</button>
+        <button class="btn btn-danger" onclick="bukaModalCairkan()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="8" width="18" height="12" rx="2.5"/><rect x="3" y="8" width="18" height="12" rx="2.5"/><path d="M3 12h18"/><circle cx="16.5" cy="16" r="1.2"/><path d="M12 7V2m0 0L9.5 4.5M12 2l2.5 2.5"/></svg> Cairkan</button>
       </div>
     </div>` : ''}`;
 
@@ -3989,7 +4051,7 @@ function renderMutasiAnggota(jenis) {
     const masuk = t.type === 'deposit';
     const tanda = t.corrects_id ? ' <span class="badge badge-amber">koreksi</span>' : '';
     return `${kepala}<div class="la-mut">
-      <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? '↓' : '↑'}</div>
+      <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? ikon('masuk', 14) : ikon('keluar-uang', 14)}</div>
       <div class="la-tx">
         <div class="la-t1">${masuk ? 'Setoran' : 'Penarikan'}${tanda}</div>
         <div class="la-t2">${escapeHtml(t.note || '-')}</div>
@@ -3998,7 +4060,7 @@ function renderMutasiAnggota(jenis) {
         <div class="la-n1 ${masuk ? 'g' : 'r'}">${masuk ? '+' : '−'}${fmt(t.amount).replace(/^Rp\s?/, '')}</div>
         <div class="la-n2">${fmt(t.balance_after).replace(/^Rp\s?/, '')}</div>
       </div>
-      <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" onclick="cetakUlangBuktiSimpanan('${t.id}')">🧾</button>
+      <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" data-ik onclick="cetakUlangBuktiSimpanan('${t.id}')"><svg class="ik" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>
     </div>`;
   }).join('');
 }
@@ -4429,7 +4491,7 @@ async function loadSimpananHistory() {
       // dokumen resmi atas uang yang tidak pernah disetor siapa pun.
       const tombolBukti = (s.is_reversed || s.is_pembatalan)
         ? ''
-        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti" onclick="cetakUlangBuktiSimpanan('${s.id}')">🧾</button>`;
+        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti" data-ik onclick="cetakUlangBuktiSimpanan('${s.id}')"><svg class="ik" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>`;
       const tombol = `<td style="white-space:nowrap">${tombolBukti}${
         bisaKoreksi
           ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal" onclick="openKoreksiSimpanan('${s.id}','${escapeAttr(s.profiles?.full_name || '-')}',${Number(s.amount)},'${escapeAttr(s.created_at)}','${s.type}')">✏️</button>`
@@ -4573,7 +4635,7 @@ async function loadPinjaman() {
       } else if (l.status === 'menunggu_konfirmasi' && punyaSaya) {
         aksi = `<div class="btn-baris" style="margin:12px 0 0"><button class="btn btn-accent" onclick="event.stopPropagation();showDetailPinjaman('${l.id}')">Lihat & Setujui Syarat</button></div>`;
       } else if (isAdmin() && l.status === 'active') {
-        aksi = `<div class="btn-baris" style="margin:12px 0 0"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ingatkanCicilan('${l.id}')">💬 Ingatkan</button><button class="btn btn-success btn-sm" style="flex:2" onclick="event.stopPropagation();openCatatCicilan('${l.id}')">📅 Catat Cicilan</button></div>`;
+        aksi = `<div class="btn-baris" style="margin:12px 0 0"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ingatkanCicilan('${l.id}')"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Ingatkan</button><button class="btn btn-success btn-sm" style="flex:2" onclick="event.stopPropagation();openCatatCicilan('${l.id}')"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="5" width="18" height="16" rx="2.5"/><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/></svg> Catat Cicilan</button></div>`;
       }
       const kv = l.status === 'active' || l.status === 'completed'
         ? `<div class="kv"><div><div class="k">Sisa tagihan</div><div class="v amber">${fmt(l.remaining_amount)}</div></div><div><div class="k">${l.status === 'completed' ? 'Total dibayar' : 'Jatuh tempo'}</div><div class="v${overdue ? ' merah' : ''}">${l.status === 'completed' ? fmt(l.amount_paid) : (l.next_due_date ? new Date(l.next_due_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }) : '—') + ' · ke-' + ke + '/' + l.installment_count}</div></div></div>`
@@ -5417,7 +5479,7 @@ async function loadCicilan() {
   if (!upcoming.length) {
     el.innerHTML = isAdmin()
       ? '<div class="empty-state"><div class="empty-state-title">Tidak ada cicilan aktif</div><div class="empty-state-sub">Semua pinjaman sudah lunas</div></div>'
-      : '<div class="empty-state"><div class="empty-state-title">Tidak ada pinjaman berjalan</div><div class="empty-state-sub">Butuh pinjaman? Ajukan lewat halaman Pinjaman.</div><button class="btn btn-accent" style="margin-top:12px" onclick="bukaModalAjukan()">🏦 Ajukan Pinjaman</button></div>';
+      : '<div class="empty-state"><div class="empty-state-title">Tidak ada pinjaman berjalan</div><div class="empty-state-sub">Butuh pinjaman? Ajukan lewat halaman Pinjaman.</div><button class="btn btn-accent" style="margin-top:12px" onclick="bukaModalAjukan()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M3 9 12 4l9 5v10H3z"/><path d="M3 9 12 4l9 5"/><path d="M5 9v10M9 9v10M15 9v10M19 9v10M3 19h18"/></svg> Ajukan Pinjaman</button></div>';
   }
   else if (!isAdmin()) {
     // ANGGOTA: satu pinjaman berjalan — kartu ringkas cicilan berikutnya,
@@ -5468,7 +5530,7 @@ async function loadCicilan() {
           </div>
           <div class="kv"><div><div class="k">Cicilan</div><div class="v biru">${fmt(nominalCicilanPeriodeIni(l))}</div></div><div><div class="k">Jatuh tempo</div><div class="v${overdue ? ' merah' : ''}">${fmtDate(l.next_due_date)}</div></div></div>
           <div class="btn-baris" style="margin:12px 0 0">
-            <button class="btn btn-ghost" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')">💬 Ingatkan</button>
+            <button class="btn btn-ghost" title="Kirim pengingat lewat WhatsApp" onclick="ingatkanCicilan('${l.id}')"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Ingatkan</button>
             <button class="btn btn-success" style="flex:2" onclick="openCatatCicilan('${l.id}')">Catat Bayar</button>
           </div>
         </div>`;
@@ -5881,7 +5943,7 @@ async function loadCicilanHistory() {
       const bisaKoreksi = isAdmin() && !p.is_reversed;
       const tombolBuktiC = p.is_reversed
         ? ''
-        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti" onclick="cetakUlangBuktiCicilan('${p.id}')">🧾</button>`;
+        : `<button class="btn btn-ghost btn-sm" title="Lihat bukti" onclick="cetakUlangBuktiCicilan('${p.id}')"><svg class="ik" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>`;
       const tombol = `<td style="white-space:nowrap">${tombolBuktiC}${
         bisaKoreksi
           ? ` <button class="btn btn-ghost btn-sm" title="Perbaiki nominal" onclick="openKoreksiCicilan('${p.id}','${escapeAttr(p.profiles?.full_name || '-')}',${Number(p.amount_paid)},'${escapeAttr(p.created_at)}','${p.loan_id}')">✏️</button>`
@@ -6298,9 +6360,9 @@ async function renderKartuLaporan() {
     <div class="lap-kartu">
       <div class="lap-judul">Uang koperasi sekarang</div>
       <div class="lap-dompet">
-        <div class="b"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">👛</div><div class="tx">Ada di tangan, <b>bisa dipakai</b></div><div class="vl">${fmt(P.kas).replace(/^Rp\s?/, '')}</div></div>
-        <div class="b"><div class="ic" style="background:var(--amber-bg);color:var(--amber-text)">🤝</div><div class="tx">${P.piutang > 0 ? 'Sedang dipinjam' : 'Tidak ada yang sedang dipinjam'}</div><div class="vl">${fmt(P.piutang).replace(/^Rp\s?/, '')}</div></div>
-        <div class="b total"><div class="ic" style="background:var(--green-bg);color:var(--green-text)">Σ</div><div class="tx">Seluruhnya milik koperasi</div><div class="vl">${fmt(P.aset).replace(/^Rp\s?/, '')}</div></div>
+        <div class="b"><div class="ic" style="background:var(--accent-bg);color:var(--accent)">${ikon('simpanan', 18)}</div><div class="tx">Ada di tangan, <b>bisa dipakai</b></div><div class="vl">${fmt(P.kas).replace(/^Rp\s?/, '')}</div></div>
+        <div class="b"><div class="ic" style="background:var(--amber-bg);color:var(--amber-text)">${ikon('dipinjam', 18)}</div><div class="tx">${P.piutang > 0 ? 'Sedang dipinjam' : 'Tidak ada yang sedang dipinjam'}</div><div class="vl">${fmt(P.piutang).replace(/^Rp\s?/, '')}</div></div>
+        <div class="b total"><div class="ic" style="background:var(--green-bg);color:var(--green-text)">${ikon('total', 18)}</div><div class="tx">Seluruhnya milik koperasi</div><div class="vl">${fmt(P.aset).replace(/^Rp\s?/, '')}</div></div>
       </div>
     </div>`;
   }
@@ -6364,7 +6426,7 @@ function renderRincianLaporan() {
     const masuk = x.arah === 'masuk';
     const ket = x.jenis + (x.bunga > 0 ? ` · bunga ${fmt(x.bunga).replace(/^Rp\s?/, '')}` : '');
     return `${kepala}<div class="la-mut">
-      <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? '↓' : '↑'}</div>
+      <div class="la-ic ${masuk ? 'masuk' : 'keluar'}">${masuk ? ikon('masuk', 14) : ikon('keluar-uang', 14)}</div>
       <div class="la-tx"><div class="la-t1">${escapeHtml(x.nama)}</div><div class="la-t2">${escapeHtml(ket)}</div></div>
       <div class="la-n1 ${masuk ? 'g' : 'r'}">${masuk ? '+' : '−'}${fmt(x.jumlah).replace(/^Rp\s?/, '')}</div>
     </div>`;
@@ -9633,7 +9695,7 @@ async function showEventDetail(eventId) {
     </div>
     ${isAdmin() ? `<div style="display:flex;gap:10px;flex-wrap:wrap">
       ${isDraft
-        ? `<button class="btn btn-ghost btn-sm" onclick="openModalEditEvent('${ev.id}')">✏️ Edit Event</button>
+        ? `<button class="btn btn-ghost btn-sm" onclick="openModalEditEvent('${ev.id}')"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="m4 16 11-11 4 4L8 20H4z"/><path d="m4 16 11-11 4 4L8 20H4z"/><path d="m13 7 4 4"/></svg> Edit Event</button>
            ${items && items.length > 0 ? `<button class="btn btn-success" onclick="konfirmasiFinalisasiEvent('${ev.id}')">✅ Finalkan Event</button>` : ''}`
         : ev.status === 'final'
           ? `<button class="btn btn-ghost" onclick="tandaiSelesaiEvent('${ev.id}')">🏁 Tandai Selesai</button>`

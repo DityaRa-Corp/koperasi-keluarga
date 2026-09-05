@@ -2230,6 +2230,38 @@ img.hp-foto { display: block; }
           <button class="btn btn-primary btn-full" onclick="saveDenda()">Simpan Pengaturan Denda</button>
         </div>
       </div>
+      <!-- v4.84.0: pengingat otomatis — dijalankan penjadwal setiap pagi -->
+      <div class="card akordeon peng">
+        <button class="li-aksi" onclick="toggleAkordeon(this)"><span class="ico" style="background:var(--green-bg);color:var(--green-text)" data-ik><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><span>Pengingat otomatis<small id="ring-pengingat">-</small></span><span class="r panah">›</span></button>
+        <div class="akordeon-isi">
+          <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Setiap pagi pukul 08.00 aplikasi memeriksa sendiri siapa yang perlu diingatkan, lalu mengirim notifikasi ke HP anggota yang mengaktifkan notifikasi. Tidak ada yang perlu dilakukan admin.</p>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="ingat-cicilan-aktif" onchange="ubahPengingat()">
+              <span style="font-weight:600;font-size:13px">Ingatkan cicilan sebelum jatuh tempo</span>
+            </label>
+            <div id="ingat-cicilan-grup" style="display:flex;align-items:center;gap:8px;margin:8px 0 0 28px;font-size:13px">
+              <input class="form-input" type="number" id="ingat-cicilan-hari" min="1" max="14" step="1" style="width:70px;padding:8px 10px">
+              <span>hari sebelum jatuh tempo</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input type="checkbox" id="ingat-setoran-aktif" onchange="ubahPengingat()">
+              <span style="font-weight:600;font-size:13px">Ingatkan setoran bulanan</span>
+            </label>
+            <div id="ingat-setoran-grup" style="margin:8px 0 0 28px;font-size:13px">
+              <div style="display:flex;align-items:center;gap:8px"><span>setiap tanggal</span>
+              <input class="form-input" type="number" id="ingat-setoran-tanggal" min="1" max="28" step="1" style="width:70px;padding:8px 10px"><span>tiap bulan</span></div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">hanya ke anggota yang belum menyetor bulan itu</div>
+            </div>
+          </div>
+          <div id="ingat-jejak" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px;color:var(--text2)">Memeriksa jejak terakhir…</div>
+          <button class="btn btn-primary btn-full" onclick="savePengingat()">Simpan Pengaturan Pengingat</button>
+          <button class="btn btn-ghost btn-full" style="margin-top:8px" id="btn-ingat-uji" onclick="jalankanPengingatSekarang()">Jalankan sekarang untuk menguji</button>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;text-align:center">Mengirim pengingat yang memang jatuh hari ini — sama persis seperti yang dilakukan penjadwal pagi.</div>
+        </div>
+      </div>
       <div class="card" style="padding:14px">
         <div style="font-weight:700;margin-bottom:6px">⭐ Aturan poin (tetap)</div>
         <div style="font-size:12px;color:var(--text2);line-height:1.7">
@@ -2839,7 +2871,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.83.0';
+const APP_VERSION = 'v4.84.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -7967,6 +7999,7 @@ async function loadPengaturan() {
   await muatPengaturan();
   tampilkanPengaturanPlafon();
   tampilkanPengaturanDenda();
+  tampilkanPengaturanPengingat();
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -7978,7 +8011,10 @@ async function loadPengaturan() {
 // ══════════════════════════════════════════════════════════════
 let appSettings = {
   plafon_pinjaman:     { mode: 'off', nilai: 0 },
-  denda_keterlambatan: { aktif: false, nominal: 0 }
+  denda_keterlambatan: { aktif: false, nominal: 0 },
+  // Bawaan MENYALA (disepakati 5 Sep 2026): H-3 cicilan, setoran tanggal 25.
+  // Edge Function memakai bawaan yang sama bila barisnya belum ada.
+  pengingat:           { cicilan_aktif: true, cicilan_hari: 3, setoran_aktif: true, setoran_tanggal: 25 }
 };
 
 async function muatPengaturan() {
@@ -8118,6 +8154,83 @@ async function saveDenda() {
           : 'Denda keterlambatan dimatikan', null);
   showToast(aktif ? `✅ Denda ${fmt(nominal)} per pembayaran telat` : '✅ Denda keterlambatan dimatikan');
   tampilkanPengaturanDenda();
+}
+
+// ── Pengingat otomatis (v4.84.0) ──
+function bacaPengingat() {
+  return { cicilan_aktif: true, cicilan_hari: 3, setoran_aktif: true, setoran_tanggal: 25, ...(appSettings.pengingat || {}) };
+}
+function ringkasPengingat(p) {
+  const a = [];
+  if (p.cicilan_aktif) a.push(`cicilan H-${p.cicilan_hari}`);
+  if (p.setoran_aktif) a.push(`setoran tgl ${p.setoran_tanggal}`);
+  return a.length ? 'Menyala: ' + a.join(' · ') : 'Mati — tidak ada pengingat';
+}
+function tampilkanPengaturanPengingat() {
+  const p = bacaPengingat();
+  const c = document.getElementById('ingat-cicilan-aktif');
+  if (!c) return;
+  c.checked = !!p.cicilan_aktif;
+  document.getElementById('ingat-cicilan-hari').value = p.cicilan_hari;
+  document.getElementById('ingat-setoran-aktif').checked = !!p.setoran_aktif;
+  document.getElementById('ingat-setoran-tanggal').value = p.setoran_tanggal;
+  const r = document.getElementById('ring-pengingat'); if (r) r.textContent = ringkasPengingat(p);
+  ubahPengingat();
+  muatJejakPengingat();
+}
+function ubahPengingat() {
+  document.getElementById('ingat-cicilan-grup').style.opacity = document.getElementById('ingat-cicilan-aktif').checked ? '1' : '.4';
+  document.getElementById('ingat-setoran-grup').style.opacity = document.getElementById('ingat-setoran-aktif').checked ? '1' : '.4';
+}
+async function savePengingat() {
+  const cicilan_aktif   = document.getElementById('ingat-cicilan-aktif').checked;
+  const cicilan_hari    = parseInt(document.getElementById('ingat-cicilan-hari').value) || 0;
+  const setoran_aktif   = document.getElementById('ingat-setoran-aktif').checked;
+  const setoran_tanggal = parseInt(document.getElementById('ingat-setoran-tanggal').value) || 0;
+  if (cicilan_aktif && (cicilan_hari < 1 || cicilan_hari > 14)) { showToast('Hari pengingat cicilan harus 1 sampai 14'); return; }
+  if (setoran_aktif && (setoran_tanggal < 1 || setoran_tanggal > 28)) { showToast('Tanggal pengingat setoran harus 1 sampai 28'); return; }
+  const nilai = { cicilan_aktif, cicilan_hari: cicilan_hari || 3, setoran_aktif, setoran_tanggal: setoran_tanggal || 25 };
+  const { error } = await simpanPengaturan('pengingat', nilai);
+  if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error))); return; }
+  await logActivity('PENGATURAN', 'Pengingat otomatis: ' + ringkasPengingat(nilai), null);
+  showToast('✅ ' + ringkasPengingat(nilai));
+  tampilkanPengaturanPengingat();
+}
+// Jejak terakhir penjadwal — bukti bahwa ia memang berjalan tiap pagi.
+async function muatJejakPengingat() {
+  const box = document.getElementById('ingat-jejak');
+  if (!box) return;
+  const rows = await dbQuery('activity_log', 'action=eq.pengingat_otomatis&select=description,created_at,meta&order=created_at.desc&limit=1');
+  if (!box.isConnected) return;
+  if (rows === null) { box.textContent = 'Jejak tidak bisa dimuat.'; return; }
+  if (!rows.length) { box.innerHTML = '<b>Belum pernah berjalan.</b> Penjadwal berjalan pertama kali besok pagi setelah dipasang — atau tekan "Jalankan sekarang" untuk mengujinya.'; return; }
+  const r = rows[0];
+  const kapan = new Date(r.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  const pemicu = r.meta?.pemicu === 'admin' ? ' (dijalankan admin)' : '';
+  box.innerHTML = `<b>Terakhir berjalan ${escapeHtml(kapan)}${pemicu}.</b><br>${escapeHtml(r.description || '')}`;
+}
+let _ingatSedang = false;
+async function jalankanPengingatSekarang() {
+  if (_ingatSedang) return;
+  _ingatSedang = true;
+  const btn = document.getElementById('btn-ingat-uji');
+  btn.disabled = true; btn.textContent = 'Menjalankan…';
+  try {
+    const r = await fetch(SUPABASE_URL + '/functions/v1/kirim-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify({ kejadian: 'jadwal_harian' })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!j.success) { showToast('Gagal: ' + (j.message || 'HTTP ' + r.status)); return; }
+    showToast(`Selesai: ${j.cicilan} pengingat cicilan, ${j.setoran} pengingat setoran, ${j.terkirim} notifikasi terkirim`, 5000);
+    muatJejakPengingat();
+  } catch (e) {
+    showToast('Gagal menghubungi server pengingat');
+  } finally {
+    _ingatSedang = false;
+    btn.disabled = false; btn.textContent = 'Jalankan sekarang untuk menguji';
+  }
 }
 
 function tampilkanPengaturanDenda() {

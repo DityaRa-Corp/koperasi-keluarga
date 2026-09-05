@@ -319,17 +319,28 @@ tbody tr:hover { background: var(--surface2); }
 
 /* TOAST */
 #toast {
-  position: fixed; bottom: 24px; right: 24px;
-  background: var(--text); color: white;
-  padding: 12px 20px; border-radius: var(--radius);
-  font-size: 13px; font-weight: 500;
-  z-index: 9999; opacity: 0;
-  transform: translateY(10px);
-  transition: all .2s;
-  max-width: 320px;
+  position: fixed; bottom: 24px; right: 24px; width: 360px; max-width: calc(100vw - 24px);
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--text); color: #fff;
+  padding: 12px 14px; border-radius: 14px;
+  font-size: 13px; font-weight: 600; line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  z-index: 9999; opacity: 0; transform: translateY(10px);
+  transition: opacity .2s, transform .2s;
   pointer-events: none;
 }
-#toast.show { opacity: 1; transform: translateY(0); }
+#toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+#toast.sukses { background: #15803d; }
+#toast.gagal  { background: #b91c1c; }
+#toast .ic { flex-shrink: 0; margin-top: 1px; }
+#toast .tx { flex: 1; min-width: 0; }
+#toast .t2 { display: none; font-weight: 500; font-size: 12px; opacity: .88; margin-top: 2px; }
+#toast .t2.ada { display: block; }
+#toast .x { display: none; background: none; border: 0; color: #fff; font-size: 20px; line-height: 1; padding: 0 2px; cursor: pointer; opacity: .8; font-family: inherit; }
+#toast.tahan .x { display: block; }
+@media (max-width: 768px) {
+  #toast { left: 12px; right: 12px; width: auto; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+}
 
 /* DETAIL SECTION */
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1147,6 +1158,20 @@ img.hp-foto { display: block; }
 .nb .ik { margin: 0 auto 2px; }
 .tile-ic .ik { width: 26px; height: 26px; }
 
+/* v4.87.0 — lembar Lainnya berkelompok */
+.ln-judul { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); margin: 12px 0 8px; display: flex; align-items: center; gap: 8px; }
+.ln-judul::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+#sheet-lainnya .tindakan { margin-bottom: 4px; }
+.ln-akun { margin-top: 14px; border-top: 1px solid var(--border); }
+.ln-akun .li-aksi { padding-left: 4px; padding-right: 4px; }
+
+/* v4.87.0 — kolom rupiah: pemisah ribuan + terbilang */
+.rp-wadah { position: relative; }
+.rp-wadah .rp-prefix { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: var(--mono); font-weight: 700; color: var(--text3); font-size: 15px; pointer-events: none; }
+.rp-wadah input[data-rupiah] { padding-left: 44px; font-family: var(--mono); font-size: 17px; font-weight: 700; letter-spacing: .01em; }
+.rp-terbilang { margin-top: 5px; font-size: 12.5px; color: var(--accent); font-weight: 600; line-height: 1.4; min-height: 17px; }
+.rp-terbilang.kosong { color: var(--text3); font-weight: 500; }
+
 /* v4.86.0 — mode kumpulan */
 .kmp-strip { position: sticky; top: 0; z-index: 4; background: var(--accent); color: #fff; padding: 12px 14px; border-radius: 14px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-md); }
 .kmp-strip .b { flex: 0 0 auto; } .kmp-strip .b:first-child { flex: 1; }
@@ -1608,19 +1633,38 @@ img.hp-foto { display: block; }
     <div class="modal-overlay" id="sheet-lainnya" onclick="if (event.target === this) closeModal('sheet-lainnya')">
       <div class="modal" style="max-width:420px">
         <div class="modal-title">Lainnya</div>
-        <div class="modal-sub">Menu yang jarang dibuka</div>
-        <div class="tindakan tiga" style="margin-bottom:4px">
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('kumpulan')"><div class="tile-ic b" style="background:var(--accent);color:#fff;border-color:var(--accent)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Mode Kumpulan</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('anggota')"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Anggota</span></button>
-          <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="12" width="4" height="8" rx="1"/><rect class="isi" x="10" y="6" width="4" height="14" rx="1"/><rect class="isi" x="17" y="9" width="4" height="11" rx="1"/><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg></div><span class="tile-teks">Laporan</span></button>
+        <!-- v4.87.0: berkelompok. Sehari-hari & Kelola hanya admin; anggota melihat Kabar keluarga, Koperasi, lalu akun. -->
+        <div class="admin-only" style="display:none">
+          <div class="ln-judul">Sehari-hari</div>
+          <div class="tindakan tiga">
+            <button class="tile" onclick="pilihLainnya('kumpulan')"><div class="tile-ic b" style="background:var(--accent);color:#fff;border-color:var(--accent)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Mode Kumpulan</span></button>
+            <button class="tile" onclick="pilihLainnya('anggota')"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Anggota</span></button>
+            <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic" style="background:var(--green-bg);border-color:#bbf7d0;color:var(--green-text)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="12" width="4" height="8" rx="1"/><rect class="isi" x="10" y="6" width="4" height="14" rx="1"/><rect class="isi" x="17" y="9" width="4" height="11" rx="1"/><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg></div><span class="tile-teks">Laporan</span></button>
+          </div>
+        </div>
+        <div class="ln-judul">Kabar keluarga</div>
+        <div class="tindakan tiga">
           <button class="tile" onclick="pilihLainnya('pengumuman')"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M19 9a4 4 0 0 1 0 6M8 15v4"/></svg></div><span class="tile-teks">Pengumuman</span></button>
           <button class="tile" onclick="pilihLainnya('event')"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M12 3 3 8l9 5 9-5z"/><path d="M12 3 3 8l9 5 9-5z"/><path d="M5 10v6l7 4 7-4v-6"/></svg></div><span class="tile-teks">Event</span></button>
           <button class="tile" onclick="closeModal('sheet-lainnya'); bukaPapanPoin()"><div class="tile-ic a"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3"/><path d="M12 13v4M9 21h6M10 17h4"/></svg></div><span class="tile-teks">Papan Poin</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('adjustment')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg></div><span class="tile-teks">Log Perubahan</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('backup')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12l4 4v12H4z"/><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h7V4"/><rect x="8" y="14" width="8" height="6" rx="1"/></svg></div><span class="tile-teks">Backup</span></button>
-          <button class="tile admin-only" style="display:none" onclick="pilihLainnya('pengaturan')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"/><circle class="isi" cx="16" cy="7" r="2"/><circle cx="16" cy="7" r="2"/><circle class="isi" cx="8" cy="12" r="2"/><circle cx="8" cy="12" r="2"/><circle class="isi" cx="18" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg></div><span class="tile-teks">Pengaturan</span></button>
-          <button class="tile" onclick="pilihLainnya('profil')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="12" cy="8" r="4"/><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div><span class="tile-teks">Profil</span></button>
-          <button class="tile" onclick="closeModal('sheet-lainnya'); doLogout(true)"><div class="tile-ic r"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="m15 8 5 4-5 4M20 12H9"/></svg></div><span class="tile-teks">Keluar</span></button>
+        </div>
+        <div class="member-only">
+          <div class="ln-judul">Koperasi</div>
+          <div class="tindakan tiga">
+            <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic" style="background:var(--green-bg);border-color:#bbf7d0;color:var(--green-text)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="12" width="4" height="8" rx="1"/><rect class="isi" x="10" y="6" width="4" height="14" rx="1"/><rect class="isi" x="17" y="9" width="4" height="11" rx="1"/><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg></div><span class="tile-teks">Laporan</span></button>
+          </div>
+        </div>
+        <div class="admin-only" style="display:none">
+          <div class="ln-judul">Kelola</div>
+          <div class="tindakan tiga">
+            <button class="tile" onclick="pilihLainnya('adjustment')"><div class="tile-ic" style="background:var(--surface2);border-color:var(--border);color:var(--text2)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg></div><span class="tile-teks">Log Perubahan</span></button>
+            <button class="tile" onclick="pilihLainnya('backup')"><div class="tile-ic" style="background:var(--surface2);border-color:var(--border);color:var(--text2)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12l4 4v12H4z"/><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h7V4"/><rect x="8" y="14" width="8" height="6" rx="1"/></svg></div><span class="tile-teks">Backup</span></button>
+            <button class="tile" onclick="pilihLainnya('pengaturan')"><div class="tile-ic" style="background:var(--surface2);border-color:var(--border);color:var(--text2)"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0"/><circle class="isi" cx="16" cy="7" r="2"/><circle cx="16" cy="7" r="2"/><circle class="isi" cx="8" cy="12" r="2"/><circle cx="8" cy="12" r="2"/><circle class="isi" cx="18" cy="17" r="2"/><circle cx="18" cy="17" r="2"/></svg></div><span class="tile-teks">Pengaturan</span></button>
+          </div>
+        </div>
+        <div class="ln-akun">
+          <button class="li-aksi" onclick="pilihLainnya('profil')"><span class="ico" style="background:var(--accent-bg);color:var(--accent)" data-ik><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="12" cy="8" r="4"/><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span>Profil<small>Foto, sandi, notifikasi</small></span><span class="r panah">›</span></button>
+          <button class="li-aksi bahaya" onclick="closeModal('sheet-lainnya'); doLogout(true)"><span class="ico" style="background:var(--red-bg);color:var(--red-text)" data-ik><svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5"/><path d="m15 8 5 4-5 4M20 12H9"/></svg></span><span>Keluar</span><span class="r panah">›</span></button>
         </div>
       </div>
     </div>
@@ -2097,8 +2141,8 @@ img.hp-foto { display: block; }
       <div class="modal" style="max-width:440px">
         <div class="modal-title" id="kms-judul">Setoran</div>
         <div class="modal-sub" id="kms-sub">—</div>
-        <div class="form-group"><label class="form-label">Jumlah (Rp)</label>
-          <input class="form-input" type="number" id="kms-jumlah" min="1000" step="1000" inputmode="numeric" oninput="pratinjauSetorKumpulan()" style="font-family:var(--mono);font-size:18px;font-weight:700">
+        <div class="form-group"><label class="form-label">Jumlah</label>
+          <input inputmode="numeric" data-rupiah class="form-input" type="text" id="kms-jumlah"  oninput="pratinjauSetorKumpulan()" style="font-family:var(--mono);font-size:18px;font-weight:700">
           <div class="kmp-cepat" id="kms-cepat">
             <button type="button" onclick="isiCepatKumpulan(50000)">50rb</button>
             <button type="button" onclick="isiCepatKumpulan(100000)">100rb</button>
@@ -2122,8 +2166,8 @@ img.hp-foto { display: block; }
       <div class="modal" style="max-width:380px">
         <div class="modal-title">Setoran bawaan</div>
         <div class="modal-sub">Terisi otomatis saat mengetuk "Setor". Diingat untuk kumpulan berikutnya.</div>
-        <div class="form-group"><label class="form-label">Nominal (Rp)</label>
-          <input class="form-input" type="number" id="kmp-nominal-input" min="1000" step="1000" inputmode="numeric"></div>
+        <div class="form-group"><label class="form-label">Nominal</label>
+          <input inputmode="numeric" data-rupiah class="form-input" type="text" id="kmp-nominal-input" ></div>
         <div class="modal-actions">
           <button class="btn btn-ghost" onclick="closeModal('modal-kumpulan-nominal')">Batal</button>
           <button class="btn btn-primary" onclick="simpanNominalKumpulan()">Simpan</button>
@@ -2152,8 +2196,8 @@ img.hp-foto { display: block; }
         <div id="bh-langkah-1">
           <div class="form-group"><label class="form-label">Nama pembagian</label>
             <input type="text" class="form-input" id="bh-nama" placeholder="Contoh: Bagi hasil Lebaran 2026" maxlength="80"></div>
-          <div class="form-group"><label class="form-label">Jumlah yang dibagikan (Rp)</label>
-            <input type="number" class="form-input" id="bh-total" placeholder="0" min="1" step="1000">
+          <div class="form-group"><label class="form-label">Jumlah yang dibagikan</label>
+            <input inputmode="numeric" data-rupiah type="text" class="form-input" id="bh-total" placeholder="0">
             <div style="font-size:11px;color:var(--text3);margin-top:4px" id="bh-hint">Sisanya tetap di kas sebagai cadangan.</div></div>
           <div class="form-group"><label class="form-label">Dibagi berdasarkan</label>
             <div class="bh-pil">
@@ -2335,8 +2379,8 @@ img.hp-foto { display: block; }
             </label>
           </div>
           <div class="form-group" id="denda-nominal-group" style="display:none">
-            <label class="form-label">Nominal Denda (Rp)</label>
-            <input class="form-input" type="number" id="denda-nominal" min="0" step="1000" placeholder="Contoh: 10000">
+            <label class="form-label">Nominal Denda</label>
+            <input inputmode="numeric" data-rupiah class="form-input" type="text" id="denda-nominal" placeholder="Contoh: 10000">
             <div class="form-hint">Dikenakan sekali per pembayaran yang telat, bukan per hari.</div>
           </div>
           <div id="denda-contoh" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
@@ -2432,8 +2476,8 @@ img.hp-foto { display: block; }
       <select class="form-input form-select" id="setor-member" onchange="siapkanSetor()"></select>
     </div>
     <div class="form-group">
-      <label class="form-label">Jumlah Setoran (Rp)</label>
-      <input class="form-input" type="number" id="setor-amount" placeholder="Contoh: 500000" min="1000" oninput="previewSetor()">
+      <label class="form-label">Jumlah Setoran</label>
+      <input inputmode="numeric" data-rupiah class="form-input" type="text" id="setor-amount" placeholder="Contoh: 500000" oninput="previewSetor()">
       <div class="tombol-cepat">
         <button type="button" onclick="isiSetor(100000)">100rb</button>
         <button type="button" onclick="isiSetor(250000)">250rb</button>
@@ -2472,13 +2516,13 @@ img.hp-foto { display: block; }
     <!-- Nominal yang dicairkan -->
     <div id="cairan-form" style="display:none">
       <div class="form-group">
-        <label class="form-label">Jumlah yang Dicairkan (Rp)</label>
+        <label class="form-label">Jumlah yang Dicairkan</label>
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <button type="button" class="btn btn-ghost btn-sm" onclick="isiCairan(0.25)">25%</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="isiCairan(0.5)">50%</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="isiCairan(1)">Semua</button>
         </div>
-        <input class="form-input" type="number" id="cairan-nominal" min="1" placeholder="Contoh: 1000000" oninput="previewCairan()">
+        <input inputmode="numeric" data-rupiah class="form-input" type="text" id="cairan-nominal" placeholder="Contoh: 1000000" oninput="previewCairan()">
         <div class="form-hint">Boleh sebagian, tidak harus seluruh simpanan.</div>
       </div>
       <div id="cairan-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
@@ -2490,7 +2534,7 @@ img.hp-foto { display: block; }
     <div id="cairan-alert" class="alert alert-error"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-tarik')">Batal</button>
-      <button class="btn btn-danger" onclick="doCairanSimpanan()">Proses Pencairan</button>
+      <button class="btn btn-danger" id="btn-do-cairan" onclick="doCairanSimpanan()">Proses Pencairan</button>
     </div>
   </div>
 </div>
@@ -2576,7 +2620,7 @@ img.hp-foto { display: block; }
     <div id="ajukan-saldo-info" class="member-only" style="display:none;font-size:12px;color:var(--text2);margin:-6px 0 12px"></div>
     <div id="ajukan-plafon-info" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:12px"></div>
     <div class="form-group">
-      <label class="form-label">Pokok Pinjaman (Rp)</label>
+      <label class="form-label">Pokok Pinjaman</label>
       <input class="form-input" type="text" inputmode="numeric" id="ajukan-pokok" placeholder="Contoh: 1000000" oninput="updateSimulasiCicilan()">
     </div>
     <div class="form-group">
@@ -2708,8 +2752,8 @@ img.hp-foto { display: block; }
     <input type="hidden" id="kc-payment-id">
     <div id="kc-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px"></div>
     <div class="form-group">
-      <label class="form-label">Nominal yang Benar (Rp)</label>
-      <input class="form-input" type="number" id="kc-amount" placeholder="Contoh: 500000" min="1" oninput="previewKoreksiCicilan()">
+      <label class="form-label">Nominal yang Benar</label>
+      <input inputmode="numeric" data-rupiah class="form-input" type="text" id="kc-amount" placeholder="Contoh: 500000" oninput="previewKoreksiCicilan()">
     </div>
     <div id="kc-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
     <div class="form-group">
@@ -2732,8 +2776,8 @@ img.hp-foto { display: block; }
     <input type="hidden" id="koreksi-savings-id">
     <div id="koreksi-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:13px"></div>
     <div class="form-group">
-      <label class="form-label">Nominal yang Benar (Rp)</label>
-      <input class="form-input" type="number" id="koreksi-amount" placeholder="Contoh: 500000" min="1" oninput="previewKoreksi()">
+      <label class="form-label">Nominal yang Benar</label>
+      <input inputmode="numeric" data-rupiah class="form-input" type="text" id="koreksi-amount" placeholder="Contoh: 500000" oninput="previewKoreksi()">
     </div>
     <div id="koreksi-preview" style="display:none;background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:12px"></div>
     <div class="form-group">
@@ -2753,8 +2797,8 @@ img.hp-foto { display: block; }
     <div class="modal-title">Catat Pembayaran Cicilan</div>
     <div id="cicilan-detail-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:18px;font-size:13px"></div>
     <div class="form-group">
-      <label class="form-label">Jumlah Dibayar (Rp)</label>
-      <input class="form-input" type="number" id="cicilan-amount" placeholder="Nominal pembayaran" min="1" oninput="previewCicilan()">
+      <label class="form-label">Jumlah Dibayar</label>
+      <input inputmode="numeric" data-rupiah class="form-input" type="text" id="cicilan-amount" placeholder="Nominal pembayaran" oninput="previewCicilan()">
       <div class="tombol-cepat">
         <button type="button" onclick="isiCicilan(1)">1 cicilan</button>
         <button type="button" onclick="isiCicilan(2)">2 cicilan</button>
@@ -2899,12 +2943,12 @@ img.hp-foto { display: block; }
     <div class="modal-sub">Admin dapat menyesuaikan nominal sebelum mencairkan</div>
     <div id="approve-pinjaman-info" style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:13px"></div>
     <div class="form-group">
-      <label class="form-label">Nominal yang Disetujui (Rp)</label>
-      <input class="form-input" type="number" id="approve-nominal" min="1000" placeholder="Isi nominal yang disetujui" oninput="perbaruiDiffApprove()">
+      <label class="form-label">Nominal yang Disetujui</label>
+      <input inputmode="numeric" data-rupiah class="form-input" type="text" id="approve-nominal" placeholder="Isi nominal yang disetujui" oninput="perbaruiDiffApprove()">
     </div>
     <div class="form-group" id="approve-bunga-group">
       <label class="form-label">Bunga per Cicilan (Rp) <span style="color:var(--text3);font-weight:400;font-size:12px">— opsional, 0 = tanpa bunga</span></label>
-      <input class="form-input" type="number" id="approve-bunga-nominal" min="0" value="0" placeholder="Contoh: 50000" oninput="perbaruiDiffApprove()">
+      <input inputmode="numeric" data-rupiah class="form-input" type="text" id="approve-bunga-nominal" value="0" placeholder="Contoh: 50000" oninput="perbaruiDiffApprove()">
       <div class="form-hint">Nominal bunga tetap per cicilan. Kosongkan atau isi 0 untuk tanpa bunga.</div>
     </div>
     <!-- Muncul hanya bila syaratnya berbeda dari yang diajukan anggota -->
@@ -2972,7 +3016,7 @@ img.hp-foto { display: block; }
   </div>
 </div>
 
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"><span class="ic"></span><div class="tx"><div class="t1"></div><div class="t2"></div></div><button class="x" type="button" aria-label="Tutup" onclick="tutupToast()">×</button></div>
 
 <!-- Idle Warning -->
 <div id="idle-warning" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9998;background:#1C2348;color:white;padding:16px 24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);align-items:center;gap:16px;min-width:320px;max-width:420px">
@@ -2984,7 +3028,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.86.0';
+const APP_VERSION = 'v4.87.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3429,12 +3473,67 @@ function rayakan(jumlah = 90) {
   rafId = requestAnimationFrame(bingkai);
 }
 
-function showToast(msg, duration = 3000) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+// ── TOAST (v4.87.0) ──
+// Tiga jenis, tiga warna: 'sukses' hijau, 'gagal' merah (bertahan sampai
+// ditutup bila kegagalan sistem), 'info' gelap. Jenis boleh diberi lewat
+// argumen kedua ('sukses' | 'gagal' | 'info' | angka durasi | {jenis, sub,
+// tahan, durasi}) atau awalan '[sukses] ' / '[gagal] ' di teks. Tanpa
+// keduanya, jenis ditebak dari kata-katanya. Pesan teknis mentah dari
+// server (JSON) tidak ditampilkan — ia masuk console, layar dapat kalimat.
+const IKON_TOAST = {
+  sukses: '<svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
+  gagal:  '<svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
+  info:   '<svg class="ik" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
+};
+let _toastTimer = null;
+function tebakJenisToast(teks) {
+  const t = teks.trim();
+  if (/^(gagal|tidak bisa|tidak dapat|galat|error)/i.test(t) || /\bgagal\b/i.test(t)) return { jenis: 'gagal', tahan: true };
+  if (/^(isi|pilih|nominal|jumlah|judul|nama|username|password|sandi|tanggal|alasan|minimal|maksimal|hari|beri|lihat|belum|tidak ada|masukkan|lengkapi|hanya|wajib|nomor|melebihi|kosongkan|jumlah)/i.test(t)
+      || /\b(wajib|tidak boleh|harus|minimal|melebihi|belum diisi|tidak valid)\b/i.test(t)) return { jenis: 'gagal', tahan: false };
+  if (/\b(berhasil|tercatat|tersimpan|disalin|terkirim|dikirim|dibagikan|diperbarui|dihapus|diaktifkan|dimatikan|dinonaktifkan|ditolak|disetujui|dicairkan|dikoreksi|dibatalkan|diubah|ditambahkan|didaftarkan|direset|dipulihkan|selesai|lunas|menyala|siap)\b/i.test(t)) return { jenis: 'sukses', tahan: false };
+  return { jenis: 'info', tahan: false };
 }
+function showToast(msg, opsi) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  let teks = String(msg ?? '');
+  let o = {};
+  if (typeof opsi === 'number') o = { durasi: opsi };
+  else if (typeof opsi === 'string') o = { jenis: opsi === 'error' ? 'gagal' : opsi === 'success' ? 'sukses' : opsi };
+  else if (opsi && typeof opsi === 'object') o = { ...opsi };
+  // Awalan penanda jenis di teks: '[sukses] ', '[gagal] ', '[info] '
+  const tag = teks.match(/^\[(sukses|gagal|info)\]\s*/);
+  if (tag) { o.jenis = o.jenis || tag[1]; teks = teks.slice(tag[0].length); }
+  // Emoji lama di awal/akhir dibersihkan — ikonnya sudah bicara
+  teks = teks.replace(/^(✅|✓|❌|⚠️|⚠|💡|🎉|ℹ️|🔒|📢)\s*/u, '').replace(/\s*(✓|✅|🎉)\s*$/u, '').trim();
+  // JSON mentah dari server → kalimat manusia; aslinya ke console
+  if (/[{\[]"?[a-z_]+"?\s*:/i.test(teks) || /\{"/.test(teks)) {
+    console.error('[toast] pesan teknis:', teks);
+    teks = teks.replace(/[:\-–—]?\s*[{\[][\s\S]*$/, '').trim() || 'Terjadi kesalahan';
+    if (!o.sub) o.sub = 'Periksa koneksi lalu coba lagi. Kalau berulang, kabari Aditya.';
+    o.jenis = o.jenis || 'gagal'; if (o.tahan == null) o.tahan = true;
+  }
+  const tebak = tebakJenisToast(teks);
+  const jenis = o.jenis || tebak.jenis;
+  const tahan = o.tahan != null ? o.tahan : (jenis === 'gagal' && tebak.tahan);
+  // Kalimat panjang: kalimat pertama jadi judul, sisanya baris kedua
+  let sub = o.sub || '';
+  if (!sub && teks.length > 64) {
+    const m = teks.match(/^(.{20,90}?[.!?])\s+(.+)$/);
+    if (m) { teks = m[1]; sub = m[2]; }
+  }
+  t.className = 'show ' + jenis + (tahan ? ' tahan' : '');
+  t.querySelector('.ic').innerHTML = IKON_TOAST[jenis] || IKON_TOAST.info;
+  t.querySelector('.t1').textContent = teks;
+  const t2 = t.querySelector('.t2'); t2.textContent = sub; t2.classList.toggle('ada', !!sub);
+  clearTimeout(_toastTimer);
+  if (!tahan) {
+    const durasi = o.durasi || (jenis === 'gagal' ? 4500 : sub ? 4500 : 3000);
+    _toastTimer = setTimeout(tutupToast, durasi);
+  }
+}
+function tutupToast() { const t = document.getElementById('toast'); if (t) t.classList.remove('show'); }
 
 // Keduanya tahan terhadap id yang tidak ada.
 //
@@ -4345,6 +4444,71 @@ function renderMutasiAnggota(jenis) {
   }).join('');
 }
 
+// ── KOLOM RUPIAH (v4.87.0) ───────────────────────────────────────────────
+// Setiap <input data-rupiah> menampilkan pemisah ribuan saat mengetik dan
+// kalimat terbilang di bawahnya. Yang tersimpan tetap bilangan bulat:
+// properti .value ditimpa per elemen sehingga MEMBACA mengembalikan angka
+// polos ('1000000') dan MENULIS otomatis memformat ('1.000.000'). Dengan
+// begitu seluruh kode lama — parseInt(el.value), el.value = n — tetap benar
+// tanpa diubah satu pun.
+const _RP_DESC = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+function angkaDariTeks(t) { return String(t ?? '').replace(/\D/g, ''); }
+function formatRibuan(d) { return d ? Number(d).toLocaleString('id-ID') : ''; }
+
+function terbilang(n) {
+  n = Math.floor(Math.abs(Number(n) || 0));
+  if (n === 0) return 'nol';
+  const satuan = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
+  const kecil = x => {           // < 1000
+    if (x < 12) return satuan[x];
+    if (x < 20) return satuan[x - 10] + ' belas';
+    if (x < 100) return (satuan[Math.floor(x / 10)] + ' puluh' + (x % 10 ? ' ' + satuan[x % 10] : ''));
+    if (x < 200) return 'seratus' + (x % 100 ? ' ' + kecil(x % 100) : '');
+    return satuan[Math.floor(x / 100)] + ' ratus' + (x % 100 ? ' ' + kecil(x % 100) : '');
+  };
+  const bagian = [];
+  const skala = [[1e12, 'triliun'], [1e9, 'miliar'], [1e6, 'juta'], [1e3, 'ribu']];
+  for (const [nilai, nama] of skala) {
+    const k = Math.floor(n / nilai);
+    if (k) { bagian.push((nilai === 1e3 && k === 1) ? 'seribu' : kecil(k) + ' ' + nama); n %= nilai; }
+  }
+  if (n) bagian.push(kecil(n));
+  return bagian.join(' ');
+}
+
+function pasangInputRupiah(el) {
+  if (!el || el._rupiahTerpasang) return;
+  el._rupiahTerpasang = true;
+  el.type = 'text'; el.inputMode = 'numeric'; el.autocomplete = 'off';
+  // Pembungkus: awalan "Rp" di kiri, terbilang di bawah
+  const wadah = document.createElement('div'); wadah.className = 'rp-wadah';
+  el.parentNode.insertBefore(wadah, el); wadah.appendChild(el);
+  const prefix = document.createElement('span'); prefix.className = 'rp-prefix'; prefix.textContent = 'Rp';
+  wadah.appendChild(prefix);
+  const tb = document.createElement('div'); tb.className = 'rp-terbilang kosong';
+  wadah.parentNode.insertBefore(tb, wadah.nextSibling);
+  const segarkan = () => {
+    const d = angkaDariTeks(_RP_DESC.get.call(el));
+    tb.textContent = d ? terbilang(d) + ' rupiah' : 'Ketik jumlahnya';
+    tb.classList.toggle('kosong', !d);
+  };
+  Object.defineProperty(el, 'value', {
+    configurable: true,
+    get() { return angkaDariTeks(_RP_DESC.get.call(el)); },
+    set(v) { _RP_DESC.set.call(el, formatRibuan(angkaDariTeks(v))); segarkan(); }
+  });
+  // Saat mengetik: format ulang lalu biarkan penangan oninput lama berjalan
+  // (mereka membaca .value, yang sudah mengembalikan angka polos).
+  el.addEventListener('input', () => {
+    const d = angkaDariTeks(_RP_DESC.get.call(el));
+    _RP_DESC.set.call(el, formatRibuan(d)); segarkan();
+  }, true);
+  segarkan();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('input[data-rupiah]').forEach(pasangInputRupiah);
+});
+
 // ── MODE KUMPULAN (v4.86.0) ──────────────────────────────────────────────
 // Satu layar untuk hari kumpulan. Tidak ada tabel, RPC, atau rumus baru:
 // setoran memakai catatSetoran(), cicilan memakai modal cicilan yang ada,
@@ -4933,7 +5097,7 @@ async function doSimpanPengumuman() {
     await logActivity('PENGUMUMAN', `Pengumuman: ${judul}`);
 
     ['pu-judul','pu-isi','pu-tanggal'].forEach(id => { document.getElementById(id).value = ''; });
-    showToast('✅ Diumumkan. ' + ketPush, 5000);
+    showToast('[sukses] Diumumkan. ' + ketPush, 5000);
     await loadPengumuman();
     renderKartuPengumuman();
     document.getElementById('pu-wa-teks').value = susunTeksWAPengumuman({ judul, isi, tanggal_acara: tgl });
@@ -5177,7 +5341,7 @@ async function doKoreksiCicilan() {
       `Cicilan ${fmt(_kcCtx.amountLama)} → ${fmt(baru)} (${alasan})`, memberId);
 
     const lunas = data?.status_baru === 'completed';
-    showToast(`✅ Pembayaran dikoreksi menjadi ${fmt(baru)}`
+    showToast(`[sukses] Pembayaran dikoreksi menjadi ${fmt(baru)}`
       + (lunas ? ' 🎉 Pinjaman Lunas!' : '')
       + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
     closeModal('modal-koreksi-cicilan');
@@ -5341,7 +5505,7 @@ async function doKoreksiSetoran() {
     await logActivity(setoran ? 'KOREKSI_SETORAN' : 'KOREKSI_PENCAIRAN',
       `${setoran ? 'Setoran' : 'Pencairan'} ${fmt(_koreksiCtx.amountLama)} → ${fmt(baru)} (${alasan})`, memberId);
 
-    showToast(`✅ ${setoran ? 'Setoran' : 'Pencairan'} dikoreksi menjadi ${fmt(baru)}` + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
+    showToast(`[sukses] ${setoran ? 'Setoran' : 'Pencairan'} dikoreksi menjadi ${fmt(baru)}` + (dPoin !== 0 ? ` · poin ${dPoin > 0 ? '+' : ''}${dPoin}` : ''));
     closeModal('modal-koreksi-setoran');
     _koreksiCtx = null;
     loadSimpanan(); loadDashboard(); segarkanKumpulan();
@@ -5696,14 +5860,14 @@ async function doAjukanPinjaman() {
   // Rule 3: Minimal simpanan Rp 100.000
   const saldo = await getMemberBalance(memberId);
   if (saldo < 100000) {
-    showToast('❌ Saldo simpanan minimal Rp 100.000 untuk dapat mengajukan pinjaman (saldo saat ini: ' + fmt(saldo) + ')');
+    showToast('[gagal] Saldo simpanan minimal Rp 100.000 untuk dapat mengajukan pinjaman (saldo saat ini: ' + fmt(saldo) + ')');
     return;
   }
 
   // Rule 5: Batas maksimal pinjaman sesuai pengaturan koperasi
   const plafon = await hitungPlafonPinjaman(memberId);
   if (plafon !== null && pokok > plafon) {
-    showToast(`❌ Melebihi batas pinjaman. ${labelPlafon()} — untuk anggota ini maksimal ${fmt(plafon)}.`, 7000);
+    showToast(`[gagal] Melebihi batas pinjaman. ${labelPlafon()} — untuk anggota ini maksimal ${fmt(plafon)}.`, 7000);
     return;
   }
 
@@ -5721,7 +5885,7 @@ async function doAjukanPinjaman() {
           const oneMonthLater = tambahBulan(lastPayDate, 1);
           if (new Date() < oneMonthLater) {
             const waitUntil = oneMonthLater.toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' });
-            showToast('❌ Masa tunggu 1 bulan setelah pinjaman lunas. Bisa mengajukan lagi mulai ' + waitUntil);
+            showToast('[gagal] Masa tunggu 1 bulan setelah pinjaman lunas. Bisa mengajukan lagi mulai ' + waitUntil);
             return;
           }
         }
@@ -5756,7 +5920,7 @@ async function doAjukanPinjaman() {
   if (pakaiBypass) {
     const { error: eBypass } = await dbUpdate('profiles', `id=eq.${memberId}`, { bypass_waiting: false });
     if (eBypass) {
-      showToast('⚠️ Pengajuan tersimpan, tetapi penanda bypass gagal dihapus. Beri tahu admin agar tidak terpakai dua kali.', 8000);
+      showToast('[gagal] Pengajuan tersimpan, tetapi penanda bypass gagal dihapus. Beri tahu admin agar tidak terpakai dua kali.', 8000);
     } else {
       // Menutup jejak audit: pemberian bypass sudah dicatat saat admin
       // memberikannya, pemakaiannya dicatat di sini.
@@ -6079,7 +6243,7 @@ async function doApprovePinjaman() {
   const kas1 = await hitungKasTersedia();
   if (!kas1) { showToast('Gagal memeriksa ketersediaan kas. Coba lagi.'); return; }
   if (approvedNominal > kas1.tersedia) {
-    showToast(`❌ Kas koperasi tidak cukup. Uang tersedia hanya ${fmt(kas1.tersedia)}, sedangkan yang akan dicairkan ${fmt(approvedNominal)}.`, 7000);
+    showToast(`[gagal] Kas koperasi tidak cukup. Uang tersedia hanya ${fmt(kas1.tersedia)}, sedangkan yang akan dicairkan ${fmt(approvedNominal)}.`, 7000);
     return;
   }
 
@@ -6292,7 +6456,7 @@ async function doKonfirmasiPinjaman(setuju) {
     p_loan_id: currentLoanId,
     p_setuju: setuju
   });
-  if (error) { showToast('❌ ' + (error.message || JSON.stringify(error)), 7000); return; }
+  if (error) { showToast('[gagal] ' + (error.message || JSON.stringify(error)), 7000); return; }
 
   await logActivity(setuju ? 'PINJAMAN_DIKONFIRMASI' : 'PINJAMAN_SYARAT_DITOLAK',
     setuju ? 'Anggota menyetujui syarat final' : 'Anggota menolak syarat final', currentUser.id);
@@ -6684,15 +6848,15 @@ async function doCatatCicilan() {
     // yang memakai angka lama bisa meloloskan pembayaran berlebih.
     const loanFresh = await dbQuery('loans',
       `select=*,profiles!loans_member_id_fkey(full_name)&id=eq.${currentCicilanLoan.id}&limit=1`);
-    if (loanFresh === null) { showToast('❌ Gagal memuat data pinjaman terkini. Coba lagi.'); return; }
+    if (loanFresh === null) { showToast('[gagal] Gagal memuat data pinjaman terkini. Coba lagi.'); return; }
     const loan = loanFresh[0];
-    if (!loan) { showToast('❌ Pinjaman tidak ditemukan.'); return; }
+    if (!loan) { showToast('[gagal] Pinjaman tidak ditemukan.'); return; }
     if (loan.status !== 'active') {
-      showToast('⚠️ Pinjaman ini sudah tidak aktif — mungkin baru saja dilunasi dari tempat lain.');
+      showToast('[gagal] Pinjaman ini sudah tidak aktif — mungkin baru saja dilunasi dari tempat lain.');
       closeModal('modal-cicilan'); loadCicilan(); return;
     }
     if (amount > loan.remaining_amount) {
-      showToast(`❌ Nominal melebihi sisa tagihan. Sisa terkini: ${fmt(loan.remaining_amount)}`
+      showToast(`[gagal] Nominal melebihi sisa tagihan. Sisa terkini: ${fmt(loan.remaining_amount)}`
         + (Number(currentCicilanLoan.remaining_amount) !== Number(loan.remaining_amount)
             ? ' (berubah sejak modal dibuka)' : ''), 6000);
       currentCicilanLoan = loan;
@@ -6704,7 +6868,7 @@ async function doCatatCicilan() {
     // akurat dan tidak bergantung pada angka yang mungkin sudah usang di layar.
     const riwayat = await dbQuery('loan_payments', `loan_id=eq.${loan.id}&select=interest_component&is_reversed=is.false`);
     if (riwayat === null) {
-      showToast('❌ Gagal membaca riwayat pembayaran. Periksa koneksi lalu coba lagi.');
+      showToast('[gagal] Gagal membaca riwayat pembayaran. Periksa koneksi lalu coba lagi.');
       return;
     }
     const interestPaidSoFar = riwayat.reduce((a, p) => a + Number(p.interest_component || 0), 0);
@@ -6731,7 +6895,7 @@ async function doCatatCicilan() {
       remaining_after: remainingAfter, recorded_by: currentUser.id, note
     });
     if (payErr) {
-      showToast('❌ Gagal mencatat pembayaran: ' + (payErr.message || JSON.stringify(payErr)));
+      showToast('[gagal] Gagal mencatat pembayaran: ' + (payErr.message || JSON.stringify(payErr)));
       return;
     }
 
@@ -6742,7 +6906,7 @@ async function doCatatCicilan() {
       status: isLastPayment ? 'completed' : 'active'
     });
     if (loanErr) {
-      showToast('⚠️ Pembayaran sudah tercatat tetapi saldo pinjaman GAGAL diperbarui. Catat nominal ' + fmt(amount) + ' dan periksa data pinjaman ini.');
+      showToast('[gagal] Pembayaran sudah tercatat tetapi saldo pinjaman GAGAL diperbarui. Catat nominal ' + fmt(amount) + ' dan periksa data pinjaman ini.');
       return;
     }
 
@@ -6774,7 +6938,7 @@ async function doCatatCicilan() {
         recorded_by: currentUser.id
       });
       if (eDenda) {
-        showToast('⚠️ Cicilan tercatat, tetapi denda ' + fmt(nDenda) + ' GAGAL dicatat. Catat angka ini.', 7000);
+        showToast('[gagal] Cicilan tercatat, tetapi denda ' + fmt(nDenda) + ' GAGAL dicatat. Catat angka ini.', 7000);
       } else {
         dendaTercatat = nDenda;
       }
@@ -6816,7 +6980,7 @@ async function doCatatCicilan() {
     // modal tetap terbuka, tidak ada pesan apa pun, padahal transaksinya
     // mungkin sudah tersimpan. Lebih baik keadaannya terlihat.
     console.error('doCatatCicilan:', e);
-    showToast('⚠️ Terjadi galat setelah pembayaran diproses: ' + (e.message || e)
+    showToast('[gagal] Terjadi galat setelah pembayaran diproses: ' + (e.message || e)
       + '. Periksa menu Cicilan untuk memastikan tercatat atau belum.', 9000);
     closeModal('modal-cicilan');
     loadCicilan(); loadDashboard(); segarkanKumpulan();
@@ -8246,7 +8410,7 @@ async function doEditAnggota() {
     admin_id: currentUser.id
   });
 
-  if (eJejakEdit) showToast('⚠️ Data tersimpan, tetapi jejak perubahannya gagal dicatat.', 6000);
+  if (eJejakEdit) showToast('[gagal] Data tersimpan, tetapi jejak perubahannya gagal dicatat.', 6000);
   else showToast('Data anggota berhasil diperbarui ✓');
   closeModal('modal-edit-anggota');
   await loadAllMembers();
@@ -8275,22 +8439,22 @@ async function hapusAnggota(id, nama) {
   ]);
 
   if ([aktif, pending, savings, loans, payments].some(x => x === null)) {
-    showToast('❌ Gagal memeriksa data anggota. Periksa koneksi lalu coba lagi.');
+    showToast('[gagal] Gagal memeriksa data anggota. Periksa koneksi lalu coba lagi.');
     return;
   }
 
-  if (aktif.length)   { showToast(`❌ ${nama} masih punya pinjaman aktif. Lunasi dulu.`); return; }
-  if (pending.length) { showToast(`❌ ${nama} masih punya pengajuan pinjaman yang belum diproses.`); return; }
+  if (aktif.length)   { showToast(`[gagal] ${nama} masih punya pinjaman aktif. Lunasi dulu.`); return; }
+  if (pending.length) { showToast(`[gagal] ${nama} masih punya pengajuan pinjaman yang belum diproses.`); return; }
 
   const saldo = savings.reduce((a, s) => a + (s.type === 'deposit' ? Number(s.amount) : -Number(s.amount)), 0);
   if (saldo > 0) {
-    showToast(`❌ ${nama} masih punya simpanan ${fmt(saldo)}. Cairkan dulu lewat menu Simpanan → Cairkan Simpanan, lalu Nonaktifkan.`, 6000);
+    showToast(`[gagal] ${nama} masih punya simpanan ${fmt(saldo)}. Cairkan dulu lewat menu Simpanan → Cairkan Simpanan, lalu Nonaktifkan.`, 6000);
     return;
   }
 
   const punyaRiwayat = savings.length > 0 || loans.length > 0 || payments.length > 0;
   if (punyaRiwayat) {
-    showToast(`❌ ${nama} sudah punya riwayat transaksi, jadi tidak bisa dihapus permanen — riwayat keuangan koperasi harus tetap utuh. Gunakan tombol Nonaktifkan.`, 7000);
+    showToast(`[gagal] ${nama} sudah punya riwayat transaksi, jadi tidak bisa dihapus permanen — riwayat keuangan koperasi harus tetap utuh. Gunakan tombol Nonaktifkan.`, 7000);
     return;
   }
 
@@ -8301,13 +8465,13 @@ async function hapusAnggota(id, nama) {
     const delAdj = await fetch(`${SUPABASE_URL}/rest/v1/adjustments?member_id=eq.${id}`, {
       method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
     });
-    if (!delAdj.ok) { showToast(`❌ Gagal menghapus log anggota (kode ${delAdj.status})`); return; }
+    if (!delAdj.ok) { showToast(`[gagal] Gagal menghapus log anggota (kode ${delAdj.status})`); return; }
 
     const { error: eHapus } = await panggilAdminAnggota('hapus_akun', id);
-    if (eHapus) { showToast('❌ Gagal menghapus akun login: ' + eHapus, 7000); return; }
+    if (eHapus) { showToast('[gagal] Gagal menghapus akun login: ' + eHapus, 7000); return; }
 
     // profiles terhapus otomatis karena CASCADE dari auth.users
-    showToast(`✅ Akun "${nama}" berhasil dihapus`);
+    showToast(`[sukses] Akun "${nama}" berhasil dihapus`);
     await logActivity('ANGGOTA_HAPUS', `Hapus akun tanpa riwayat: ${nama}`, null);
     await loadAllMembers();
     loadAnggota();
@@ -8645,7 +8809,7 @@ async function savePengingat() {
   const { error } = await simpanPengaturan('pengingat', nilai);
   if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error))); return; }
   await logActivity('PENGATURAN', 'Pengingat otomatis: ' + ringkasPengingat(nilai), null);
-  showToast('✅ ' + ringkasPengingat(nilai));
+  showToast('[sukses] ' + ringkasPengingat(nilai));
   tampilkanPengaturanPengingat();
 }
 // Jejak terakhir penjadwal — bukti bahwa ia memang berjalan tiap pagi.
@@ -8711,7 +8875,7 @@ async function savePlafon() {
   if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error))); return; }
 
   await logActivity('PENGATURAN', 'Batas pinjaman diubah: ' + labelPlafon(), null);
-  showToast('✅ Batas pinjaman disimpan — ' + labelPlafon());
+  showToast('[sukses] Batas pinjaman disimpan — ' + labelPlafon());
   tampilkanPengaturanPlafon();
 }
 
@@ -8821,7 +8985,7 @@ async function changeMyUsername() {
     reason: `[EDIT ANGGOTA] Username: "${oldUsername}" → "${newUsername}" | Alasan: ${reason}`,
     admin_id: currentUser.id
   });
-  if (eJejakUsername) showToast('⚠️ Username berubah, tetapi jejak perubahannya gagal dicatat.', 6000);
+  if (eJejakUsername) showToast('[gagal] Username berubah, tetapi jejak perubahannya gagal dicatat.', 6000);
 
   showToast('Username berhasil diubah ✓');
   localStorage.setItem('kk_auth_username', newUsername);
@@ -8880,7 +9044,7 @@ async function adminResetMemberPassword() {
     }
 
     // Edge Function sudah handle: clear pending_password, reset failed_attempts, log
-    showToast(`✅ Password ${memberName} berhasil direset. Langsung berlaku sekarang.`);
+    showToast(`[sukses] Password ${memberName} berhasil direset. Langsung berlaku sekarang.`);
     document.getElementById('profil-reset-pw-new').value = '';
     document.getElementById('profil-reset-pw-confirm').value = '';
     document.getElementById('profil-reset-reason').value = '';
@@ -9044,7 +9208,7 @@ async function aktifkanPush() {
     }
     // Persetujuan dicatat per anggota per perangkat (kunci Q2)
     try { localStorage.setItem('kk_push_optin_' + currentUser.id, '1'); } catch(e) {}
-    showToast('✅ Notifikasi aktif di perangkat ini');
+    showToast('[sukses] Notifikasi aktif di perangkat ini');
   } catch (e) {
     showToast('Gagal mengaktifkan notifikasi: ' + e.message, 6000);
   }
@@ -9597,18 +9761,18 @@ async function bypassMasaTunggu(memberId, memberName) {
   // log berkata "bypass diberikan" padahal update-nya gagal — jejak audit
   // yang berbohong lebih buruk daripada tidak ada jejak.
   const { error: eBy } = await dbUpdate('profiles', `id=eq.${memberId}`, { bypass_waiting: true });
-  if (eBy) { showToast('❌ Gagal memberi bypass: ' + (eBy.message || JSON.stringify(eBy))); return; }
+  if (eBy) { showToast('[gagal] Gagal memberi bypass: ' + (eBy.message || JSON.stringify(eBy))); return; }
   const { error: eLog } = await dbInsert('adjustments', {
     member_id: memberId, type: 'savings',
     value_before: 0, value_after: 0, difference: 0,
     reason: `[BYPASS MASA TUNGGU] Diizinkan admin untuk mengajukan pinjaman baru lebih awal`,
     admin_id: currentUser.id
   });
-  if (eLog) showToast('⚠️ Bypass diberikan, tetapi jejaknya gagal dicatat di Log Perubahan.', 6000);
+  if (eLog) showToast('[gagal] Bypass diberikan, tetapi jejaknya gagal dicatat di Log Perubahan.', 6000);
   // Pemberian dicatat ke activity_log (pemakaiannya sudah dicatat sejak
   // v4.42) — jejak lengkapnya: siapa memberi, siapa memakai, kapan.
   await logActivity('BYPASS_TUNGGU', `Bypass masa tunggu DIBERIKAN kepada ${memberName}`, memberId);
-  showToast(`✅ Masa tunggu ${memberName} berhasil di-bypass. Berlaku untuk 1 kali pengajuan berikutnya.`);
+  showToast(`[sukses] Masa tunggu ${memberName} berhasil di-bypass. Berlaku untuk 1 kali pengajuan berikutnya.`);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -10373,6 +10537,8 @@ function previewSetor() {
   if (!el) return;
   const amount = parseInt(document.getElementById('setor-amount').value) || 0;
   const memberId = document.getElementById('setor-member')?.value;
+  const tombolSetor = document.getElementById('btn-do-setor');
+  if (tombolSetor) tombolSetor.textContent = amount >= 1000 ? 'Setor ' + fmt(amount) : 'Catat Setoran';
   if (!amount || !memberId) { el.style.display = 'none'; return; }
   const nama = allMembers.find(m => m.id === memberId)?.full_name || 'Anggota';
   const poin = hitungPoinSetor(amount);
@@ -10449,6 +10615,8 @@ function isiCairan(bagian) {
 function previewCairan() {
   const el = document.getElementById('cairan-preview');
   const nominal = parseInt(document.getElementById('cairan-nominal').value) || 0;
+  const tombolCair = document.getElementById('btn-do-cairan');
+  if (tombolCair) tombolCair.textContent = nominal > 0 && nominal <= _cairanSaldo ? 'Cairkan ' + fmt(nominal) : 'Proses Pencairan';
   if (!nominal) { el.style.display = 'none'; return; }
 
   el.style.display = 'block';
@@ -10756,7 +10924,7 @@ async function doSimpanItemEvent() {
   const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
   const { error: upErr2 } = await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
-  if (upErr2) { showToast('⚠️ Rincian tersimpan, tetapi total biaya event gagal diperbarui'); }
+  if (upErr2) { showToast('[gagal] Rincian tersimpan, tetapi total biaya event gagal diperbarui'); }
   else { showToast('Rincian berhasil ditambahkan ✓'); }
   closeModal('modal-item-event');
   showEventDetail(eventId);
@@ -10773,7 +10941,7 @@ async function hapusItemEvent(itemId, namaItem) {
   // event yang sudah difinalkan tidak bisa diubah dari halaman yang usang.
   const evChk = await dbQuery('events', `id=eq.${eventId}&select=status&limit=1`);
   if (evChk?.[0]?.status !== 'draft') {
-    showToast('⚠️ Event sudah difinalkan — rincian tidak bisa dihapus lagi');
+    showToast('[gagal] Event sudah difinalkan — rincian tidak bisa dihapus lagi');
     showEventDetail(eventId);
     return;
   }
@@ -10783,14 +10951,14 @@ async function hapusItemEvent(itemId, namaItem) {
     method: 'DELETE', headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken }
   });
   if (!delRes.ok) {
-    showToast('❌ Gagal menghapus item (kode ' + delRes.status + ')');
+    showToast('[gagal] Gagal menghapus item (kode ' + delRes.status + ')');
     return;
   }
 
   const items = await dbQuery('event_items', `event_id=eq.${eventId}&select=biaya`);
   const total = (items || []).reduce((a,i) => a + Number(i.biaya), 0);
   const { error: upErr } = await dbUpdate('events', `id=eq.${eventId}`, { total_biaya: total });
-  if (upErr) { showToast('⚠️ Item terhapus, tetapi total biaya event gagal diperbarui'); }
+  if (upErr) { showToast('[gagal] Item terhapus, tetapi total biaya event gagal diperbarui'); }
   else { showToast('Item berhasil dihapus'); }
   showEventDetail(eventId);
 }
@@ -10827,7 +10995,7 @@ async function doFinalEvent() {
   if (!ev) { showToast('Event tidak ditemukan'); return; }
   // Idempotency check: jangan proses jika sudah bukan draft
   if (ev.status !== 'draft') {
-    showToast('⚠️ Event ini sudah pernah difinalkan sebelumnya');
+    showToast('[gagal] Event ini sudah pernah difinalkan sebelumnya');
     closeModal('modal-final-event');
     return;
   }
@@ -10838,7 +11006,7 @@ async function doFinalEvent() {
   const kas3 = await hitungKasTersedia();
   if (!kas3) { showToast('Gagal memeriksa ketersediaan kas. Coba lagi.'); return; }
   if (total > kas3.tersedia) {
-    showToast(`❌ Kas koperasi tidak cukup. Uang tersedia ${fmt(kas3.tersedia)}, biaya event ${fmt(total)}. Kurangi rincian biaya atau tunggu cicilan masuk.`, 8000);
+    showToast(`[gagal] Kas koperasi tidak cukup. Uang tersedia ${fmt(kas3.tersedia)}, biaya event ${fmt(total)}. Kurangi rincian biaya atau tunggu cicilan masuk.`, 8000);
     return;
   }
 
@@ -10866,7 +11034,7 @@ async function doFinalEvent() {
     return;
   }
 
-  showToast('✅ Event "' + judul + '" berhasil difinalkan. Kas terpotong ' + fmt(total));
+  showToast('[sukses] Event "' + judul + '" berhasil difinalkan. Kas terpotong ' + fmt(total));
   closeModal('modal-final-event');
   showEventDetail(currentEventId);
   loadDashboard();
@@ -10881,7 +11049,7 @@ async function tandaiSelesaiEvent(eventId) {
   // dbUpdate tidak melempar exception — tanpa pemeriksaan ini, kegagalan
   // tetap disambut toast "Selesai ✓" padahal statusnya tidak berubah.
   const { error } = await dbUpdate('events', `id=eq.${eventId}`, { status: 'selesai' });
-  if (error) { showToast('❌ Gagal menandai selesai: ' + (error.message || JSON.stringify(error)), 6000); return; }
+  if (error) { showToast('[gagal] Gagal menandai selesai: ' + (error.message || JSON.stringify(error)), 6000); return; }
   showToast('Event ditandai Selesai ✓');
   showEventDetail(eventId);
 }
@@ -11083,7 +11251,7 @@ window.addEventListener('appinstalled', () => {
   const installBtn = document.getElementById('pwa-install-btn');
   if (installBtn) installBtn.style.display = 'none';
   _deferredPrompt = null;
-  showToast('✅ Aplikasi berhasil diinstall!');
+  showToast('[sukses] Aplikasi berhasil diinstall!');
 });
 
 async function installPWA() {
@@ -11093,7 +11261,7 @@ async function installPWA() {
   }
   _deferredPrompt.prompt();
   const { outcome } = await _deferredPrompt.userChoice;
-  if (outcome === 'accepted') showToast('✅ Aplikasi berhasil diinstall!');
+  if (outcome === 'accepted') showToast('[sukses] Aplikasi berhasil diinstall!');
   _deferredPrompt = null;
 }
 
@@ -11185,7 +11353,7 @@ async function uploadAvatar() {
         const sidebarAvatar = document.getElementById('sidebar-avatar');
         if (sidebarAvatar) sidebarAvatar.innerHTML = `<img src="${compressed}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
       }
-      showToast('✅ Foto profil berhasil diupdate');
+      showToast('[sukses] Foto profil berhasil diupdate');
       closeModal('modal-avatar');
       loadAnggota();
     };
@@ -11329,10 +11497,10 @@ async function doTambahPoin() {
   // keduanya jadi tidak pernah cocok lagi. Sekarang ditolak dengan pesan.
   if (type === 'debit') {
     const profileArr = await dbQuery('profiles', `id=eq.${memberId}&select=total_points&limit=1`);
-    if (profileArr === null) { showToast('❌ Gagal membaca poin saat ini. Coba lagi.'); return; }
+    if (profileArr === null) { showToast('[gagal] Gagal membaca poin saat ini. Coba lagi.'); return; }
     const sekarang = Number(profileArr[0]?.total_points) || 0;
     if (jumlah > sekarang) {
-      showToast(`❌ Poin anggota ini hanya ${sekarang}. Maksimal yang bisa dikurangi ${sekarang}.`, 6000);
+      showToast(`[gagal] Poin anggota ini hanya ${sekarang}. Maksimal yang bisa dikurangi ${sekarang}.`, 6000);
       return;
     }
   }
@@ -11345,7 +11513,7 @@ async function doTambahPoin() {
 
   await logActivity('POIN_TAMBAH', `${type==='credit'?'Tambah':'Kurangi'} ${jumlah} poin: ${alasan}`, memberId);
 
-  showToast(`✅ ${type==='credit'?'+':'‑'}${jumlah} poin berhasil dicatat`);
+  showToast(`[sukses] ${type==='credit'?'+':'‑'}${jumlah} poin berhasil dicatat`);
   closeModal('modal-tambah-poin');
   loadAnggota();
   loadPoinData();
@@ -12314,7 +12482,7 @@ async function autoPoinCicilan(memberId, nextDueDateBefore, periods = 1) {
     showToast(`⭐ +${poin} poin cicilan tepat waktu!`, 2000);
   } else {
     await simpanPoin(memberId, 5, '[AUTO] Bayar cicilan terlambat → -5 poin', 'debit');
-    showToast('⚠️ -5 poin karena cicilan terlambat', 2000);
+    showToast('[gagal] -5 poin karena cicilan terlambat', 2000);
   }
 }
 
@@ -12330,7 +12498,7 @@ async function poinAktifBulanan() {
   const sudahAda = await dbQuery('member_points',
     `select=id&reason=ilike.*${encodeURIComponent(penanda)}*&limit=1`);
   if (sudahAda && sudahAda.length) {
-    showToast(`⚠️ Poin aktif bulanan ${bulan} sudah pernah diberikan. Tidak diulang supaya tidak dobel.`, 7000);
+    showToast(`[gagal] Poin aktif bulanan ${bulan} sudah pernah diberikan. Tidak diulang supaya tidak dobel.`, 7000);
     return;
   }
   showToast('⏳ Memproses poin aktif bulanan...');
@@ -12341,7 +12509,7 @@ async function poinAktifBulanan() {
     await simpanPoin(m.id, 2, `[AUTO] Aktif bulanan ${bulan} → +2 poin`, 'credit');
     berhasil++;
   }
-  showToast(`✅ +2 poin aktif bulanan diberikan ke ${berhasil} anggota`);
+  showToast(`[sukses] +2 poin aktif bulanan diberikan ke ${berhasil} anggota`);
   loadPoinData();
 }
 

@@ -1147,6 +1147,30 @@ img.hp-foto { display: block; }
 .nb .ik { margin: 0 auto 2px; }
 .tile-ic .ik { width: 26px; height: 26px; }
 
+/* v4.82.0 — pengumuman */
+.pu-kartu { background: linear-gradient(135deg, #7c3aed, #6d28d9); border-radius: 16px; padding: 14px 16px; color: #fff;
+  margin-bottom: 14px; position: relative; box-shadow: 0 6px 18px rgba(109,40,217,.25); }
+.pu-kartu .k { font-size: 10px; letter-spacing: .08em; opacity: .85; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.pu-kartu .j { font-size: 15.5px; font-weight: 800; margin: 5px 0 4px; padding-right: 28px; }
+.pu-kartu .i { font-size: 12.5px; opacity: .93; line-height: 1.5; white-space: pre-wrap; }
+.pu-kartu .x { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 8px; border: 0;
+  background: rgba(255,255,255,.16); color: #fff; font-size: 15px; cursor: pointer; }
+.pu-kartu .tgl { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; font-size: 11px; font-weight: 600;
+  background: rgba(255,255,255,.18); padding: 4px 9px; border-radius: 20px; }
+.pu-baris { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+.pu-baris:last-child { border-bottom: 0; }
+.pu-baris .ic { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  background: var(--purple-bg); color: var(--purple-text); }
+.pu-baris.lewat .ic { background: var(--surface2); color: var(--text3); }
+.pu-baris .tx { flex: 1; min-width: 0; }
+.pu-baris .t1 { font-size: 13.5px; font-weight: 700; }
+.pu-baris.lewat .t1 { color: var(--text3); }
+.pu-baris .t2 { font-size: 12px; color: var(--text2); margin-top: 2px; line-height: 1.45; white-space: pre-wrap; }
+.pu-baris .t3 { font-size: 10.5px; color: var(--text3); margin-top: 4px; }
+.pu-baris .aksi { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+.pu-baris .aksi button { font: inherit; font-size: 11px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.pu-baris .aksi button.hapus { color: var(--red-text); }
+
 /* v4.80.0 — Laporan yang bercerita */
 .lap-periode { display: flex; align-items: center; gap: 8px; width: 100%; background: var(--surface);
   border: 1px solid var(--border2); border-radius: 12px; padding: 11px 14px; margin-bottom: 12px;
@@ -1533,6 +1557,7 @@ img.hp-foto { display: block; }
         <div class="tindakan tiga" style="margin-bottom:4px">
           <button class="tile admin-only" style="display:none" onclick="pilihLainnya('anggota')"><div class="tile-ic b"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><circle class="isi" cx="9" cy="8" r="3.5"/><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.6"/></svg></div><span class="tile-teks">Anggota</span></button>
           <button class="tile" onclick="pilihLainnya('laporan')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><rect class="isi" x="3" y="12" width="4" height="8" rx="1"/><rect class="isi" x="10" y="6" width="4" height="14" rx="1"/><rect class="isi" x="17" y="9" width="4" height="11" rx="1"/><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg></div><span class="tile-teks">Laporan</span></button>
+          <button class="tile" onclick="pilihLainnya('pengumuman')"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M19 9a4 4 0 0 1 0 6M8 15v4"/></svg></div><span class="tile-teks">Pengumuman</span></button>
           <button class="tile" onclick="pilihLainnya('event')"><div class="tile-ic p"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M12 3 3 8l9 5 9-5z"/><path d="M12 3 3 8l9 5 9-5z"/><path d="M5 10v6l7 4 7-4v-6"/></svg></div><span class="tile-teks">Event</span></button>
           <button class="tile" onclick="closeModal('sheet-lainnya'); bukaPapanPoin()"><div class="tile-ic a"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a2 2 0 0 0 0 4h3M16 6h3a2 2 0 0 1 0 4h-3"/><path d="M12 13v4M9 21h6M10 17h4"/></svg></div><span class="tile-teks">Papan Poin</span></button>
           <button class="tile admin-only" style="display:none" onclick="pilihLainnya('adjustment')"><div class="tile-ic"><svg class="ik" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M4 17a2 2 0 0 1 2-2h12M8 8h6M8 11h4"/></svg></div><span class="tile-teks">Log Perubahan</span></button>
@@ -1556,6 +1581,8 @@ img.hp-foto { display: block; }
       </div>
 
       <!-- v4.63.0 — KARTU UTAMA ADMIN: kas koperasi -->
+      <!-- v4.82.0: kartu pengumuman — paling atas, warna ungu yang belum dipakai kartu lain -->
+      <div id="kartu-pengumuman"></div>
       <div class="hero admin-only" style="display:none" id="hero-admin">
         <svg class="hero-ombak" viewBox="0 0 300 160" aria-hidden="true"><path d="M0 90 C60 40 120 140 180 90 S300 40 300 90 V160 H0Z" fill="#fff"/><path d="M0 120 C70 70 130 170 200 120 S300 70 300 120 V160 H0Z" fill="#fff" opacity=".6"/></svg>
         <div class="hero-label">Kas koperasi</div>
@@ -1959,6 +1986,44 @@ img.hp-foto { display: block; }
         <button class="btn btn-primary" onclick="openModalBuatEvent()">➕ Buat Event</button>
       </div>
       <div id="event-list"><div class="loading"><div class="spinner"></div> Memuat...</div></div>
+    </div>
+
+    <!-- PENGUMUMAN (v4.82.0) -->
+    <div class="page" id="page-pengumuman">
+      <div class="page-header" style="margin-bottom:12px">
+        <div class="page-title">Pengumuman</div>
+        <div class="page-sub">Kabar untuk seluruh keluarga</div>
+      </div>
+      <div class="card admin-only" style="display:none;padding:14px;margin-bottom:12px">
+        <div class="dash-sec"><h3>Pengumuman baru</h3></div>
+        <div class="form-group"><label class="form-label">Judul</label>
+          <input type="text" class="form-input" id="pu-judul" placeholder="Contoh: Kumpulan September" maxlength="80"></div>
+        <div class="form-group"><label class="form-label">Isi</label>
+          <textarea class="form-input" id="pu-isi" rows="4" placeholder="Tulis kabarnya di sini…" maxlength="600"></textarea></div>
+        <div class="form-group"><label class="form-label">Tanggal acara <span style="font-weight:400;color:var(--text3)">(boleh kosong)</span></label>
+          <input type="date" class="form-input" id="pu-tanggal">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Kalau diisi, pengumuman hilang sendiri sehari sesudah acaranya.</div></div>
+        <label style="display:flex;align-items:center;gap:10px;font-size:13px;margin:6px 0 10px;cursor:pointer">
+          <input type="checkbox" id="pu-push" checked style="width:18px;height:18px"> Kirim push ke semua anggota yang mengaktifkan notifikasi
+        </label>
+        <button class="btn btn-primary btn-full" id="btn-pu-simpan" onclick="doSimpanPengumuman()"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M19 9a4 4 0 0 1 0 6M8 15v4"/></svg> Umumkan</button>
+      </div>
+      <div class="dash-sec"><h3 id="pu-judul-daftar">Pengumuman aktif</h3></div>
+      <div id="pu-daftar"><div class="loading"><div class="spinner"></div> Memuat…</div></div>
+    </div>
+
+    <!-- Draf WhatsApp pengumuman (v4.82.0) -->
+    <div class="modal-overlay" id="modal-pu-wa" onclick="if (event.target === this) closeModal('modal-pu-wa')">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-title">Draf untuk grup WhatsApp</div>
+        <div class="modal-sub" id="pu-wa-sub">Push sudah terkirim. Teks di bawah siap ditempel ke grup.</div>
+        <textarea class="form-input" id="pu-wa-teks" rows="9" readonly style="font-size:12.5px;line-height:1.55;resize:vertical;margin-top:8px"></textarea>
+        <div class="modal-actions" style="margin-top:14px">
+          <button class="btn btn-ghost" onclick="closeModal('modal-pu-wa')">Tutup</button>
+          <button class="btn btn-ghost" onclick="salinTeksPengumuman()">Salin teks</button>
+          <button class="btn btn-wa" onclick="bukaWATeks(document.getElementById('pu-wa-teks').value)"><svg class="ik" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 11h6M9 14h4"/></svg> Kirim ke WhatsApp</button>
+        </div>
+      </div>
     </div>
 
     <!-- DETAIL ANGGOTA (v4.73.0) -->
@@ -2720,7 +2785,7 @@ img.hp-foto { display: block; }
 </div>
 
 <script>
-const APP_VERSION = 'v4.81.1';
+const APP_VERSION = 'v4.82.0';
 
 // ── SECURITY: XSS Prevention ─────────────────────────────
 function escapeHtml(str) {
@@ -3071,7 +3136,8 @@ const IKON = {
   "keluar-uang": "<path d=\"M12 19V5m0 0-5 5m5-5 5 5\"/>",
   "telepon": "<path class=\"isi\" d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/><path d=\"M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z\"/><path d=\"M9 11h6M9 14h4\"/>",
   "lonceng": "<path class=\"isi\" d=\"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9\"/><path d=\"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9\"/><path d=\"M13.73 21a2 2 0 0 1-3.46 0\"/>",
-  "kembali": "<path d=\"M15 18l-6-6 6-6\"/>"
+  "kembali": "<path d=\"M15 18l-6-6 6-6\"/>",
+  "pengumuman": "<path class=\"isi\" d=\"M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z\"/><path d=\"M4 10v4a1 1 0 0 0 1 1h3l8 4V5L8 9H5a1 1 0 0 0-1 1z\"/><path d=\"M19 9a4 4 0 0 1 0 6M8 15v4\"/>"
 };
 function ikon(nama, ukuran = 24, kelas = '') {
   const isi = IKON[nama];
@@ -3341,6 +3407,7 @@ function showPage(name) {
   if (name === 'profil') loadProfil();
   if (name === 'event') loadEvent();
   if (name === 'backup') loadBackupPage();
+  if (name === 'pengumuman') loadPengumuman();
   // anggota-detail sengaja tidak punya pemuat di sini: ia butuh id, dan
   // pengisiannya dikerjakan bukaDetailAnggota() sebelum halamannya dibuka.
 }
@@ -3596,6 +3663,7 @@ function populateMemberSelects() {
 
 // DASHBOARD
 async function loadDashboard() {
+  renderKartuPengumuman();   // v4.82.0 — tidak menunggu; kartu muncul sendiri begitu datanya tiba
   document.getElementById('dashboard-date').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   // v4.66.0 — baris transaksi hanya diambil sebatas hak orang yang masuk;
@@ -4063,6 +4131,173 @@ function renderMutasiAnggota(jenis) {
       <button class="btn btn-ghost btn-sm la-kw" title="Lihat bukti" data-ik onclick="cetakUlangBuktiSimpanan('${t.id}')"><svg class="ik" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path class="isi" d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></button>
     </div>`;
   }).join('');
+}
+
+// ── PENGUMUMAN (v4.82.0) ─────────────────────────────────────────────────
+const KUNCI_PU_TUTUP = 'kk_pengumuman_tutup';   // id yang sudah ditutup DI PERANGKAT INI
+
+function pengumumanKedaluwarsa(p) {
+  // Kedaluwarsa sehari SESUDAH acaranya: pada hari-H ia masih berguna
+  // ("hari ini jam 4"), sehari kemudian sudah basi.
+  if (!p.tanggal_acara) return false;
+  const batas = new Date(p.tanggal_acara + 'T00:00:00'); batas.setDate(batas.getDate() + 1);
+  return new Date() >= batas;
+}
+function hariMenuju(tgl) {
+  const a = new Date(getTodayStr() + 'T00:00:00'), b = new Date(tgl + 'T00:00:00');
+  return Math.round((b - a) / 86400000);
+}
+function labelHariMenuju(tgl) {
+  const n = hariMenuju(tgl);
+  const t = new Date(tgl + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
+  if (n === 0)  return t + ' · hari ini';
+  if (n === 1)  return t + ' · besok';
+  if (n > 1)    return t + ' · ' + n + ' hari lagi';
+  return t + ' · sudah lewat';
+}
+
+async function ambilPengumumanAktif() {
+  const rows = await dbQuery('pengumuman', 'aktif=eq.true&select=id,judul,isi,tanggal_acara,created_at&order=created_at.desc&limit=10');
+  if (rows === null) return null;
+  return rows.filter(p => !pengumumanKedaluwarsa(p));
+}
+
+// Kartu di Beranda — hanya yang paling baru, dan hanya bila belum ditutup
+// di perangkat ini. Menutup tidak menghapus: pengumumannya tetap ada di
+// halaman Pengumuman, dan tetap tampil di HP anggota lain.
+async function renderKartuPengumuman() {
+  const el = document.getElementById('kartu-pengumuman');
+  if (!el) return;
+  const daftar = await ambilPengumumanAktif();
+  if (!daftar) { el.innerHTML = ''; return; }
+  let ditutup = [];
+  try { ditutup = JSON.parse(localStorage.getItem(KUNCI_PU_TUTUP) || '[]'); } catch (e) {}
+  const p = daftar.find(x => !ditutup.includes(x.id));
+  if (!p) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="pu-kartu" onclick="showPage('pengumuman')" role="button">
+      <button class="x" onclick="event.stopPropagation(); tutupKartuPengumuman('${p.id}')" aria-label="Tutup">✕</button>
+      <div class="k">${ikon('pengumuman', 13)} PENGUMUMAN</div>
+      <div class="j">${escapeHtml(p.judul)}</div>
+      <div class="i">${escapeHtml(p.isi)}</div>
+      ${p.tanggal_acara ? `<div class="tgl">${ikon('kalender', 12)} ${escapeHtml(labelHariMenuju(p.tanggal_acara))}</div>` : ''}
+    </div>`;
+}
+function tutupKartuPengumuman(id) {
+  let ditutup = [];
+  try { ditutup = JSON.parse(localStorage.getItem(KUNCI_PU_TUTUP) || '[]'); } catch (e) {}
+  if (!ditutup.includes(id)) ditutup.push(id);
+  try { localStorage.setItem(KUNCI_PU_TUTUP, JSON.stringify(ditutup.slice(-50))); } catch (e) {}
+  renderKartuPengumuman();
+}
+
+async function loadPengumuman() {
+  const el = document.getElementById('pu-daftar');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Memuat…</div>';
+  const rows = await dbQuery('pengumuman', 'select=id,judul,isi,tanggal_acara,created_at,aktif&order=created_at.desc&limit=30');
+  if (rows === null) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Gagal memuat pengumuman</div></div>'; return; }
+  const admin = isAdmin();
+  const tampil = admin ? rows : rows.filter(p => p.aktif && !pengumumanKedaluwarsa(p));
+  document.getElementById('pu-judul-daftar').textContent = admin ? 'Semua pengumuman' : 'Pengumuman aktif';
+  if (!tampil.length) { el.innerHTML = '<div class="empty-state"><div class="empty-state-title">Belum ada pengumuman</div></div>'; return; }
+  el.innerHTML = '<div class="card" style="padding:4px 14px">' + tampil.map(p => {
+    const lewat = !p.aktif || pengumumanKedaluwarsa(p);
+    const kapan = new Date(p.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    return `<div class="pu-baris${lewat ? ' lewat' : ''}">
+      <div class="ic">${ikon('pengumuman', 17)}</div>
+      <div class="tx">
+        <div class="t1">${escapeHtml(p.judul)}${!p.aktif ? ' <span class="badge badge-gray">dihapus</span>' : (lewat ? ' <span class="badge badge-gray">sudah lewat</span>' : '')}</div>
+        <div class="t2">${escapeHtml(p.isi)}</div>
+        <div class="t3">${p.tanggal_acara ? escapeHtml(labelHariMenuju(p.tanggal_acara)) + ' · ' : ''}diumumkan ${kapan}</div>
+      </div>
+      ${admin ? `<div class="aksi">
+        <button onclick="bukaDrafWAPengumuman('${p.id}')">WA</button>
+        ${p.aktif ? `<button class="hapus" onclick="hapusPengumuman('${p.id}', '${escapeHtml(p.judul)}')">Hapus</button>` : ''}
+      </div>` : ''}
+    </div>`;
+  }).join('') + '</div>';
+  _pengumumanCache = rows;
+}
+let _pengumumanCache = [];
+
+function susunTeksWAPengumuman(p) {
+  const tgl = p.tanggal_acara
+    ? '\n\n📅 ' + new Date(p.tanggal_acara + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+  return `📢 *PENGUMUMAN KOPERASI KELUARGA*\n\n*${p.judul}*\n${p.isi}${tgl}\n\n— ${currentProfile?.full_name || 'Admin'}`;
+}
+function bukaDrafWAPengumuman(id) {
+  const p = _pengumumanCache.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('pu-wa-teks').value = susunTeksWAPengumuman(p);
+  document.getElementById('pu-wa-sub').textContent = 'Teks di bawah siap ditempel ke grup.';
+  openModal('modal-pu-wa');
+}
+async function salinTeksPengumuman() {
+  try { await navigator.clipboard.writeText(document.getElementById('pu-wa-teks').value); showToast('Teks disalin ✓'); }
+  catch (e) { showToast('Tidak bisa menyalin otomatis — tandai teksnya lalu salin manual'); }
+}
+// Membuka WhatsApp dengan teks siap kirim, TANPA nomor tujuan: WhatsApp
+// menawarkan daftar chat untuk memilih grupnya. Berbeda dari bukaWA() yang
+// menuju satu orang.
+function bukaWATeks(teks) {
+  window.open('https://wa.me/?text=' + encodeURIComponent(teks), '_blank');
+}
+
+async function doSimpanPengumuman() {
+  const judul = document.getElementById('pu-judul').value.trim();
+  const isi   = document.getElementById('pu-isi').value.trim();
+  const tgl   = document.getElementById('pu-tanggal').value || null;
+  const push  = document.getElementById('pu-push').checked;
+  if (!judul) { showToast('Judul wajib diisi'); return; }
+  if (!isi)   { showToast('Isi pengumuman wajib diisi'); return; }
+  if (tgl && tgl < getTodayStr()) { showToast('Tanggal acara sudah lewat'); return; }
+
+  const btn = document.getElementById('btn-pu-simpan');
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  try {
+    const { data, error } = await dbInsert('pengumuman', { judul, isi, tanggal_acara: tgl, dibuat_oleh: currentUser.id, aktif: true });
+    if (error) { showToast('Gagal menyimpan: ' + (error.message || JSON.stringify(error)), 6000); return; }
+    const baru = Array.isArray(data) ? data[0] : data;
+
+    let ketPush = 'Push tidak dikirim.';
+    if (push && baru?.id) {
+      // Kegagalan push TIDAK membatalkan pengumuman — ia sudah tersimpan
+      // dan tampil di Beranda. Push hanyalah pelengkap.
+      try {
+        const r = await fetch(SUPABASE_URL + '/functions/v1/kirim-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + authToken },
+          body: JSON.stringify({ kejadian: 'pengumuman', pengumuman_id: baru.id })
+        });
+        const j = await r.json().catch(() => ({}));
+        ketPush = j.success ? `Push terkirim ke ${j.terkirim || 0} perangkat.` : 'Push gagal dikirim — pengumuman tetap tersimpan.';
+      } catch (e) { ketPush = 'Push gagal dikirim — pengumuman tetap tersimpan.'; }
+    }
+    await logActivity('PENGUMUMAN', `Pengumuman: ${judul}`);
+
+    ['pu-judul','pu-isi','pu-tanggal'].forEach(id => { document.getElementById(id).value = ''; });
+    showToast('✅ Diumumkan. ' + ketPush, 5000);
+    await loadPengumuman();
+    renderKartuPengumuman();
+    document.getElementById('pu-wa-teks').value = susunTeksWAPengumuman({ judul, isi, tanggal_acara: tgl });
+    document.getElementById('pu-wa-sub').textContent = ketPush + ' Teks di bawah siap ditempel ke grup.';
+    openModal('modal-pu-wa');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+async function hapusPengumuman(id, judul) {
+  if (!confirm(`Hapus pengumuman "${judul}"?\n\nIa hilang dari Beranda semua anggota.`)) return;
+  // Tidak dihapus sungguhan — ditandai tidak aktif, supaya jejaknya tetap
+  // ada di daftar admin.
+  const { error } = await dbUpdate('pengumuman', `id=eq.${id}`, { aktif: false });
+  if (error) { showToast('Gagal menghapus: ' + (error.message || JSON.stringify(error))); return; }
+  showToast('Pengumuman dihapus');
+  await loadPengumuman();
+  renderKartuPengumuman();
 }
 
 function hubungiAnggotaWA(nomor, nama) {

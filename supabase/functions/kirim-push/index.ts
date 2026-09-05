@@ -43,8 +43,31 @@ Deno.serve(async (req) => {
     const pemanggil = userData?.user?.id
     if (!pemanggil) return jawab({ success: false, message: 'Tidak dikenali' }, 401)
 
-    const { kejadian, loan_id } = await req.json()
-    if (!kejadian || !loan_id) return jawab({ success: false, message: 'kejadian & loan_id wajib' }, 400)
+    const body = await req.json()
+    const { kejadian, loan_id } = body
+    if (!kejadian) return jawab({ success: false, message: 'kejadian wajib' }, 400)
+
+    const { data: profilPemanggilAwal } = await db.from('profiles')
+      .select('id, full_name, role').eq('id', pemanggil).maybeSingle()
+
+    // ── PENGUMUMAN (v4.82.0) — tidak terikat pinjaman ──
+    // Admin mengumumkan sesuatu; semua anggota aktif (selain dirinya) dapat
+    // push. Isinya dibaca dari tabel, bukan dari body, supaya yang dikirim
+    // persis yang tersimpan.
+    if (kejadian === 'pengumuman') {
+      if (profilPemanggilAwal?.role !== 'admin') return jawab({ success: false, message: 'Hanya admin' }, 403)
+      const { pengumuman_id } = body
+      if (!pengumuman_id) return jawab({ success: false, message: 'pengumuman_id wajib' }, 400)
+      const { data: p } = await db.from('pengumuman')
+        .select('id, judul, isi, aktif').eq('id', pengumuman_id).maybeSingle()
+      if (!p || !p.aktif) return jawab({ success: false, message: 'Pengumuman tidak ditemukan' }, 404)
+      const { data: semua } = await db.from('profiles').select('id').eq('status', 'active').neq('id', pemanggil)
+      const penerima = (semua || []).map((a: { id: string }) => a.id)
+      const isiPendek = p.isi.length > 140 ? p.isi.slice(0, 137) + '…' : p.isi
+      return await kirimKe(db, penerima, '📢 ' + p.judul, isiPendek, 'pengumuman-' + p.id)
+    }
+
+    if (!loan_id) return jawab({ success: false, message: 'loan_id wajib untuk kejadian ini' }, 400)
 
     const { data: loan } = await db.from('loans')
       .select('id, member_id, principal, total_amount, installment_amount, installment_count, status, created_at, konfirmasi_at')
@@ -71,8 +94,7 @@ Deno.serve(async (req) => {
       return jawab({ success: false, message: 'Kejadian ini sudah lewat masanya untuk diberitahukan' }, 409)
     }
 
-    const { data: profilPemanggil } = await db.from('profiles')
-      .select('id, full_name, role').eq('id', pemanggil).maybeSingle()
+    const profilPemanggil = profilPemanggilAwal
     const pemanggilAdmin = profilPemanggil?.role === 'admin'
 
     const rupiah = (n: number) =>
@@ -113,31 +135,41 @@ Deno.serve(async (req) => {
       return jawab({ success: false, message: 'Kejadian tidak dikenal' }, 400)
     }
 
-    if (!penerima.length) return jawab({ success: true, terkirim: 0, catatan: 'Tidak ada penerima' })
-
-    const { data: langganan } = await db.from('push_subscriptions')
-      .select('id, endpoint, p256dh, auth').in('member_id', penerima)
-    if (!langganan?.length) return jawab({ success: true, terkirim: 0, catatan: 'Belum ada perangkat terdaftar' })
-
-    const muatan = JSON.stringify({ judul, pesan, tag, url: '/' })
-    let terkirim = 0
-    const mati: string[] = []
-
-    await Promise.all(langganan.map(async (s) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, muatan)
-        terkirim++
-      } catch (e) {
-        const kode = (e as { statusCode?: number }).statusCode
-        if (kode === 404 || kode === 410) mati.push(s.id)   // langganan sudah tidak berlaku
-      }
-    }))
-
-    if (mati.length) await db.from('push_subscriptions').delete().in('id', mati)
-
-    return jawab({ success: true, terkirim, dibersihkan: mati.length })
+    return await kirimKe(db, penerima, judul, pesan, tag)
   } catch (e) {
     return jawab({ success: false, message: String((e as Error)?.message || e) }, 500)
   }
 })
+
+// Mengirim satu muatan ke semua perangkat milik daftar penerima. Dipakai
+// oleh setiap kejadian — pinjaman, pengumuman, dan (nanti) penjadwal —
+// supaya pembersihan langganan mati dan penghitungan terkirim ada di satu
+// tempat.
+// deno-lint-ignore no-explicit-any
+async function kirimKe(db: any, penerima: string[], judul: string, pesan: string, tag: string) {
+  if (!penerima.length) return jawab({ success: true, terkirim: 0, catatan: 'Tidak ada penerima' })
+
+  const { data: langganan } = await db.from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth').in('member_id', penerima)
+  if (!langganan?.length) return jawab({ success: true, terkirim: 0, catatan: 'Belum ada perangkat terdaftar' })
+
+  const muatan = JSON.stringify({ judul, pesan, tag, url: '/' })
+  let terkirim = 0
+  const mati: string[] = []
+
+  // deno-lint-ignore no-explicit-any
+  await Promise.all(langganan.map(async (s: any) => {
+    try {
+      await webpush.sendNotification(
+        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, muatan)
+      terkirim++
+    } catch (e) {
+      const kode = (e as { statusCode?: number }).statusCode
+      if (kode === 404 || kode === 410) mati.push(s.id)   // langganan sudah tidak berlaku
+    }
+  }))
+
+  if (mati.length) await db.from('push_subscriptions').delete().in('id', mati)
+
+  return jawab({ success: true, terkirim, dibersihkan: mati.length })
+}
